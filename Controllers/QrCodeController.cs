@@ -3,7 +3,10 @@ using Firebase.Database;
 using Firebase.Database.Query;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
+using System.Timers;
 
 namespace Alpha_API.Controllers
 {
@@ -14,6 +17,8 @@ namespace Alpha_API.Controllers
 		private readonly IHttpClientFactory _httpClientFactory;
 		private FirebaseClient _firebaseClient;
 		private const string FirebaseBaseUrl = "https://sgm-management-c98cd-default-rtdb.firebaseio.com/";
+		private readonly List<string> _createdMembershipIds = new List<string>(); // To keep track of created memberships
+		private System.Timers.Timer _deleteTimer; // Timer for deletion
 
 		public QrCodeController(IHttpClientFactory httpClientFactory)
 		{
@@ -24,17 +29,12 @@ namespace Alpha_API.Controllers
 		public async Task<IActionResult> GenerateQrCode([FromBody] QrCodeRequest request)
 		{
 			var idToken = HttpContext.Session.GetString("FirebaseIdToken");
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
-	new FirebaseOptions
-	{
-		AuthTokenAsyncFactory = () => Task.FromResult(idToken)
-	});
+			_firebaseClient = new FirebaseClient(FirebaseBaseUrl, new FirebaseOptions
+			{
+				AuthTokenAsyncFactory = () => Task.FromResult(idToken)
+			});
 
-			//get available courses
-			var courses = await _firebaseClient
-				.Child("Courses")
-				.OnceAsync<Course>();
-
+			var courses = await _firebaseClient.Child("Courses").OnceAsync<Course>();
 			var courseList = new List<Course>();
 			foreach (var course in courses)
 			{
@@ -60,18 +60,16 @@ namespace Alpha_API.Controllers
 					var info = "DK" + Guid.NewGuid().ToString();
 
 					// Save membership to Firebase
-					await _firebaseClient
-						.Child("Memberships")
-						.Child(info)
-						.PutAsync(new
-						{
-							MembershipStartDate=DateTime.Now,
-							//MembershipEndDate = DateTime.Now.AddDays(course.CourseDuration),
-							MembershipEndDate = DateTime.Now.AddDays(0),
-							course.CourseId,
-							UserId=request.Uid
-						});
+					var membershipId = info; // Save membership ID for deletion later
+					await _firebaseClient.Child("Memberships").Child(membershipId).PutAsync(new
+					{
+						MembershipStartDate = DateTime.Now,
+						MembershipEndDate = DateTime.Now.AddDays(0),
+						course.CourseId,
+						UserId = request.Uid
+					});
 
+					_createdMembershipIds.Add(membershipId); // Store the created membership ID
 
 					var jsonData = new
 					{
@@ -83,7 +81,6 @@ namespace Alpha_API.Controllers
 						template = "compact"
 					};
 
-					// Serialize request data to JSON
 					var jsonContent = Newtonsoft.Json.JsonConvert.SerializeObject(jsonData);
 					var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
@@ -99,12 +96,10 @@ namespace Alpha_API.Controllers
 						var responseData = await response.Content.ReadAsStringAsync();
 						var jsonResponse = JObject.Parse(responseData);
 
-						// Extract qrDataURL from the response
 						var qrDataUrl = jsonResponse["data"]?["qrDataURL"]?.ToString();
 
 						if (!string.IsNullOrEmpty(qrDataUrl))
 						{
-							// Add both the QR data and course details to the response
 							qrList.Add(new
 							{
 								qrDataUrl,
@@ -133,8 +128,36 @@ namespace Alpha_API.Controllers
 				}
 			}
 
-			// Optionally, you can convert this Data URI to an image file or return it directly
+			// Start the timer for deletion
+			StartDeletionTimer();
+
 			return Ok(new { qrList }); // Return the Data URI
+		}
+
+		private void StartDeletionTimer()
+		{
+			// If the timer is already running, stop it
+			if (_deleteTimer != null)
+			{
+				_deleteTimer.Stop();
+				_deleteTimer.Dispose();
+			}
+
+			// Create and start a new timer
+			_deleteTimer = new System.Timers.Timer(10000); // Set for 30 seconds
+			_deleteTimer.Elapsed += async (sender, e) => await DeleteMembershipsAsync();
+			_deleteTimer.AutoReset = false; // Run only once
+			_deleteTimer.Start();
+		}
+
+		private async Task DeleteMembershipsAsync()
+		{
+			foreach (var membershipId in _createdMembershipIds)
+			{
+				await _firebaseClient.Child("Memberships").Child(membershipId).DeleteAsync();
+			}
+
+			_createdMembershipIds.Clear(); // Clear the list after deletion
 		}
 	}
 
