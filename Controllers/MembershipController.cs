@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Firebase.Database;
 using Firebase.Database.Query;
 using Alpha_API.Models;
@@ -107,7 +107,8 @@ public class MembershipController : ControllerBase
 		{
 
 			// Calculate the MembershipEndDate
-			membership.MembershipEndDate = membership.MembershipStartDate.AddDays(course.CourseDuration);
+			//membership.MembershipEndDate = membership.MembershipStartDate.AddDays(course.CourseDuration);
+			membership.MembershipEndDate = membership.MembershipStartDate.AddDays(0);
 
 			// Save membership to Firebase
 			await _firebaseClient
