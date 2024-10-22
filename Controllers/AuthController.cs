@@ -1,4 +1,4 @@
-﻿using Alpha_API.Models;
+using Alpha_API.Models;
 using Alpha_API.ViewModel;
 using Firebase.Database;
 using Firebase.Database.Query;
@@ -37,47 +37,62 @@ public class AuthController : ControllerBase
 	[HttpPost("register")]
 	public async Task<ActionResult> Register([FromBody] RegisterUserDto registerUserDto)
 	{
-		// Create a Firebase Auth user
-		var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
+		try
 		{
-			Email = registerUserDto.Email,
-			Password = registerUserDto.Password,
-			DisplayName = registerUserDto.Name,
-			EmailVerified = false,
-			Disabled = false
-		});
+			// Create a Firebase Auth user
+			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
+			{
+				Email = registerUserDto.Email,
+				Password = registerUserDto.Password,
+				DisplayName = registerUserDto.Name,
+				EmailVerified = false,
+				Disabled = false
+			});
 
-		if (createUserResponse == null)
-		{
-			return BadRequest("User registration failed.");
+			if (createUserResponse == null)
+			{
+				return BadRequest("User registration failed.");
+			}
+
+			var userId = createUserResponse.Uid;
+
+			// Generate email verification link
+			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(registerUserDto.Email);
+
+			// Save user details to Firebase Realtime Database
+			var user = new User
+			{
+				Name = registerUserDto.Name,
+				Email = registerUserDto.Email,
+				RoleId = "-O7s8sU2ZMyRWjrImzCO" // Customer role
+			};
+
+			await _firebaseClient
+				.Child("Users")
+				.Child(userId)
+				.PutAsync(user);
+
+			// Send the verification email using a third-party email service
+			var emailSent = SendVerificationEmail(registerUserDto.Email, verificationLink);
+			if (!emailSent)
+			{
+				return BadRequest("Failed to send email verification.");
+			}
+
+			return Ok("User created. Please verify your email.");
 		}
-
-		var userId = createUserResponse.Uid;
-
-		// Generate email verification link
-		var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(registerUserDto.Email);
-
-		// Save user details to Firebase Realtime Database
-		var user = new User
+		catch (FirebaseAuthException ex)
 		{
-			Name = registerUserDto.Name,
-			Email = registerUserDto.Email,
-			RoleId = "-O7s8sU2ZMyRWjrImzCO" // Customer role
-		};
+			// Check if the error is related to an existing email
+			if (ex.Message.Contains("EMAIL_EXISTS"))
+			{
+				// Return 409 Conflict status with error message
+				return Conflict(new { message = "The email is already registered." });
+			}
 
-		await _firebaseClient
-			.Child("Users")
-			.Child(userId)
-			.PutAsync(user);
-
-		// Send the verification email using a third-party email service
-		var emailSent = SendVerificationEmail(registerUserDto.Email, verificationLink);
-		if (!emailSent)
-		{
-			return BadRequest("Failed to send email verification.");
+			// For other Firebase errors, return a generic internal server error
+			return StatusCode(500, new { message = "An error occurred during registration." });
 		}
-
-		return Ok("User created. Please verify your email.");
 	}
 
 
