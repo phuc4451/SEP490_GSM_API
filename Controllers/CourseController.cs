@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Firebase.Database;
 using Alpha_API.Models;
 using Firebase.Database.Query;
@@ -122,10 +122,10 @@ public class CourseController : ControllerBase
 		{
 			existingCourse.CoursePrice = course.CoursePrice;
 		}
-		if (course.CourseDuration > 0)
-		{
-			existingCourse.CourseDuration = course.CourseDuration;
-		}
+		//if (course.CourseDuration > 0)
+		//{
+		//	existingCourse.CourseDuration = course.CourseDuration;
+		//}
 
 		await _firebaseClient
 			.Child("Courses")
