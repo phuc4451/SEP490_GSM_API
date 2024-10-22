@@ -1,4 +1,4 @@
-﻿using Alpha_API.Models;
+using Alpha_API.Models;
 using Firebase.Database;
 using Firebase.Database.Query;
 using Microsoft.AspNetCore.Mvc;
@@ -47,8 +47,8 @@ namespace Alpha_API.Controllers
 				return BadRequest("Request cannot be null.");
 			}
 
-			var qrList= new List<string>();
-			
+			var qrList = new List<object>(); // List to hold both qrDataUrl and course details
+
 			foreach (Course course in courseList)
 			{
 				try
@@ -66,7 +66,8 @@ namespace Alpha_API.Controllers
 						.PutAsync(new
 						{
 							MembershipStartDate=DateTime.Now,
-							MembershipEndDate = DateTime.Now.AddDays(course.CourseDuration),
+							//MembershipEndDate = DateTime.Now.AddDays(course.CourseDuration),
+							MembershipEndDate = DateTime.Now.AddDays(0),
 							course.CourseId,
 							UserId=request.Uid
 						});
@@ -103,7 +104,18 @@ namespace Alpha_API.Controllers
 
 						if (!string.IsNullOrEmpty(qrDataUrl))
 						{
-							qrList.Add(qrDataUrl);
+							// Add both the QR data and course details to the response
+							qrList.Add(new
+							{
+								qrDataUrl,
+								courseDetails = new
+								{
+									course.CourseName,
+									course.CourseContent,
+									course.CourseDuration,
+									course.CoursePrice
+								}
+							});
 						}
 						else
 						{
@@ -122,7 +134,7 @@ namespace Alpha_API.Controllers
 			}
 
 			// Optionally, you can convert this Data URI to an image file or return it directly
-			return Ok(new { qrList = qrList }); // Return the Data URI
+			return Ok(new { qrList }); // Return the Data URI
 		}
 	}
 
