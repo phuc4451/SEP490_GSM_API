@@ -75,7 +75,7 @@ public class AuthController : ControllerBase
 			}
 
 			await _firebaseClient
-	.Child("Users")
+	.Child("users")
 	.Child(userId)
 	.PutAsync(user);
 
@@ -221,7 +221,7 @@ public class AuthController : ControllerBase
 				});
 
 			var firebaseUser = await _firebaseClient
-				.Child("Users")
+				.Child("users")
 				.Child(uid)
 				.OnceSingleAsync<Dictionary<string, object>>();
 

@@ -59,17 +59,17 @@ namespace Alpha_API.Controllers
 					// Prepare the request data
 					var info = "DK" + Guid.NewGuid().ToString();
 
-					// Save membership to Firebase
-					var membershipId = info; // Save membership ID for deletion later
-					await _firebaseClient.Child("Memberships").Child(membershipId).PutAsync(new
-					{
-						MembershipStartDate = DateTime.Now,
-						MembershipEndDate = DateTime.Now.AddDays(0),
-						course.CourseId,
-						UserId = request.Uid
-					});
+					//// Save membership to Firebase
+					//var membershipId = info; // Save membership ID for deletion later
+					//await _firebaseClient.Child("Memberships").Child(membershipId).PutAsync(new
+					//{
+					//	MembershipStartDate = DateTime.Now,
+					//	MembershipEndDate = DateTime.Now.AddDays(0),
+					//	course.CourseId,
+					//	UserId = request.Uid
+					//});
 
-					_createdMembershipIds.Add(membershipId); // Store the created membership ID
+					//_createdMembershipIds.Add(membershipId); // Store the created membership ID
 
 					var jsonData = new
 					{
@@ -126,10 +126,11 @@ namespace Alpha_API.Controllers
 				{
 					return StatusCode(500, $"Internal server error: {ex.Message}");
 				}
+
 			}
 
-			// Start the timer for deletion
-			StartDeletionTimer();
+			//// Start the timer for deletion
+			//StartDeletionTimer();
 
 			return Ok(new { qrList }); // Return the Data URI
 		}

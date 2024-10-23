@@ -38,7 +38,7 @@ public class UsersController : ControllerBase
 		}
 
 		var users = await _firebaseClient
-			.Child("Users")
+			.Child("users")
 			.OnceAsync<User>();
 
 		var userList = new List<User>();
@@ -61,7 +61,7 @@ public class UsersController : ControllerBase
 		}
 
 		var result = await _firebaseClient
-			.Child("Users")
+			.Child("users")
 		.PostAsync(new
 		{
 			//user.UserId,
@@ -85,7 +85,7 @@ public class UsersController : ControllerBase
 	public async Task<ActionResult<User>> GetUserById(string id)
 	{
 		var user = await _firebaseClient
-			.Child("Users")
+			.Child("users")
 			.Child(id)
 			.OnceSingleAsync<User>();
 
@@ -109,7 +109,7 @@ public class UsersController : ControllerBase
 		}
 
 		await _firebaseClient
-			.Child("Users")
+			.Child("users")
 			.Child(id)
 			.PutAsync(user);
 
@@ -121,7 +121,7 @@ public class UsersController : ControllerBase
 	public async Task<ActionResult> PatchUser(string id, [FromBody] User user)
 	{
 		var existingUser = await _firebaseClient
-			.Child("Users")
+			.Child("users")
 			.Child(id)
 			.OnceSingleAsync<User>();
 
@@ -137,7 +137,7 @@ public class UsersController : ControllerBase
 		//}
 
 		await _firebaseClient
-			.Child("Users")
+			.Child("users")
 			.Child(id)
 			.PutAsync(existingUser);
 
@@ -149,7 +149,7 @@ public class UsersController : ControllerBase
 	public async Task<ActionResult> DeleteUser(string id)
 	{
 		var existingUser = await _firebaseClient
-			.Child("Users")
+			.Child("users")
 			.Child(id)
 			.OnceSingleAsync<User>();
 
@@ -159,7 +159,7 @@ public class UsersController : ControllerBase
 		}
 
 		await _firebaseClient
-			.Child("Users")
+			.Child("users")
 			.Child(id)
 			.DeleteAsync();
 
