@@ -30,7 +30,7 @@ public class AuthController : ControllerBase
 		_configuration = configuration;
 
 		//// Initialize Firebase client (read/write permissions now open)
-		//_firebaseClient = new FirebaseClient(FirebaseBaseUrl);
+		_firebaseClient = new FirebaseClient(FirebaseBaseUrl);
 		_firebaseAuth = FirebaseAuth.DefaultInstance;
 	}
 
@@ -67,17 +67,17 @@ public class AuthController : ControllerBase
 				RoleId = "-O7s8sU2ZMyRWjrImzCO" // Customer role
 			};
 
-			await _firebaseClient
-				.Child("Users")
-				.Child(userId)
-				.PutAsync(user);
-
 			// Send the verification email using a third-party email service
 			var emailSent = SendVerificationEmail(registerUserDto.Email, verificationLink);
 			if (!emailSent)
 			{
 				return BadRequest("Failed to send email verification.");
 			}
+
+			await _firebaseClient
+	.Child("Users")
+	.Child(userId)
+	.PutAsync(user);
 
 			return Ok("User created. Please verify your email.");
 		}
@@ -240,7 +240,7 @@ public class AuthController : ControllerBase
 					var roleName = await GetRoleNameFromFirebase(roleId);
 					var token = GenerateJwtToken(existingUser.Email, roleName);
 
-					return Ok(new { JWTtoken=token, FirebaseToken=signInResponse.IdToken });
+					return Ok(new { JWTtoken = token, FirebaseToken = signInResponse.IdToken });
 				}
 				else
 				{
