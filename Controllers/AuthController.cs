@@ -60,11 +60,11 @@ public class AuthController : ControllerBase
 			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(registerUserDto.Email);
 
 			// Save user details to Firebase Realtime Database
-			var user = new User
+			var user = new
 			{
-				Name = registerUserDto.Name,
-				Email = registerUserDto.Email,
-				RoleId = "-O7s8sU2ZMyRWjrImzCO" // Customer role
+				name = registerUserDto.Name,
+				email = registerUserDto.Email,
+				roleId = "-O7s8sU2ZMyRWjrImzCO" // Customer role
 			};
 
 			// Send the verification email using a third-party email service
