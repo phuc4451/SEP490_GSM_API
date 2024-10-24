@@ -227,9 +227,9 @@ public class AuthController : ControllerBase
 
 
 			// Now you can access fields dynamically
-			if (firebaseUser.ContainsKey("RoleId"))
+			if (firebaseUser.ContainsKey("roleId"))
 			{
-				var roleId = firebaseUser["RoleId"].ToString();
+				var roleId = firebaseUser["roleId"].ToString();
 
 				var existingUser = await _firebaseAuth.GetUserByEmailAsync(signInResponse.Email);
 
