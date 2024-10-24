@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 [Route("api/[controller]")]
 [ApiController]
 //[Authorize(Policy = "AdminOnly")]
+[Authorize(Roles = "admin")]
 public class CourseController : ControllerBase
 {
 	private readonly FirebaseClient _firebaseClient;
