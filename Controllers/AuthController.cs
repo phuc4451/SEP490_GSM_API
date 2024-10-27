@@ -73,11 +73,12 @@ public class AuthController : ControllerBase
 				Gender="Male",
 				Address="empty",
 				UserAvatar="",
-				IdCard= new CardId()
-				{
-					Id="empty"
-				},
-				Dob= new CustomDateTime()
+				//IdCard= new CardId()
+				//{
+				//	Id="empty"
+				//},
+				IdCard= "empty",
+				Dob = new CustomDateTime()
 				{
 
 				}
@@ -278,7 +279,7 @@ public class AuthController : ControllerBase
 				{
 					// Email is verified, proceed with login
 					var roleName = await GetRoleNameFromFirebase(roleId);
-					var token = GenerateJwtToken(existingUser.Email, roleName);
+					var token = GenerateJwtToken(existingUser.Email, roleName, uid);
 
 					return Ok(new { JWTtoken = token, FirebaseToken = signInResponse.IdToken });
 				}
@@ -334,13 +335,14 @@ public class AuthController : ControllerBase
 		}
 	}
 
-	private string GenerateJwtToken(string email, string role)
+	private string GenerateJwtToken(string email, string role, string uid)
 	{
 		var claims = new[]
 		{
 			//new Claim(JwtRegisteredClaimNames.Sub, email),
 
 			 new Claim(ClaimTypes.Email, email),  // Use ClaimTypes.Email for email claim
+			 new Claim(ClaimTypes.NameIdentifier, uid),  // Use ClaimTypes.Email for email claim
 			new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
 			new Claim(ClaimTypes.Role, role)  // Include the user's role in the token
         };

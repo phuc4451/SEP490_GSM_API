@@ -16,7 +16,7 @@ namespace Alpha_API.Models
 		public string Phone { get; set; }
 		public string RoleId { get; set; }
 		public string UserAvatar { get; set; }
-		public CardId IdCard { get; set; }
+		public string IdCard { get; set; }
 
 		public CustomDateTime MapDateTimeToCustomFormat(DateTime dateTime)
 		{
@@ -31,11 +31,11 @@ namespace Alpha_API.Models
 	}
 
 
-	public class CardId
-	{
-		[JsonPropertyName("id")]
-		public string Id { get; set; }
-	}
+	//public class CardId
+	//{
+	//	[JsonPropertyName("id")]
+	//	public string Id { get; set; }
+	//}
 
 	public class CustomDateTime
 	{

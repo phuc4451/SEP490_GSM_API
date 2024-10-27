@@ -142,6 +142,8 @@ public class UsersController : ControllerBase
 	[HttpGet("GetCurrentUser")]
 	public async Task<ActionResult<User>> GetCurrentUser()
 	{
+
+
 		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
 
 		if (!string.IsNullOrEmpty(idToken))
@@ -157,11 +159,19 @@ public class UsersController : ControllerBase
 		// Retrieve the email claim
 		var email = HttpContext.User.FindFirst(ClaimTypes.Email)?.Value;
 
-		var existingUser = await _firebaseAuth.GetUserByEmailAsync(email);
+		// Retrieve the uid claim
+		var userIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
+
+		if (userIdClaim == null)
+		{
+			return Unauthorized("User not authenticated.");
+		}
+
+		var userId = userIdClaim.Value; // This is the Firebase UID
 
 		var user = await _firebaseClient
 	.Child("users")
-	.Child(existingUser.Uid)
+	.Child(userId)
 	.OnceSingleAsync<User>();
 
 		if (user == null)
