@@ -12,6 +12,8 @@ using System.Security.Claims;
 using System.Text;
 using Newtonsoft.Json;
 using System.Net.Http;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -59,13 +61,51 @@ public class AuthController : ControllerBase
 			// Generate email verification link
 			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(registerUserDto.Email);
 
-			// Save user details to Firebase Realtime Database
-			var user = new
+			var roles =await GetAllRoles();
+
+			User u = new User()
 			{
-				name = registerUserDto.Name,
-				email = registerUserDto.Email,
-				roleId = "-O7s8sU2ZMyRWjrImzCO" // Customer role
+				Name=registerUserDto.Name,
+				Email = registerUserDto.Email,
+				RoleId= "-O7s8sU2ZMyRWjrImzCO", // Customer role
+				Phone="empty",
+				UserId=userId,
+				Gender="Male",
+				Address="empty",
+				UserAvatar="",
+				IdCard= new CardId()
+				{
+					Id="empty"
+				},
+				Dob= new CustomDateTime()
+				{
+
+				}
 			};
+			u.Dob = u.MapDateTimeToCustomFormat(DateTime.Now);
+
+			//// Save user details to Firebase Realtime Database
+			//var user = new
+			//{
+			//	name = u.Name,
+			//	email = u.Email,
+			//	roleId = u.RoleId,
+			//	phone = u.Phone,
+			//	userId=u.UserId,
+			//	gender = u.Gender,
+			//	address = u.Address,
+			//	userAvatar= "",
+			//	idCard= u.IdCard,
+			//	dob= u.Dob
+			//};
+
+			var options = new JsonSerializerOptions
+			{
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+			};
+
+			var jsonString = System.Text.Json.JsonSerializer.Serialize(u, options);
 
 			// Send the verification email using a third-party email service
 			var emailSent = SendVerificationEmail(registerUserDto.Email, verificationLink);
@@ -77,7 +117,7 @@ public class AuthController : ControllerBase
 			await _firebaseClient
 	.Child("users")
 	.Child(userId)
-	.PutAsync(user);
+	.PutAsync(jsonString);
 
 			return Ok("User created. Please verify your email.");
 		}

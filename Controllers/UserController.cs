@@ -44,7 +44,6 @@ public class UsersController : ControllerBase
 		var userList = new List<User>();
 		foreach (var user in users)
 		{
-			user.Object.UserId = user.Key;
 			userList.Add(user.Object);
 		}
 
@@ -67,7 +66,6 @@ public class UsersController : ControllerBase
 			//user.UserId,
 			user.Name,
 			user.Email,
-			user.Password,
 			user.Gender,
 			user.Dob,
 			user.Address,
