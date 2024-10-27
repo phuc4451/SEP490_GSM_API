@@ -20,6 +20,32 @@ namespace WebAPI
 			builder.Services.AddControllers();
 			builder.Services.AddEndpointsApiExplorer();
 
+			builder.Services.AddSwaggerGen(options =>
+			{
+				options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+				{
+					Description = "Standard Authorization header using the Bearer scheme. Example: \"bearer {token}\"",
+					In = ParameterLocation.Header,
+					Name = "Authorization",
+					Type = SecuritySchemeType.ApiKey,
+					Scheme = "Bearer"
+				});
+				options.AddSecurityRequirement(new OpenApiSecurityRequirement
+				{
+					{
+						new OpenApiSecurityScheme
+						{
+							Reference = new OpenApiReference
+							{
+								Type = ReferenceType.SecurityScheme,
+								Id = "Bearer"
+							}
+						},
+						Array.Empty<string>()
+					}
+				});
+			});
+
 			var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
 
 
@@ -74,7 +100,19 @@ namespace WebAPI
 				options.Cookie.IsEssential = true; // Ensure session cookie is always available
 			});
 
+			builder.Services.AddSwaggerGen(c =>
+			{
+				c.SwaggerDoc("v1", new OpenApiInfo { Title = "GymAPI_OData", Version = "v1" });
+			});
+
+
 			var app = builder.Build();
+
+			if (app.Environment.IsDevelopment())
+			{
+				app.UseSwagger();
+				app.UseSwaggerUI();
+			}
 
 			app.UseHttpsRedirection();
 			app.UseRouting();	

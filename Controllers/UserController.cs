@@ -4,6 +4,7 @@ using Alpha_API.Models;
 using Firebase.Database.Query;
 using Microsoft.AspNetCore.Authorization;
 using FirebaseAdmin.Auth;
+using System.Security.Claims;
 
 
 [Route("api/[controller]")]
@@ -12,6 +13,7 @@ using FirebaseAdmin.Auth;
 [Authorize(Roles = "admin")]
 public class UsersController : ControllerBase
 {
+	private readonly FirebaseAuth _firebaseAuth;
 	private FirebaseClient _firebaseClient;
 	private const string FirebaseBaseUrl = "https://sgm-management-c98cd-default-rtdb.firebaseio.com/";
 
@@ -50,6 +52,64 @@ public class UsersController : ControllerBase
 		return Ok(userList);
 	}
 
+	[HttpGet("staffs")]
+	public async Task<ActionResult<IEnumerable<User>>> GetStaffs()
+	{
+		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
+
+		if (!string.IsNullOrEmpty(idToken))
+		{
+			// Use the token in your database query
+			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
+				new FirebaseOptions
+				{
+					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
+				});
+		}
+
+		var users = await _firebaseClient
+			.Child("users")
+			.OnceAsync<User>();
+
+		var userList = new List<User>();
+		foreach (var user in users)
+		{
+			if (user.Object.RoleId == "-O7s8orgirC-Hqcoa7xR")
+				userList.Add(user.Object);
+		}
+
+		return Ok(userList);
+	}
+
+	[HttpGet("customers")]
+	public async Task<ActionResult<IEnumerable<User>>> GetCustomers()
+	{
+		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
+
+		if (!string.IsNullOrEmpty(idToken))
+		{
+			// Use the token in your database query
+			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
+				new FirebaseOptions
+				{
+					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
+				});
+		}
+
+		var users = await _firebaseClient
+			.Child("users")
+			.OnceAsync<User>();
+
+		var userList = new List<User>();
+		foreach (var user in users)
+		{
+			if (user.Object.RoleId == "-O7s8sU2ZMyRWjrImzCO")
+				userList.Add(user.Object);
+		}
+
+		return Ok(userList);
+	}
+
 	// POST: api/users
 	[HttpPost]
 	public async Task<ActionResult<User>> PostUser([FromBody] User user)
@@ -76,6 +136,40 @@ public class UsersController : ControllerBase
 
 		//user.UserId = result.Key; // Firebase generates a unique key
 		return CreatedAtAction(nameof(GetUserById), new { id = result.Key }, user);
+	}
+
+	// GET: api/users/{id}
+	[HttpGet("GetCurrentUser")]
+	public async Task<ActionResult<User>> GetCurrentUser()
+	{
+		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
+
+		if (!string.IsNullOrEmpty(idToken))
+		{
+			// Use the token in your database query
+			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
+				new FirebaseOptions
+				{
+					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
+				});
+		}
+
+		// Retrieve the email claim
+		var email = HttpContext.User.FindFirst(ClaimTypes.Email)?.Value;
+
+		var existingUser = await _firebaseAuth.GetUserByEmailAsync(email);
+
+		var user = await _firebaseClient
+	.Child("users")
+	.Child(existingUser.Uid)
+	.OnceSingleAsync<User>();
+
+		if (user == null)
+		{
+			return NotFound();
+		}
+
+		return Ok(user);
 	}
 
 	// GET: api/users/{id}
