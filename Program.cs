@@ -1,3 +1,4 @@
+using Alpha_API.Utils;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -19,7 +20,7 @@ namespace WebAPI
 
 			builder.Services.AddControllers();
 			builder.Services.AddEndpointsApiExplorer();
-
+			builder.Services.AddSingleton<EmailService>();
 			builder.Services.AddSwaggerGen(options =>
 			{
 				options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme

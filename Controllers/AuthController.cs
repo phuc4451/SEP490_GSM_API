@@ -14,11 +14,13 @@ using Newtonsoft.Json;
 using System.Net.Http;
 using System.Text.Json.Serialization;
 using System.Text.Json;
+using Alpha_API.Utils;
 
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+	private readonly EmailService _emailService;
 	private readonly IConfiguration _configuration;
 	private FirebaseClient _firebaseClient;
 	private readonly FirebaseAuth _firebaseAuth;
@@ -27,13 +29,14 @@ public class AuthController : ControllerBase
 	private const string FirebaseAuthUrl = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=";
 	private const string FirebaseBaseUrl = "https://sgm-management-c98cd-default-rtdb.firebaseio.com/";
 
-	public AuthController(IConfiguration configuration)
+	public AuthController(IConfiguration configuration, EmailService emailService)
 	{
 		_configuration = configuration;
 
 		//// Initialize Firebase client (read/write permissions now open)
 		_firebaseClient = new FirebaseClient(FirebaseBaseUrl);
 		_firebaseAuth = FirebaseAuth.DefaultInstance;
+		_emailService = emailService;
 	}
 
 	[HttpPost("register")]
@@ -109,7 +112,8 @@ public class AuthController : ControllerBase
 			var jsonString = System.Text.Json.JsonSerializer.Serialize(u, options);
 
 			// Send the verification email using a third-party email service
-			var emailSent = SendVerificationEmail(registerUserDto.Email, verificationLink);
+			var emailSent = _emailService.SendVerificationEmail(registerUserDto.Email, verificationLink);
+
 			if (!emailSent)
 			{
 				return BadRequest("Failed to send email verification.");
@@ -137,30 +141,7 @@ public class AuthController : ControllerBase
 	}
 
 
-	private bool SendVerificationEmail(string email, string verificationLink)
-	{
-		try
-		{
-			MailMessage mail = new MailMessage();
-			mail.From = new MailAddress("phucvu159753@gmail.com");
-			mail.To.Add(email);
-			mail.Subject = "Verify your email";
-			mail.Body = $"Please verify your email by clicking on the link: {verificationLink}";
 
-			SmtpClient smtpServer = new SmtpClient("smtp.gmail.com");  // Replace with your SMTP server
-			smtpServer.Port = 587;  // or other port depending on your SMTP server
-			smtpServer.Credentials = new NetworkCredential("phucvu159753@gmail.com", "tlpmzxpedrnlkfnn");  // Replace with your email credentials
-			smtpServer.EnableSsl = true;
-
-			smtpServer.Send(mail);
-			return true;
-		}
-		catch (Exception ex)
-		{
-			Console.WriteLine($"Error sending email: {ex.Message}");
-			return false;
-		}
-	}
 
 
 	//[HttpPost("login")]
