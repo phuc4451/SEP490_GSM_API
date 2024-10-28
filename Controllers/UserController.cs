@@ -26,6 +26,7 @@ public class UsersController : ControllerBase
 	{
 		_firebaseClient = new FirebaseClient(FirebaseBaseUrl);
 		_emailService = emailService;
+		_firebaseAuth = FirebaseAuth.DefaultInstance;
 	}
 
 	// GET: api/users
@@ -195,47 +196,30 @@ public class UsersController : ControllerBase
 		return Ok(user);
 	}
 
-	// POST: api/users/updatestaffinfo
-	[Authorize(Roles = "admin")]
-	[HttpPost("updatestaffinfo")]
-	public async Task<ActionResult> UpdateStaffInfo([FromBody] User user)
-	{
-		if (user == null)
-		{
-			return BadRequest();
-		}
+	//// POST: api/users/updatestaffinfo
+	//[Authorize(Roles = "admin,staff,customer,pt")]
+	//[HttpPost("updateinfo")]
+	//public async Task<ActionResult> UpdateInfo([FromBody] User u)
+	//{
+	//	var idToken = HttpContext.Session.GetString("FirebaseIdToken");
 
-		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
+	//	if (!string.IsNullOrEmpty(idToken))
+	//	{
+	//		// Use the token in your database query
+	//		_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
+	//			new FirebaseOptions
+	//			{
+	//				AuthTokenAsyncFactory = () => Task.FromResult(idToken)
+	//			});
+	//	}
 
-		if (!string.IsNullOrEmpty(idToken))
-		{
-			// Use the token in your database query
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
-				new FirebaseOptions
-				{
-					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
-				});
-		}
+	//	var result = await _firebaseClient
+	//		.Child("users")
+	//	.PutAsync(u);
 
-		var result = await _firebaseClient
-			.Child("users")
-		.PostAsync(new
-		{
-			//user.UserId,
-			user.Name,
-			user.Email,
-			user.Gender,
-			user.Dob,
-			user.Address,
-			user.Phone,
-			RoleId= "-O7s8orgirC-Hqcoa7xR",
-			user.UserAvatar,
-			user.IdCard,
-		});
-
-		user.UserId = result.Key; // Firebase generates a unique key
-		return CreatedAtAction(nameof(GetUserById), new { id = result.Key }, user);
-	}
+	//	user.UserId = result.Key; // Firebase generates a unique key
+	//	return CreatedAtAction(nameof(GetUserById), new { id = result.Key }, user);
+	//}
 
 	// POST: api/users/addstaff
 	[Authorize(Roles = "admin")]
