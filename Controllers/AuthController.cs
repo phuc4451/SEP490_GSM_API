@@ -73,7 +73,7 @@ public class AuthController : ControllerBase
 				RoleId= "-O7s8sU2ZMyRWjrImzCO", // Customer role
 				Phone="empty",
 				UserId=userId,
-				Gender="Male",
+				Gender="male",
 				Address="empty",
 				UserAvatar="",
 				//IdCard= new CardId()
