@@ -1,0 +1,58 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{7EB0347A-D9A1-437D-90D7-29ECE129F8F0}|Alpha_API.csproj|c:\\users\\admin\\onedrive\\documents\\sep490\\sep490_gsm_api\\controllers\\postscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7EB0347A-D9A1-437D-90D7-29ECE129F8F0}|Alpha_API.csproj|solutionrelative:controllers\\postscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7EB0347A-D9A1-437D-90D7-29ECE129F8F0}|Alpha_API.csproj|c:\\users\\admin\\onedrive\\documents\\sep490\\sep490_gsm_api\\models\\post.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7EB0347A-D9A1-437D-90D7-29ECE129F8F0}|Alpha_API.csproj|solutionrelative:models\\post.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Post.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\Models\\Post.cs",
+              "RelativeDocumentMoniker": "Models\\Post.cs",
+              "ToolTip": "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\Models\\Post.cs",
+              "RelativeToolTip": "Models\\Post.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-10-29T04:53:09.215Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "PostsController.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\Controllers\\PostsController.cs",
+              "RelativeDocumentMoniker": "Controllers\\PostsController.cs",
+              "ToolTip": "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\Controllers\\PostsController.cs",
+              "RelativeToolTip": "Controllers\\PostsController.cs",
+              "ViewState": "AQIAAAMAAAAAAAAAAAAAAK4AAAAmAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-10-26T08:18:32.085Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

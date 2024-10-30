@@ -60,7 +60,7 @@ namespace WebAPI
 
 			FirebaseApp.Create(new AppOptions()
 			{
-				Credential = GoogleCredential.FromFile("D:\\Downloads\\Fall24\\SEP490\\SEP490_GSM_API\\Secret\\sgm-management-c98cd-firebase-adminsdk-kc3zt-383493a9bd.json")
+				Credential = GoogleCredential.FromFile("C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\Secret\\sgm-management-c98cd-firebase-adminsdk-kc3zt-383493a9bd.json")
 			});
 			builder.WebHost.UseUrls("http://0.0.0.0:5000");
 			builder.Services.AddHttpClient<AuthController>();
