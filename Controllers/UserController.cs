@@ -437,15 +437,28 @@ public class UsersController : ControllerBase
 	[HttpPut("{id}")]
 	public async Task<ActionResult> PutUser(string id, [FromBody] User user)
 	{
-		if (id != user.UserId)
+		var existingUser = await _firebaseClient
+	.Child("users")
+	.Child(id)
+	.OnceSingleAsync<User>();
+
+		if (existingUser == null)
 		{
-			return BadRequest();
+			return NotFound("User not found");
 		}
+
+		var options = new JsonSerializerOptions
+		{
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+			DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+		};
+
+		var jsonString = JsonSerializer.Serialize(user, options);
 
 		await _firebaseClient
 			.Child("users")
 			.Child(id)
-			.PutAsync(user);
+			.PutAsync(jsonString);
 
 		return NoContent(); // 204 No Content
 	}
