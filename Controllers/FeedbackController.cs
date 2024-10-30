@@ -12,109 +12,97 @@ using System.Security.Claims;
 [ApiController]
 public class FeedbackController : ControllerBase
 {
-	private readonly FirebaseClient _firebaseClient;
+    private readonly FirebaseClient _firebaseClient;
 
-	public FeedbackController()
-	{
-		_firebaseClient = new FirebaseClient("https://sgm-management-c98cd-default-rtdb.firebaseio.com/");
-	}
+    public FeedbackController()
+    {
+        _firebaseClient = new FirebaseClient("https://sgm-management-c98cd-default-rtdb.firebaseio.com/");
+    }
 
-	// GET: api/feedback
-	[HttpGet]
-	public async Task<ActionResult<IEnumerable<Feedback>>> GetAllFeedback()
-	{
-		var feedbacks = await _firebaseClient
-			.Child("Feedback")
-			.OnceAsync<Feedback>();
+    // GET: api/feedback
+    [HttpGet]
+    [Authorize(Roles = "admin")]
+    public async Task<ActionResult<IEnumerable<Feedback>>> GetAllFeedback()
+    {
+        var feedbacks = await _firebaseClient
+            .Child("Feedback")
+            .OnceAsync<Feedback>();
 
-		var feedbackList = feedbacks.Select(f => f.Object).ToList();
-		return Ok(feedbackList);
-	}
+        var feedbackList = feedbacks.Select(f =>
+        {
+            var fb = f.Object;
+            fb.FeedbackId = f.Key; // Gán FeedbackId là khóa Firebase
+            return fb;
+        }).ToList();
 
+        return Ok(feedbackList);
+    }
 
-	[Authorize(Policy = "StaffOnly")]
-	// PUT: api/feedback/respond/{id}
-	[HttpPut("respond/{id}")]
-	public async Task<IActionResult> RespondToFeedback(string id, [FromBody] Feedback feedbackResponse)
-	{
-		var respondedBy = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-		// Retrieve the existing feedback
-		var existingFeedback = await _firebaseClient
-			.Child("Feedback")
-			.Child(id)
-			.OnceSingleAsync<Feedback>();
+    // POST: api/feedback
+    [HttpPost]
+    [Authorize(Roles = "customer")]
+    public async Task<ActionResult<Feedback>> PostFeedback([FromBody] Feedback feedback)
+    {
+        var userId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == 
+        ClaimTypes.NameIdentifier)?.Value;
+        feedback.SubmittedAt = DateTime.Now;
+        feedback.UserId = userId;
 
-		// If feedback does not exist, return 404
-		if (existingFeedback == null)
-		{
-			return NotFound(new { message = "Feedback not found" });
-		}
+        var feed = new
+        {
+            feedback.UserId,
+            feedback.Rating,
+            feedback.Message,
+            feedback.SubmittedAt,
+        };
 
-		// Update the response fields
-		existingFeedback.Response = feedbackResponse.Response;
-		existingFeedback.RespondedAt = DateTime.UtcNow;
-		existingFeedback.RespondedBy = respondedBy;
+        var result = await _firebaseClient
+            .Child("Feedback")
+            .PostAsync(feed);
 
-		// Save the updated feedback back to Firebase
-		await _firebaseClient
-			.Child("Feedback")
-			.Child(id)
-			.PutAsync(existingFeedback);
+        feedback.FeedbackId = result.Key;
+        return CreatedAtAction(nameof(GetFeedbackById), new { id = feedback.FeedbackId }, feedback);
+    }
 
-		return Ok(new { message = "Feedback responded successfully" });
-	}
+    // GET: api/feedback/{id}
+    [HttpGet("{id}")]
+    [Authorize(Roles = "admin")]
+    public async Task<ActionResult<Feedback>> GetFeedbackById(string id)
+    {
+        var feedback = await _firebaseClient
+            .Child("Feedback")
+            .Child(id)
+            .OnceSingleAsync<Feedback>();
 
-	[Authorize(Policy = "CustomerOnly")]
-	// POST: api/feedback
-	[HttpPost]
-	public async Task<ActionResult<Feedback>> PostFeedback([FromBody] Feedback feedback)
-	{
-		var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-		feedback.SubmittedAt = DateTime.UtcNow;
-		feedback.UserEmail = email;
-		var result = await _firebaseClient
-			.Child("Feedback")
-			.PostAsync(feedback);
-		feedback.FeedbackId = result.Key;
-		return CreatedAtAction(nameof(GetFeedbackById), new { id = feedback.FeedbackId }, feedback);
-	}
+        if (feedback == null)
+        {
+            return NotFound();
+        }
 
-	// GET: api/feedback/{id}
-	[HttpGet("{id}")]
-	public async Task<ActionResult<Feedback>> GetFeedbackById(string id)
-	{
-		var feedback = await _firebaseClient
-			.Child("Feedback")
-			.Child(id)
-			.OnceSingleAsync<Feedback>();
+        feedback.FeedbackId = id;
+        return Ok(feedback);
+    }
 
-		if (feedback == null)
-		{
-			return NotFound();
-		}
+    // DELETE: api/feedback/{id}
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> DeleteFeedback(string id)
+    {
+        var existingFeedback = await _firebaseClient
+            .Child("Feedback")
+            .Child(id)
+            .OnceSingleAsync<Feedback>();
 
-		return Ok(feedback);
-	}
+        if (existingFeedback == null)
+        {
+            return NotFound();
+        }
 
-	// DELETE: api/feedback/{id}
-	[HttpDelete("{id}")]
-	public async Task<IActionResult> DeleteFeedback(string id)
-	{
-		var existingFeedback = await _firebaseClient
-			.Child("Feedback")
-			.Child(id)
-			.OnceSingleAsync<Feedback>();
+        await _firebaseClient
+            .Child("Feedback")
+            .Child(id)
+            .DeleteAsync();
 
-		if (existingFeedback == null)
-		{
-			return NotFound();
-		}
-
-		await _firebaseClient
-			.Child("Feedback")
-			.Child(id)
-			.DeleteAsync();
-
-		return NoContent(); // 204 No Content
-	}
+        return NoContent();
+    }
 }
