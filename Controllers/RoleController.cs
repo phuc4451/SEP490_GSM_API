@@ -6,17 +6,20 @@ using Microsoft.AspNetCore.Authorization;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using FirebaseAdmin.Auth;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize(Policy = "AdminOnly")]
 public class RoleController : ControllerBase
 {
-	private readonly FirebaseClient _firebaseClient;
+	private readonly FirebaseAuth _firebaseAuth;
+	private FirebaseClient _firebaseClient;
+	private const string FirebaseBaseUrl = "https://sgm-management-c98cd-default-rtdb.firebaseio.com/";
 
 	public RoleController()
 	{
-		_firebaseClient = new FirebaseClient("https://sgm-management-c98cd-default-rtdb.firebaseio.com/");
+		_firebaseClient = new FirebaseClient(FirebaseBaseUrl);
+		_firebaseAuth = FirebaseAuth.DefaultInstance;
 	}
 
 	// GET: api/roles
@@ -34,44 +37,31 @@ public class RoleController : ControllerBase
 
 	// POST: api/roles
 	[HttpPost]
-	public async Task<ActionResult<Role>> PostRole([FromBody] Role role)
+	public async Task<ActionResult<Role>> AddRole([FromBody] Role role)
 	{
 		if (role == null)
 		{
 			return BadRequest();
 		}
 
-		// Retrieve existing roles and determine the next RoleId
-		var roles = await _firebaseClient
-			.Child("Roles")
-			.OnceAsync<Role>();
-
-		//int nextRoleId = roles.Count > 0 ? roles.Max(r => r.Object.RoleId) + 1 : 1;
-
-		//// Assign the next available RoleId
-		//role.RoleId = nextRoleId;
-
 		// Save the role in the database without assigning to a variable
 		var result = await _firebaseClient
 			.Child("Roles")
-			//.Child(nextRoleId.ToString()) // Using RoleId as the key
 			.PostAsync(new { 
 				role.RoleName
              });
 
-		role.RoleId = result.Key;
-
-		return CreatedAtAction(nameof(GetRoleById), new { id = role.RoleId }, role);
+		// Return Created with the role URI and the created role object
+		return CreatedAtAction(nameof(GetRoleById), new { id = result.Key }, role);
 	}
 
-
 	// GET: api/roles/{id}
-	[HttpGet("{id}")]
+	[HttpGet("GetRoleById/{id}")]
 	public async Task<ActionResult<Role>> GetRoleById(string id)
 	{
 		var role = await _firebaseClient
 			.Child("Roles")
-			.Child(id.ToString())
+			.Child(id)
 			.OnceSingleAsync<Role>();
 
 		if (role == null)
@@ -80,6 +70,24 @@ public class RoleController : ControllerBase
 		}
 
 		return Ok(role);
+	}
+
+
+	// GET: api/roles/{id}
+	[HttpGet("GetRoleNameById/{id}")]
+	public async Task<ActionResult<string>> GetRoleNameById(string id)
+	{
+		var role = await _firebaseClient
+			.Child("Roles")
+			.Child(id)
+			.OnceSingleAsync<Role>();
+
+		if (role == null)
+		{
+			return NotFound();
+		}
+
+		return Ok(role.RoleName);
 	}
 
 	// PUT: api/roles/{id}
