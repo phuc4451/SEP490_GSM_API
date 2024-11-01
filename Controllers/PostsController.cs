@@ -30,14 +30,18 @@ namespace Alpha_API.Controllers
                 .Child("post_category")
                 .OnceAsync<PostCategory>();
 
-            var categoryList = categories.Select(c => new PostCategory
-            {
-                CategoryId = c.Key,
-                Name = c.Object.Name
-            }).ToList();
+            // Filter out any categories with a null or empty Name
+            var categoryList = categories
+                .Where(c => !string.IsNullOrEmpty(c.Object.Name)) // Filter for non-null, non-empty names
+                .Select(c => new PostCategory
+                {
+                    CategoryId = c.Key,
+                    Name = c.Object.Name
+                }).ToList();
 
             return Ok(categoryList);
         }
+
 
         // 2. Lấy danh sách tất cả bài viết (cho RecyclerView)
         [HttpGet("posts")]
@@ -89,21 +93,68 @@ namespace Alpha_API.Controllers
 
         // 3. Lấy chi tiết một bài viết
         [HttpGet("posts/{postId}")]
-        public async Task<ActionResult<Post>> GetPostById(string postId)
+        public async Task<ActionResult> GetPostById(string postId)
         {
-            var post = await _firebaseClient
-                .Child("posts")
-                .Child(postId)
-                .OnceSingleAsync<Post>();
-
-            if (post == null)
+            try
             {
-                return NotFound();
-            }
+                // Fetch the post by ID
+                var post = await _firebaseClient
+                    .Child("posts")
+                    .Child(postId)
+                    .OnceSingleAsync<Post>();
 
-            post.PostId = postId;
-            return Ok(post);
+                if (post == null)
+                {
+                    return NotFound($"Post with ID {postId} not found.");
+                }
+
+                // Fetch the user's information
+                var user = await _firebaseClient
+                    .Child("users") // Đảm bảo rằng bạn đang truy cập đúng node
+                    .Child(post.UserId) // Lấy userId từ post
+                    .OnceSingleAsync<User>();
+
+                if (user == null)
+                {
+                    return NotFound($"User with ID {post.UserId} not found.");
+                }
+
+                // Prepare a custom response including post details and the author's name
+                var response = new
+                {
+                    PostId = post.PostId,
+                    Title = post.Title,
+                    ThumbnailUrl = post.ThumbnailUrl,
+                    Date = post.Date,
+                    Content = post.Content,
+                    CategoryId = post.CategoryId,
+                    UserId = post.UserId,
+                    AuthorName = user.Name // Lấy tên từ đối tượng user
+                };
+
+                return Ok(response);
+            }
+            catch (FirebaseException ex)
+            {
+                // Trả về thông báo lỗi chi tiết
+                return BadRequest($"Firebase error: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                // Xử lý các ngoại lệ khác
+                return BadRequest($"General error: {ex.Message}");
+            }
         }
+
+
+
+
+
+
+
+
+
+
 
         // 4. Đăng bài viết mới
         [HttpPost("posts")]
@@ -192,5 +243,32 @@ namespace Alpha_API.Controllers
 
             return NoContent(); // 204 No Content
         }
+
+        // 7. Search posts by category
+        [HttpGet("posts/category/{categoryId}")]
+        public async Task<ActionResult<IEnumerable<Post>>> GetPostsByCategory(string categoryId)
+        {
+            var posts = await _firebaseClient
+                .Child("posts")
+                .OnceAsync<Post>();
+
+            // Filter posts by categoryId
+            var filteredPosts = posts
+                .Where(p => p.Object.CategoryId == categoryId)
+                .Select(p => new Post
+                {
+                    PostId = p.Key,
+                    Title = p.Object.Title,
+                    ThumbnailUrl = p.Object.ThumbnailUrl,
+                    Date = p.Object.Date,
+                    UserId = p.Object.UserId,
+                    Content = null,  // Exclude content for optimization
+                    CategoryId = p.Object.CategoryId
+                })
+                .ToList();
+
+            return Ok(filteredPosts);
+        }
+
     }
 }
