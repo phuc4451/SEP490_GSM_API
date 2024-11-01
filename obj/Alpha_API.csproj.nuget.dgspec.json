@@ -1,25 +1,21 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Downloads\\Fall24\\SEP490\\Alpha_API\\Alpha_API.csproj": {}
+    "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\Alpha_API.csproj": {}
   },
   "projects": {
-    "D:\\Downloads\\Fall24\\SEP490\\Alpha_API\\Alpha_API.csproj": {
+    "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\Alpha_API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Downloads\\Fall24\\SEP490\\Alpha_API\\Alpha_API.csproj",
+        "projectUniqueName": "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\Alpha_API.csproj",
         "projectName": "Alpha_API",
-        "projectPath": "D:\\Downloads\\Fall24\\SEP490\\Alpha_API\\Alpha_API.csproj",
-        "packagesPath": "C:\\Users\\ADMIN\\.nuget\\packages\\",
-        "outputPath": "D:\\Downloads\\Fall24\\SEP490\\Alpha_API\\obj\\",
+        "projectPath": "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\Alpha_API.csproj",
+        "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "D:\\Downloads\\Fall24\\SEP490\\Alpha_API\\NuGet.Config",
-          "C:\\Users\\ADMIN\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\NuGet.Config",
+          "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -38,6 +34,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -55,6 +56,10 @@
             "FirebaseDatabase.net": {
               "target": "Package",
               "version": "[4.2.0, )"
+            },
+            "FirebaseStorage.net": {
+              "target": "Package",
+              "version": "[1.0.3, )"
             },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
@@ -118,7 +123,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.200\\RuntimeIdentifierGraph.json"
         }
       }
     }
