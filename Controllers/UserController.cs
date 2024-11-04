@@ -9,6 +9,9 @@ using Alpha_API.ViewModel;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using Alpha_API.Utils;
+using System.IdentityModel.Tokens.Jwt;
+using System.Collections;
+using Alpha_API.Services;
 
 
 [Route("api/[controller]")]
@@ -20,31 +23,24 @@ public class UsersController : ControllerBase
 	private readonly EmailService _emailService;
 	private readonly FirebaseAuth _firebaseAuth;
 	private FirebaseClient _firebaseClient;
-	private const string FirebaseBaseUrl = "https://sgm-management-c98cd-default-rtdb.firebaseio.com/";
+	private readonly RoleService _roleService;
+	private readonly FirebaseClientProvider _firebaseClientProvider;
 
-	public UsersController(EmailService emailService)
+	public UsersController(EmailService emailService, FirebaseClient firebaseClient, FirebaseAuth firebaseAuth, RoleService roleService, FirebaseClientProvider firebaseClientProvider)
 	{
-		_firebaseClient = new FirebaseClient(FirebaseBaseUrl);
+		_firebaseClient = firebaseClient;
 		_emailService = emailService;
-		_firebaseAuth = FirebaseAuth.DefaultInstance;
+		_firebaseAuth = firebaseAuth;
+		_roleService = roleService;
+		_firebaseClientProvider = firebaseClientProvider;
 	}
 
-	// GET: api/users
+	// GET: api/users/GetUsers
 	[Authorize(Roles = "admin")]
-	[HttpGet]
+	[HttpGet("GetUsers")]
 	public async Task<ActionResult<IEnumerable<User>>> GetUsers()
 	{
-		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
-
-		if (!string.IsNullOrEmpty(idToken))
-		{
-			// Use the token in your database query
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
-				new FirebaseOptions
-				{
-					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
-				});
-		}
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 		var users = await _firebaseClient
 			.Child("users")
@@ -59,23 +55,12 @@ public class UsersController : ControllerBase
 		return Ok(userList);
 	}
 
-	// GET: api/users/staffs
+	// GET: api/users/GetStaffs
 	[Authorize(Roles = "admin")]
-	[HttpGet("staffs")]
+	[HttpGet("GetStaffs")]
 	public async Task<ActionResult<IEnumerable<User>>> GetStaffs()
 	{
-		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
-
-		if (!string.IsNullOrEmpty(idToken))
-		{
-			// Use the token in your database query
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
-				new FirebaseOptions
-				{
-					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
-				});
-		}
-
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 		var users = await _firebaseClient
 			.Child("users")
 			.OnceAsync<User>();
@@ -83,30 +68,20 @@ public class UsersController : ControllerBase
 		var userList = new List<User>();
 		foreach (var user in users)
 		{
-			if (user.Object.RoleId == "-O7s8orgirC-Hqcoa7xR")
+			var roleName = await _roleService.GetRoleName(user.Object.RoleId);
+			if ( roleName == "staff")
 				userList.Add(user.Object);
 		}
 
 		return Ok(userList);
 	}
 
-	// GET: api/users/customers
+	// GET: api/users/GetCustomers
 	[Authorize(Roles = "admin,staff")]
-	[HttpGet("customers")]
+	[HttpGet("GetCustomers")]
 	public async Task<ActionResult<IEnumerable<User>>> GetCustomers()
 	{
-		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
-
-		if (!string.IsNullOrEmpty(idToken))
-		{
-			// Use the token in your database query
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
-				new FirebaseOptions
-				{
-					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
-				});
-		}
-
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 		var users = await _firebaseClient
 			.Child("users")
 			.OnceAsync<User>();
@@ -114,7 +89,8 @@ public class UsersController : ControllerBase
 		var userList = new List<User>();
 		foreach (var user in users)
 		{
-			if (user.Object.RoleId == "-O7s8sU2ZMyRWjrImzCO")
+			var roleName = await _roleService.GetRoleName(user.Object.RoleId);
+			if (roleName == "customer")
 				userList.Add(user.Object);
 		}
 
@@ -126,20 +102,15 @@ public class UsersController : ControllerBase
 	[HttpGet("GetCurrentUser")]
 	public async Task<ActionResult<User>> GetCurrentUser()
 	{
-		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
-
-		if (!string.IsNullOrEmpty(idToken))
-		{
-			// Use the token in your database query
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
-				new FirebaseOptions
-				{
-					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
-				});
-		}
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 		// Retrieve the email claim
 		var email = HttpContext.User.FindFirst(ClaimTypes.Email)?.Value;
+
+		foreach (var claim in HttpContext.User.Claims)
+		{
+			Console.WriteLine($"{claim.Type}: {claim.Value}");
+		}
 
 		// Retrieve the uid claim
 		var userIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
@@ -164,22 +135,12 @@ public class UsersController : ControllerBase
 		return Ok(user);
 	}
 
-	// GET: api/users/{id}
+	// GET: api/users/GetUserById/{id}
 	[Authorize(Roles = "admin")]
-	[HttpGet("{id}")]
+	[HttpGet("GetUserById/{id}")]
 	public async Task<ActionResult<User>> GetUserById(string id)
 	{
-		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
-
-		if (!string.IsNullOrEmpty(idToken))
-		{
-			// Use the token in your database query
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
-				new FirebaseOptions
-				{
-					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
-				});
-		}
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 		var user = await _firebaseClient
 			.Child("users")
@@ -196,51 +157,75 @@ public class UsersController : ControllerBase
 		return Ok(user);
 	}
 
-	//// POST: api/users/updatestaffinfo
-	//[Authorize(Roles = "admin,staff,customer,pt")]
-	//[HttpPost("updateinfo")]
-	//public async Task<ActionResult> UpdateInfo([FromBody] User u)
-	//{
-	//	var idToken = HttpContext.Session.GetString("FirebaseIdToken");
+	// POST: api/users/updatestaff/{id}
+	[Authorize(Roles = "admin")]
+	[HttpPatch("updateStaff/{id}")]
+	public async Task<ActionResult> UpdateStaff(string id, [FromBody] User u)
+	{
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
-	//	if (!string.IsNullOrEmpty(idToken))
-	//	{
-	//		// Use the token in your database query
-	//		_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
-	//			new FirebaseOptions
-	//			{
-	//				AuthTokenAsyncFactory = () => Task.FromResult(idToken)
-	//			});
-	//	}
+		var existingUser = await _firebaseClient
+.Child("users")
+.Child(id)
+.OnceSingleAsync<User>();
 
-	//	var result = await _firebaseClient
-	//		.Child("users")
-	//	.PutAsync(u);
+		if (existingUser == null)
+		{
+			return NotFound("User not found");
+		}
 
-	//	user.UserId = result.Key; // Firebase generates a unique key
-	//	return CreatedAtAction(nameof(GetUserById), new { id = result.Key }, user);
-	//}
+		if (string.IsNullOrEmpty(existingUser.Email) || string.IsNullOrEmpty(existingUser.RoleId))
+		{
+			return BadRequest("User is missing required fields: Email, RoleId");
+		}
+
+		// Call GetRoleName method to get the role name
+		string roleName = await _roleService.GetRoleName(existingUser.RoleId);
+
+		if (roleName != "staff")
+		{
+			return Forbid();
+		}
+
+		User user = new User()
+		{
+			Address=u.Address,
+			Dob= u.Dob,
+			Email=u.Email,
+			Gender=u.Gender,
+			IdCard=u.IdCard,
+			Name=u.Name,
+			Phone=u.Phone,
+			UserAvatar = u.UserAvatar,
+		};
+
+		var options = new JsonSerializerOptions
+		{
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+			DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+		};
+
+		var jsonString = JsonSerializer.Serialize(user, options);
+
+		await _firebaseClient
+			.Child("users")
+			.Child(id)
+			.PatchAsync(jsonString);
+
+		return NoContent();
+	}
+
 
 	// POST: api/users/addstaff
 	[Authorize(Roles = "admin")]
 	[HttpPost("addstaff")]
 	public async Task<ActionResult> AddStaff([FromBody] RegisterStaffDto staff)
 	{
-		if (staff == null)
+		if (staff == null ||  string.IsNullOrEmpty(staff.IdCard) || string.IsNullOrEmpty(staff.Email) || string.IsNullOrEmpty(staff.Password))
 		{
 			return BadRequest();
 		}
-		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
-
-		if (!string.IsNullOrEmpty(idToken))
-		{
-			// Use the token in your database query
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
-				new FirebaseOptions
-				{
-					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
-				});
-		}
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 		try
 		{
@@ -263,11 +248,14 @@ public class UsersController : ControllerBase
 			// Generate email verification link
 			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(staff.Email);
 
+			var roles = await _roleService.GetAllRoles();
+			string roleStaffId = roles.FirstOrDefault(role => role.RoleName == "staff")?.RoleId;
+
 			User u = new User()
 			{
 				Name = staff.Name,
 				Email = staff.Email,
-				RoleId = "-O7s8orgirC-Hqcoa7xR", // Staff role
+				RoleId = roleStaffId, // Staff role
 				Phone = staff.Phone,
 				UserId = userId,
 				Gender = staff.Gender,
@@ -322,17 +310,7 @@ public class UsersController : ControllerBase
 		{
 			return BadRequest();
 		}
-		var idToken = HttpContext.Session.GetString("FirebaseIdToken");
-
-		if (!string.IsNullOrEmpty(idToken))
-		{
-			// Use the token in your database query
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
-				new FirebaseOptions
-				{
-					AuthTokenAsyncFactory = () => Task.FromResult(idToken)
-				});
-		}
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 		try
 		{
@@ -355,11 +333,14 @@ public class UsersController : ControllerBase
 			// Generate email verification link
 			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(customer.Email);
 
+			var roles = await _roleService.GetAllRoles();
+			string roleCustomerId = roles.FirstOrDefault(role => role.RoleName == "customer")?.RoleId;
+
 			User u = new User()
 			{
 				Name = customer.Name,
 				Email = customer.Email,
-				RoleId = "-O7s8sU2ZMyRWjrImzCO", // Customer role
+				RoleId = roleCustomerId, // Customer role
 				Phone = customer.Phone,
 				UserId = userId,
 				Gender = customer.Gender,
@@ -413,6 +394,7 @@ public class UsersController : ControllerBase
 		{
 			return BadRequest();
 		}
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 		var result = await _firebaseClient
 			.Child("users")
@@ -437,6 +419,7 @@ public class UsersController : ControllerBase
 	[HttpPut("{id}")]
 	public async Task<ActionResult> PutUser(string id, [FromBody] User user)
 	{
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 		var existingUser = await _firebaseClient
 	.Child("users")
 	.Child(id)
@@ -467,6 +450,7 @@ public class UsersController : ControllerBase
 	[HttpPatch("{id}")]
 	public async Task<ActionResult> PatchUser(string id, [FromBody] User user)
 	{
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 		var existingUser = await _firebaseClient
 			.Child("users")
 			.Child(id)
@@ -495,6 +479,7 @@ public class UsersController : ControllerBase
 	[HttpDelete("{id}")]
 	public async Task<ActionResult> DeleteUser(string id)
 	{
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 		var existingUser = await _firebaseClient
 			.Child("users")
 			.Child(id)

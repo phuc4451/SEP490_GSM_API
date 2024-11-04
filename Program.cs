@@ -1,5 +1,8 @@
+using Alpha_API.Services;
 using Alpha_API.Utils;
+using Firebase.Database;
 using FirebaseAdmin;
+using FirebaseAdmin.Auth;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.OData;
@@ -18,9 +21,28 @@ namespace WebAPI
 		{
 			var builder = WebApplication.CreateBuilder(args);
 
+			var firebaseBaseUrl = builder.Configuration.GetSection("Firebase:BaseUrl").Value;
+			FirebaseApp.Create(new AppOptions()
+			{
+				Credential = GoogleCredential.FromFile("D:\\Downloads\\Fall24\\SEP490\\SEP490_GSM_API\\Secret\\sgm-management-c98cd-firebase-adminsdk-kc3zt-383493a9bd.json")
+			});
+
 			builder.Services.AddControllers();
 			builder.Services.AddEndpointsApiExplorer();
+
+			var firebaseClient = new FirebaseClient(firebaseBaseUrl);
+			builder.Services.AddSingleton(firebaseClient);
 			builder.Services.AddSingleton<EmailService>();
+			builder.Services.AddSingleton(FirebaseAuth.DefaultInstance);
+			builder.Services.AddSingleton<RoleService>();
+			builder.Services.AddScoped<RegisterService>();
+			builder.Services.AddSingleton<PaymentMethodService>();
+			builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+			builder.Services.AddScoped<FirebaseClientProvider>(provider =>
+				new FirebaseClientProvider(
+					provider.GetRequiredService<IHttpContextAccessor>(),
+					firebaseBaseUrl
+				));
 			builder.Services.AddSwaggerGen(options =>
 			{
 				options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -85,10 +107,7 @@ namespace WebAPI
 			//	options.AddPolicy("CustomerOnly", policy => policy.RequireClaim(ClaimTypes.Role, "customer"));
 			//});
 
-			FirebaseApp.Create(new AppOptions()
-			{
-				Credential = GoogleCredential.FromFile("C:\\Users\\Admin\\OneDrive\\Documents\\SEP490\\SEP490_GSM_API\\Secret\\sgm-management-c98cd-firebase-adminsdk-kc3zt-383493a9bd.json")
-			});
+
 			builder.WebHost.UseUrls("http://0.0.0.0:5000");
 			builder.Services.AddHttpClient<AuthController>();
 

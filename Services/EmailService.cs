@@ -1,5 +1,8 @@
 ﻿using System.Net.Mail;
 using System.Net;
+using FirebaseAdmin.Auth;
+using Microsoft.AspNetCore.Mvc;
+using Alpha_API.Models;
 
 namespace Alpha_API.Utils
 {
@@ -9,14 +12,16 @@ namespace Alpha_API.Utils
 		private readonly int _port;
 		private readonly string _fromEmail;
 		private readonly string _password;
+		private readonly FirebaseAuth _firebaseAuth;
 
-		public EmailService()
+		public EmailService(FirebaseAuth firebaseAuth)
 		{
 			// Configure SMTP settings
 			_smtpServer = "smtp.gmail.com";
 			_port = 587;
 			_fromEmail = "phucvu159753@gmail.com";
 			_password = "tlpmzxpedrnlkfnn";
+			_firebaseAuth = firebaseAuth;
 		}
 
 		public bool SendVerificationEmail(string email, string verificationLink)
@@ -44,6 +49,30 @@ namespace Alpha_API.Utils
 			{
 				Console.WriteLine($"Error sending email: {ex.Message}");
 				return false;
+			}
+		}
+
+		public async Task<string> GetUserIdByEmail(string email)
+		{
+			try
+			{
+				// Use FirebaseAuth to get the user by email
+				UserRecord userRecord = await _firebaseAuth.GetUserByEmailAsync(email);
+
+				// Return the userId (Firebase UID)
+				return userRecord.Uid;
+			}
+			catch (FirebaseAuthException ex)
+			{
+				// Handle cases where the user is not found
+				if (ex.AuthErrorCode == AuthErrorCode.UserNotFound)
+				{
+					Console.WriteLine($"User with the specified email not found.");
+					return "";
+				}
+
+				Console.WriteLine(ex.Message);
+				return "";
 			}
 		}
 	}

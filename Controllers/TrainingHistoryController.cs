@@ -92,42 +92,42 @@ public class TrainingHistoryController : ControllerBase
 		return NoContent(); // 204 No Content
 	}
 
-	// GET: api/traininghistory/today/{userId}
-	[HttpGet("today/{userId}")]
-	public async Task<ActionResult<IEnumerable<TrainingHistory>>> GetTodayTrainingHistoriesByUser(string userId)
-	{
-		var trainingHistories = await _firebaseClient
-			.Child("TrainingHistory")
-			.OnceAsync<TrainingHistory>();
+//	// GET: api/traininghistory/today/{userId}
+//	[HttpGet("today/{userId}")]
+//	public async Task<ActionResult<IEnumerable<TrainingHistory>>> GetTodayTrainingHistoriesByUser(string userId)
+//	{
+//		var trainingHistories = await _firebaseClient
+//			.Child("TrainingHistory")
+//			.OnceAsync<TrainingHistory>();
 
-		var today = DateTime.UtcNow.Date; // Get current day in UTC
-		var todayHistories = new List<TrainingHistory>();
+//		var today = DateTime.UtcNow.Date; // Get current day in UTC
+//		var todayHistories = new List<TrainingHistory>();
 
-		foreach (var history in trainingHistories)
-		{
-			string userid="";
-			string courseId="";
-			var parts = history.Object.MembershipId.Split('_');
-			if (parts.Length == 2)
-			{
-				courseId = parts[0];
-				userid = parts[1];
-			}
+//		foreach (var history in trainingHistories)
+//		{
+//			string userid="";
+//			string courseId="";
+//			var parts = history.Object.MembershipId.Split('_');
+//			if (parts.Length == 2)
+//			{
+//				courseId = parts[0];
+//				userid = parts[1];
+//			}
 
-			var existingMembership = await _firebaseClient
-.Child("Memberships")
-.Child(history.Key)
-.OnceSingleAsync<Membership>();
-			// Check if the UserId matches and if the CheckInTime or CheckOutTime is today
-			if (userid == userId &&
-				(history.Object.CheckInTime.Date == today || history.Object.CheckOutTime.Date == today))
-			{
-				todayHistories.Add(history.Object);
-			}
-		}
+//			var existingMembership = await _firebaseClient
+//.Child("Memberships")
+//.Child(history.Key)
+//.OnceSingleAsync<Membership>();
+//			// Check if the UserId matches and if the CheckInTime or CheckOutTime is today
+//			if (userid == userId &&
+//				(history.Object.CheckInTime.Date == today || history.Object.CheckOutTime.Date == today))
+//			{
+//				todayHistories.Add(history.Object);
+//			}
+//		}
 
-		return Ok(todayHistories);
-	}
+//		return Ok(todayHistories);
+//	}
 
 
 	// PATCH: api/traininghistory/{id}

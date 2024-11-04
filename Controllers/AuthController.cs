@@ -25,16 +25,19 @@ public class AuthController : ControllerBase
 	private FirebaseClient _firebaseClient;
 	private readonly FirebaseAuth _firebaseAuth;
 	private static readonly HttpClient _httpClient = new HttpClient();
-	private const string FirebaseApiKey = "AIzaSyDuRSqvyEO2Do04yj716Jq67e_iOcrvfNo";  // Replace with your Firebase API Key
-	private const string FirebaseAuthUrl = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=";
-	private const string FirebaseBaseUrl = "https://sgm-management-c98cd-default-rtdb.firebaseio.com/";
+	private readonly string _firebaseAuthUrl;
+	private readonly string _firebaseBaseUrl;
+	private readonly string _firebaseApiKey;
 
 	public AuthController(IConfiguration configuration, EmailService emailService)
 	{
 		_configuration = configuration;
+		_firebaseAuthUrl = configuration["Firebase:AuthUrl"];
+		_firebaseBaseUrl = configuration["Firebase:BaseUrl"];
+		_firebaseApiKey = configuration["Firebase:ApiKey"];
 
 		//// Initialize Firebase client (read/write permissions now open)
-		_firebaseClient = new FirebaseClient(FirebaseBaseUrl);
+		_firebaseClient = new FirebaseClient(_firebaseBaseUrl);
 		_firebaseAuth = FirebaseAuth.DefaultInstance;
 		_emailService = emailService;
 	}
@@ -140,72 +143,10 @@ public class AuthController : ControllerBase
 		}
 	}
 
-
-
-
-
-	//[HttpPost("login")]
-	//public async Task<ActionResult> Login([FromBody] LogUserDto logUser)
-	//{
-	//	// Get the user record from Firebase Auth
-	//	var firebaseUser = await _firebaseAuth.GetUserByEmailAsync(logUser.Email);
-
-	//	// Query Firebase Realtime Database for user information
-
-	//	//var userQuery = await _firebaseClient
-	//	//	.Child("Users")
-	//	//	.OrderBy("Email")
-	//	//	.EqualTo(logUser.Email)
-	//	//	.OnceAsync<User>();
-
-	//	var userQuery = await _firebaseClient
-	//.Child("Users")
-	//.Child(firebaseUser.Uid)
-	//.OnceAsync<User>();
-
-	//	if (userQuery.Any())
-	//	{
-	//		var existingUser = userQuery.First().Object;
-	//		if (true)
-	//		{
-	//			//check if email is verified
-	//			if (firebaseUser.EmailVerified)
-	//			{
-	//				// Email is verified, proceed with login
-	//				var roleName = await GetRoleNameFromFirebase(existingUser.RoleId);
-	//				var token = GenerateJwtToken(existingUser.Email, roleName);
-
-	//				return Ok(new { token });
-	//			}
-	//			else
-	//			{
-	//				// Email is not verified
-	//				return BadRequest("Please verify your email before logging in.");
-	//			}
-	//		}
-
-	//	}
-	//	// If no matching user or password is incorrect
-	//	return Unauthorized();
-
-	//	////await _firebaseAuth.
-
-
-	//	//	// Ensure password matches
-	//	//	if (logUser.Password == existingUser.Password)
-	//	//	{
-
-	//	//	}
-	//	//}
-
-
-	//}
-
-
 	[HttpPost("login")]
 	public async Task<ActionResult> Login([FromBody] LogUserDto logUser)
 	{
-		var requestUrl = $"{FirebaseAuthUrl}{FirebaseApiKey}";
+		var requestUrl = $"{_firebaseAuthUrl}{_firebaseApiKey}";
 
 		var requestBody = new
 		{
@@ -236,7 +177,7 @@ public class AuthController : ControllerBase
 			var uid = decodedToken.Uid;
 
 
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl,
+			_firebaseClient = new FirebaseClient(_firebaseBaseUrl,
 				new FirebaseOptions
 				{
 					AuthTokenAsyncFactory = () => Task.FromResult(signInResponse.IdToken)
@@ -287,32 +228,6 @@ public class AuthController : ControllerBase
 		catch (Exception ex)
 		{
 			return StatusCode(500, new { message = "Exception occurred during sign-in", details = ex.Message });
-		}
-	}
-
-
-	// GET: api/Users/GetUserIdByEmail?email=user@example.com
-	[HttpGet("GetUserIdByEmail")]
-	public async Task<IActionResult> GetUserIdByEmail(string email)
-	{
-		try
-		{
-			// Use FirebaseAuth to get the user by email
-			UserRecord userRecord = await _firebaseAuth.GetUserByEmailAsync(email);
-
-			// Return the userId (Firebase UID)
-			return Ok(new { userId = userRecord.Uid });
-		}
-		catch (FirebaseAuthException ex)
-		{
-			// Handle cases where the user is not found
-			if (ex.AuthErrorCode == AuthErrorCode.UserNotFound)
-			{
-				return NotFound("User with the specified email not found.");
-			}
-
-			// Handle other Firebase authentication errors
-			return BadRequest(ex.Message);
 		}
 	}
 

@@ -156,46 +156,46 @@ namespace Alpha_API.Controllers
 
 
 
-        // 4. Đăng bài viết mới
-        [HttpPost("posts")]
-        public async Task<ActionResult<Post>> CreatePostWithImage([FromForm] IFormFile image, [FromForm] string title, [FromForm] string content, [FromForm] string categoryId)
-        {
-            if (image == null || image.Length == 0)
-            {
-                return BadRequest("Image file is required.");
-            }
+        //// 4. Đăng bài viết mới
+        //[HttpPost("posts")]
+        //public async Task<ActionResult<Post>> CreatePostWithImage([FromForm] IFormFile image, [FromForm] string title, [FromForm] string content, [FromForm] string categoryId)
+        //{
+        //    if (image == null || image.Length == 0)
+        //    {
+        //        return BadRequest("Image file is required.");
+        //    }
 
-            // Lưu ảnh vào Firebase Storage và nhận URL
-            string imageUrl;
-            using (var stream = image.OpenReadStream())
-            {
-                var task = new FirebaseStorage("sgm-management-c98cd.appspot.com")
-                    .Child("post_images")                    // Thư mục lưu ảnh
-                    .Child(image.FileName)                   // Tên file ảnh
-                    .PutAsync(stream);
+        //    // Lưu ảnh vào Firebase Storage và nhận URL
+        //    string imageUrl;
+        //    using (var stream = image.OpenReadStream())
+        //    {
+        //        var task = new FirebaseStorage("sgm-management-c98cd.appspot.com")
+        //            .Child("post_images")                    // Thư mục lưu ảnh
+        //            .Child(image.FileName)                   // Tên file ảnh
+        //            .PutAsync(stream);
 
-                imageUrl = await task;                       // URL của ảnh sau khi lưu
-            }
+        //        imageUrl = await task;                       // URL của ảnh sau khi lưu
+        //    }
 
-            // Tạo bài viết mới với thông tin và URL ảnh
-            var post = new Post
-            {
-                Title = title,
-                ThumbnailUrl = imageUrl,
-                Date = DateTime.UtcNow,
-                UserId = HttpContext.User.Identity.Name,      // Giả định UserId từ User đang đăng nhập
-                Content = content,
-                CategoryId = categoryId
-            };
+        //    // Tạo bài viết mới với thông tin và URL ảnh
+        //    var post = new Post
+        //    {
+        //        Title = title,
+        //        ThumbnailUrl = imageUrl,
+        //        Date = DateTime.UtcNow,
+        //        UserId = HttpContext.User.Identity.Name,      // Giả định UserId từ User đang đăng nhập
+        //        Content = content,
+        //        CategoryId = categoryId
+        //    };
 
-            var result = await _firebaseClient
-                .Child("posts")
-                .PostAsync(post);
+        //    var result = await _firebaseClient
+        //        .Child("posts")
+        //        .PostAsync(post);
 
-            post.PostId = result.Key;
+        //    post.PostId = result.Key;
 
-            return CreatedAtAction(nameof(GetPostById), new { postId = post.PostId }, post);
-        }
+        //    return CreatedAtAction(nameof(GetPostById), new { postId = post.PostId }, post);
+        //}
 
         // 5. Xóa bài viết
         [HttpDelete("posts/{postId}")]
