@@ -12,6 +12,7 @@ using Alpha_API.Utils;
 using System.IdentityModel.Tokens.Jwt;
 using System.Collections;
 using Alpha_API.Services;
+using ClosedXML.Excel;
 
 
 [Route("api/[controller]")]
@@ -97,6 +98,97 @@ public class UsersController : ControllerBase
 		return Ok(userList);
 	}
 
+	[HttpGet("ExportStaffsToExcel")]
+	[Authorize(Roles = "admin")]
+	public async Task<IActionResult> ExportStaffsToExcel()
+	{
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+		var users = await _firebaseClient
+			.Child("users")
+			.OnceAsync<User>();
+
+		var staffList = new List<User>();
+		foreach (var user in users)
+		{
+			var roleName = await _roleService.GetRoleName(user.Object.RoleId);
+			if (roleName == "staff")
+				staffList.Add(user.Object);
+		}
+
+		// Generate Excel file
+		using (var workbook = new XLWorkbook())
+		{
+			var worksheet = workbook.Worksheets.Add("Staffs");
+			worksheet.Cell(1, 1).Value = "Name";
+			worksheet.Cell(1, 2).Value = "Email";
+			worksheet.Cell(1, 3).Value = "Phone";
+			worksheet.Cell(1, 4).Value = "Address";
+			worksheet.Cell(1, 5).Value = "Gender";
+
+			for (int i = 0; i < staffList.Count; i++)
+			{
+				worksheet.Cell(i + 2, 1).Value = staffList[i].Name;
+				worksheet.Cell(i + 2, 2).Value = staffList[i].Email;
+				worksheet.Cell(i + 2, 3).Value = staffList[i].Phone;
+				worksheet.Cell(i + 2, 4).Value = staffList[i].Address;
+				worksheet.Cell(i + 2, 5).Value = staffList[i].Gender;
+			}
+
+			using (var stream = new MemoryStream())
+			{
+				workbook.SaveAs(stream);
+				stream.Seek(0, SeekOrigin.Begin);
+
+				return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Staffs.xlsx");
+			}
+		}
+	}
+
+	[HttpGet("ExportCustomersToExcel")]
+	[Authorize(Roles = "admin,staff")]
+	public async Task<IActionResult> ExportCustomersToExcel()
+	{
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+		var users = await _firebaseClient
+			.Child("users")
+			.OnceAsync<User>();
+
+		var customerList = new List<User>();
+		foreach (var user in users)
+		{
+			var roleName = await _roleService.GetRoleName(user.Object.RoleId);
+			if (roleName == "customer")
+				customerList.Add(user.Object);
+		}
+
+		// Generate Excel file
+		using (var workbook = new XLWorkbook())
+		{
+			var worksheet = workbook.Worksheets.Add("Customers");
+			worksheet.Cell(1, 1).Value = "Name";
+			worksheet.Cell(1, 2).Value = "Email";
+			worksheet.Cell(1, 3).Value = "Phone";
+			worksheet.Cell(1, 4).Value = "Address";
+			worksheet.Cell(1, 5).Value = "Gender";
+
+			for (int i = 0; i < customerList.Count; i++)
+			{
+				worksheet.Cell(i + 2, 1).Value = customerList[i].Name;
+				worksheet.Cell(i + 2, 2).Value = customerList[i].Email;
+				worksheet.Cell(i + 2, 3).Value = customerList[i].Phone;
+				worksheet.Cell(i + 2, 4).Value = customerList[i].Address;
+				worksheet.Cell(i + 2, 5).Value = customerList[i].Gender;
+			}
+
+			using (var stream = new MemoryStream())
+			{
+				workbook.SaveAs(stream);
+				stream.Seek(0, SeekOrigin.Begin);
+
+				return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Customers.xlsx");
+			}
+		}
+	}
 	// GET: api/users/getcurrentuser
 	[Authorize(Roles = "admin,staff,customer,pt")]
 	[HttpGet("GetCurrentUser")]

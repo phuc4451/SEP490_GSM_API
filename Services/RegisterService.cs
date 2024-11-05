@@ -328,8 +328,8 @@ namespace Alpha_API.Services
 			StringBuilder userIds = new StringBuilder();
 			// Get all TrainerRentalRegistrations for this user
 			var existingRegistrations = await _firebaseClient
-				.Child("TrainerRentalRegistrations")
-				.OnceAsync<TrainerRentalRegistration>();
+				.Child("BoxingRegistrations")
+				.OnceAsync<BoxingRegistration>();
 
 			// Check if there are any registrations that contain the target userId and are still active
 			bool hasActiveRegistration = false;
@@ -344,7 +344,7 @@ namespace Alpha_API.Services
 				);
 				if (hasActiveRegistration)
 				{
-					throw new InvalidOperationException("The user already has an active Trainer Rental Registration.");
+					throw new InvalidOperationException("The user already has an active Boxing Registration.");
 				}
 				userIds.Append(userId).Append(",");
 			}
