@@ -47,7 +47,6 @@ namespace Alpha_API.Controllers
 					return BadRequest(new { success = false, message = "Invalid payload, missing required fields." });
 				}
 
-				// Process the payment (dummy processing logic for now)
 				_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 				var trans = new

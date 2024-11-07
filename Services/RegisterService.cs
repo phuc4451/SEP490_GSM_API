@@ -94,6 +94,8 @@ namespace Alpha_API.Services
 			var methods = await _paymentMethodService.GetAllPaymentMethods();
 			string paymentMethod = qrPayment ? "QR" : "cash";
 
+			qrPayment = true;
+
 			string qrPaymentMethodId = methods.FirstOrDefault(method => method.MethodName == paymentMethod)?.PaymentMethodId;
 
 			Payment payment = new Payment()
@@ -115,19 +117,17 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "DK" + Guid.NewGuid().ToString();
-
-				await _firebaseClient
-					.Child("Payments")
-					.Child(info)
-					.PutAsync(paymentJSON);
+				info = "CK" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+			}
+			else
+			{
+				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 
-			var paymentNode = await _firebaseClient
-					.Child("Payments")
-					.PostAsync(paymentJSON);
-
-			info = paymentNode.Key;
+			await _firebaseClient
+				.Child("Payments")
+				.Child(info)
+				.PutAsync(paymentJSON);
 
 			payment.PaymentId = info;
 
@@ -230,7 +230,7 @@ namespace Alpha_API.Services
 				SessionLeft = request.Sessions ?? 0,
 				IsActive = false,
 				PaymentId = "Pending"
-			};
+			}; 
 
 			var options = new JsonSerializerOptions
 			{
@@ -281,19 +281,17 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "DK" + Guid.NewGuid().ToString();
-
-				await _firebaseClient
-					.Child("Payments")
-					.Child(info)
-					.PutAsync(paymentJSON);
+				info = "CK" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+			}
+			else
+			{
+				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 
-			var paymentNode = await _firebaseClient
-					.Child("Payments")
-					.PostAsync(paymentJSON);
-
-			info = paymentNode.Key;
+			await _firebaseClient
+				.Child("Payments")
+				.Child(info)
+				.PutAsync(paymentJSON);
 
 			payment.PaymentId = info;
 
@@ -436,19 +434,17 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "DK" + Guid.NewGuid().ToString();
-
-				await _firebaseClient
-					.Child("Payments")
-					.Child(info)
-					.PutAsync(paymentJSON);
+				info = "CK" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+			}
+			else
+			{
+				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 
-			var paymentNode = await _firebaseClient
-					.Child("Payments")
-					.PostAsync(paymentJSON);
-
-			info = paymentNode.Key;
+			await _firebaseClient
+				.Child("Payments")
+				.Child(info)
+				.PutAsync(paymentJSON);
 
 			payment.PaymentId = info;
 
