@@ -3,8 +3,9 @@
 	public class Trainer
 	{
 		public string TrainerId { get; set; } // PK
+		public string UserId { get; set; }
 		public string Name { get; set; }
-		public string TrainerTypeId { get; set; } // FK to TrainerType
-		public bool IsSpecial { get; set; }
+		public bool IsTrainerGym { get; set; }
+		public bool IsTrainerBoxing { get; set; }
 	}
 }

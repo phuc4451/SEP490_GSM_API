@@ -104,6 +104,7 @@ namespace Alpha_API.Controllers
 				.Child("BoxingOptions")
 				.PostAsync(new
 				{
+					description = boxingOption.Description,
 					month = boxingOption.Months,
 					memberCount = boxingOption.MemberCount,
 					sessions = boxingOption.Sessions,

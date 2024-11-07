@@ -94,9 +94,9 @@ namespace Alpha_API.Controllers
 				return NotFound("Trainer not found");
 			}
 
-			if (trainer.TrainerTypeId != "id_of_gym_trainer")
+			if (!trainer.IsTrainerGym)
 			{
-				return BadRequest("Trainer is not gymer");
+				return BadRequest("This trainer is not training gym");
 			}
 
 			var result = await _firebaseClient

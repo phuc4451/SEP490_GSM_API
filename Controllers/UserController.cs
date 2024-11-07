@@ -25,15 +25,18 @@ public class UsersController : ControllerBase
 	private readonly FirebaseAuth _firebaseAuth;
 	private FirebaseClient _firebaseClient;
 	private readonly RoleService _roleService;
+	private readonly TrainerService _trainerService;
 	private readonly FirebaseClientProvider _firebaseClientProvider;
 
-	public UsersController(EmailService emailService, FirebaseClient firebaseClient, FirebaseAuth firebaseAuth, RoleService roleService, FirebaseClientProvider firebaseClientProvider)
+	public UsersController(EmailService emailService, FirebaseClient firebaseClient, FirebaseAuth firebaseAuth, RoleService roleService,
+		FirebaseClientProvider firebaseClientProvider, TrainerService trainerService)
 	{
 		_firebaseClient = firebaseClient;
 		_emailService = emailService;
 		_firebaseAuth = firebaseAuth;
 		_roleService = roleService;
 		_firebaseClientProvider = firebaseClientProvider;
+		_trainerService = trainerService;
 	}
 
 	// GET: api/users/GetUsers
@@ -378,6 +381,102 @@ public class UsersController : ControllerBase
 	.PutAsync(jsonString);
 
 			return Ok("User created. Please verify your email.");
+		}
+		catch (FirebaseAuthException ex)
+		{
+			// Check if the error is related to an existing email
+			if (ex.Message.Contains("EMAIL_EXISTS"))
+			{
+				// Return 409 Conflict status with error message
+				return Conflict(new { message = "The email is already registered." });
+			}
+
+			// For other Firebase errors, return a generic internal server error
+			return StatusCode(500, new { message = "An error occurred during registration." });
+		}
+	}
+
+	// POST: api/users/addTrainer
+	[Authorize(Roles = "admin")]
+	[HttpPost("addTrainer")]
+	public async Task<ActionResult> AddTrainer([FromBody] RegisterTrainerDto trainer)
+	{
+		if (trainer == null || string.IsNullOrEmpty(trainer.IdCard) || string.IsNullOrEmpty(trainer.Email) || string.IsNullOrEmpty(trainer.Password))
+		{
+			return BadRequest();
+		}
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+		try
+		{
+			// Create a Firebase Auth user
+			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
+			{
+				Email = trainer.Email,
+				Password = trainer.Password,
+				DisplayName = trainer.Name,
+				EmailVerified = false,
+				Disabled = false
+			});
+
+			if (createUserResponse == null)
+			{
+				return BadRequest("User registration failed.");
+			}
+			var userId = createUserResponse.Uid;
+
+			// Generate email verification link
+			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(trainer.Email);
+
+			var roles = await _roleService.GetAllRoles();
+			string roleTrainerId = roles.FirstOrDefault(role => role.RoleName == "pt")?.RoleId;
+
+			User u = new User()
+			{
+				Name = trainer.Name,
+				Email = trainer.Email,
+				RoleId = roleTrainerId, // Trainer role
+				Phone = trainer.Phone,
+				UserId = userId,
+				Gender = trainer.Gender,
+				Address = trainer.Address,
+				UserAvatar = trainer.UserAvatar,
+				IdCard = trainer.IdCard,
+				Dob = trainer.Dob
+			};
+
+			var options = new JsonSerializerOptions
+			{
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+			};
+
+			var jsonString = JsonSerializer.Serialize(u, options);
+
+			// Send the verification email using a third-party email service
+			var emailSent = _emailService.SendVerificationEmail(trainer.Email, verificationLink);
+			if (!emailSent)
+			{
+				return BadRequest("Failed to send email verification.");
+			}
+
+			await _firebaseClient
+	.Child("users")
+	.Child(userId)
+	.PutAsync(jsonString);
+
+
+			Trainer addTrainer = new Trainer()
+			{
+				Name = trainer.Name,
+				UserId=userId,
+				IsTrainerBoxing = trainer.IsBoxer,
+				IsTrainerGym = trainer.IsGymer,
+			};
+
+			var trainerName= await _trainerService.AddTrainerAsync(addTrainer);
+
+			return Ok($"Trainer {trainerName} created. Please verify your email.");
 		}
 		catch (FirebaseAuthException ex)
 		{
