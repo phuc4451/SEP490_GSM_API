@@ -20,14 +20,18 @@ namespace GymManagementAPI.Controllers
 		private readonly FirebaseAuth _firebaseAuth;
 		private FirebaseClient _firebaseClient;
 		private readonly RegisterService _registerService;
+		private readonly QrCodeService _qrCodeService;
+
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 
-		public GymRegistrationController(RegisterService registerService, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient, FirebaseAuth firebaseAuth)
+		public GymRegistrationController(RegisterService registerService, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient
+			, FirebaseAuth firebaseAuth, QrCodeService qrCodeService)
 		{
 			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;
 			_registerService = registerService;
 			_firebaseClientProvider = firebaseClientProvider;
+			_qrCodeService = qrCodeService;
 		}
 
 		// GET: api/GymRegistration
@@ -65,7 +69,7 @@ namespace GymManagementAPI.Controllers
 			{
 				return NotFound();
 			}
-			registration.RegistrationId= id;
+			registration.RegistrationId = id;
 
 			return registration;
 		}
@@ -103,16 +107,58 @@ namespace GymManagementAPI.Controllers
 
 		// POST: api/GymRegistration
 		[HttpPost]
-		[Authorize(Roles = "admin,staff")] //customer can only pay qr =>call qrcontroller
+		[Authorize(Roles = "admin,staff,customer")] //customer can only pay qr =>call qrcontroller
 		public async Task<ActionResult<GymRegistration>> CreateRegistration(RegisterRequest request)
 		{
+			if (request == null)
+			{
+				return BadRequest("Request is null");
+			}
+
+			if (request.Emails.Count == 0)
+			{
+				return BadRequest("Emails are null");
+			}
 			if (request.QRPayment)
 			{
-				return BadRequest("Unsupport");
+				try
+				{
+					var qrList = await _qrCodeService.GenerateQrCodeAsync(request);
+					return Ok(qrList);
+				}
+				catch (ArgumentNullException ex)
+				{
+					return BadRequest(new { message = ex.Message });
+				}
+				catch (UnauthorizedAccessException ex)
+				{
+					return BadRequest(new { message = ex.Message });
+				}
+				catch (InvalidOperationException ex)
+				{
+					return BadRequest(new { message = ex.Message });
+				}
+				catch (ArgumentException ex)
+				{
+					// Handle specific ArgumentExceptions as BadRequest
+					return BadRequest(ex.Message);
+				}
+				catch (HttpRequestException ex)
+				{
+					return StatusCode(502, new { message = "Failed to generate QR code", details = ex.Message });
+				}
+				catch (Exception ex)
+				{
+					// Log the exception (if using a logger)
+					return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+				}
 			}
-			var registerService = await _registerService.RegisterGym(request, request.QRPayment);
-
-			return CreatedAtAction(nameof(GetRegistration), new { id = registerService.Registration.Key }, registerService.Registration);
+			else if (!request.QRPayment)
+			{
+				var registerService = await _registerService.RegisterGym(request, request.QRPayment);
+				return CreatedAtAction(nameof(GetRegistration), new { id = registerService.Registration.Key }, registerService.Registration);
+			}
+			else { return BadRequest("QR Payment is required but was not provided."); }
 		}
 
 		// POST: api/GymRegistration/{id}

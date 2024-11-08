@@ -68,4 +68,33 @@ public class RoleService
 			return ""; // Return an empty string in case of error
 		}
 	}
+
+	// Method to get the role of a user by their userId
+	public async Task<string> GetRoleOfUser(string userId)
+	{
+		try
+		{
+			// Query Firebase to get the user by userId from the "Users" node
+			var user = await _firebaseClient
+				.Child("users")
+				.Child(userId) // Use userId directly as the key
+				.OnceSingleAsync<User>();
+
+			if (user == null || string.IsNullOrEmpty(user.RoleId))
+			{
+				return "User not found or no role assigned"; // User not found or no role assigned
+			}
+
+			// Now use the roleId from the user to get the role name
+			var roleName = await GetRoleName(user.RoleId);
+
+			return roleName;
+		}
+		catch (Exception ex)
+		{
+			// Log exception or handle it appropriately
+			Console.WriteLine($"Error fetching role of user {userId}: {ex.Message}");
+			return "error"; // Return error message in case of exception
+		}
+	}
 }

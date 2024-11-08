@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using Alpha_API.Utils;
 using Microsoft.Extensions.Options;
+using DocumentFormat.OpenXml.Spreadsheet;
 
 namespace Alpha_API.Services
 {
@@ -25,18 +26,19 @@ namespace Alpha_API.Services
 		private FirebaseClient _firebaseClient;
 		private readonly EmailService _emailService;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
+		private readonly RoleService _roleService;
 
 		public RegisterService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider,
-			PaymentMethodService paymentMethodService, EmailService emailService)
+			PaymentMethodService paymentMethodService, EmailService emailService, RoleService roleService)
 		{
 
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
 			_paymentMethodService = paymentMethodService;
 			_emailService = emailService;
-
+			_roleService = roleService;
 		}
-		public async Task<(GymMembership Membership, FirebaseObject<string> Registration, Payment Payment, string info)> RegisterGym(RegisterRequest request, bool qrPayment)
+		public async Task<RegisterResult> RegisterGym(RegisterRequest request, bool qrPayment)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
@@ -46,6 +48,16 @@ namespace Alpha_API.Services
 			.OnceSingleAsync<GymMembership>();
 
 			var userId = await _emailService.GetUserIdByEmail(request.Emails.FirstOrDefault());
+
+			if (userId == null)
+			{
+				throw new InvalidOperationException($"No user found with the email {request.Emails.FirstOrDefault()}. The user must be registered.");
+			}
+			var roleName = await _roleService.GetRoleOfUser(userId);
+			if (!roleName.Equals("customer"))
+			{
+				throw new UnauthorizedAccessException("User does not have the required 'customer' role.");
+			}
 
 			// Query to find all GymRegistrations with the specified UserId
 			var existingRegistrations = await _firebaseClient
@@ -140,10 +152,18 @@ namespace Alpha_API.Services
 				.Child(registration.Key)
 				.PatchAsync(gym);
 
-			return (membership, registration, payment, info);
+			return new RegisterResult
+			{
+				Membership = membership,
+				Registration = registration,
+				Payment = payment,
+				Info = info
+
+			};
+			//return (membership, registration, payment, info);
 		}
 
-		public async Task<(TrainerRentalPlan Plan, RentalOption Option, FirebaseObject<string> Registration, Payment Payment, string info)> RegisterTrainerRental(RegisterRequest request,
+		public async Task<RegisterResult> RegisterTrainerRental(RegisterRequest request,
 			bool qrPayment)
 		{
 			if (string.IsNullOrEmpty(request.ScheduleId))
@@ -178,10 +198,20 @@ namespace Alpha_API.Services
 				reg.Object.UserIds.Split(',').Contains(userId) &&
 				reg.Object.EndDate >= DateTime.Now
 				);
+				if (userId == null)
+				{
+					throw new InvalidOperationException($"No user found with the email {email}. The user must be registered.");
+				}
+				var roleName = await _roleService.GetRoleOfUser(userId);
+				if (!roleName.Equals("customer"))
+				{
+					throw new UnauthorizedAccessException("User does not have the required 'customer' role.");
+				}
 				if (hasActiveRegistration)
 				{
 					throw new InvalidOperationException("The user already has an active Trainer Rental Registration.");
 				}
+
 				userIds.Append(userId).Append(",");
 			}
 
@@ -230,7 +260,7 @@ namespace Alpha_API.Services
 				SessionLeft = request.Sessions ?? 0,
 				IsActive = false,
 				PaymentId = "Pending"
-			}; 
+			};
 
 			var options = new JsonSerializerOptions
 			{
@@ -303,10 +333,18 @@ namespace Alpha_API.Services
 							.Child("TrainerRentalRegistrations")
 							.Child(registration.Key)
 							.PatchAsync(trainerRental);
+			return new RegisterResult
+			{
+				RentalPlan = plan,
+				RentalOption = option,
+				Registration = registration,
+				Payment = payment,
+				Info = info
 
-			return (plan, option, registration, payment, info);
+			};
+			//return (plan, option, registration, payment, info);
 		}
-		public async Task<(BoxingMembershipPlan Plan, BoxingOption Option, FirebaseObject<string> Registration, Payment Payment, string info)> RegisterBoxing(RegisterRequest request,
+		public async Task<RegisterResult> RegisterBoxing(RegisterRequest request,
 			bool qrPayment)
 		{
 			if (string.IsNullOrEmpty(request.ScheduleId))
@@ -340,9 +378,18 @@ namespace Alpha_API.Services
 				reg.Object.UserIds.Split(',').Contains(userId) &&
 				reg.Object.EndDate >= DateTime.Now
 				);
+				if (userId == null)
+				{
+					throw new InvalidOperationException($"No user found with the email {email}. The user must be registered.");
+				}
+				var roleName = await _roleService.GetRoleOfUser(userId);
+				if (!roleName.Equals("customer"))
+				{
+					throw new UnauthorizedAccessException("User does not have the required 'customer' role.");
+				}
 				if (hasActiveRegistration)
 				{
-					throw new InvalidOperationException("The user already has an active Boxing Registration.");
+					throw new InvalidOperationException("The user already has an active Trainer Rental Registration.");
 				}
 				userIds.Append(userId).Append(",");
 			}
@@ -457,7 +504,17 @@ namespace Alpha_API.Services
 							.Child(registration.Key)
 							.PatchAsync(boxingReg);
 
-			return (plan, option, registration, payment, info);
+			return new RegisterResult
+			{
+				BoxingPlan = plan,
+				BoxingOption = option,
+				Registration = registration,
+				Payment = payment,
+				Info = info
+
+			};
+
+			//return (plan, option, registration, payment, info);
 		}
 	}
 }
