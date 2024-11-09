@@ -3,10 +3,10 @@
 	public class Schedule
 	{
 		public string ScheduleId { get; set; } // PK
-		public string UserId { get; set; } // FK to User
+		public string UserIds { get; set; } // FK to User
 		public string TrainerId { get; set; } // FK to Trainer
-		public DateTime FirstSession { get; set; }
-		public DateTime LastSession { get; set; }
+		public DateOnly FirstSession { get; set; }
+		public DateOnly LastSession { get; set; }
 		public int SessionCount { get; set; }
 	}
 }
