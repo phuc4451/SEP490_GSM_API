@@ -495,35 +495,22 @@ public class UsersController : ControllerBase
 	// POST: api/users/addcustomer
 	[Authorize(Roles = "admin,staff")]
 	[HttpPost("addcustomer")]
-	public async Task<ActionResult> AddCustomer([FromBody] RegisterStaffDto customer)
+	public async Task<ActionResult> AddCustomer([FromBody] RegisterCustomerDto customer)
 	{
 		if (customer == null)
 		{
 			return BadRequest();
 		}
+
+		if (string.IsNullOrEmpty(customer.Phone) || string.IsNullOrEmpty(customer.Name) || string.IsNullOrEmpty(customer.UserAvatar))
+		{
+			return BadRequest("Missing phone and name");
+		}
+
 		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 		try
 		{
-			// Create a Firebase Auth user
-			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
-			{
-				Email = customer.Email,
-				Password = customer.Password,
-				DisplayName = customer.Name,
-				EmailVerified = false,
-				Disabled = false
-			});
-
-			if (createUserResponse == null)
-			{
-				return BadRequest("User registration failed.");
-			}
-			var userId = createUserResponse.Uid;
-
-			// Generate email verification link
-			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(customer.Email);
-
 			var roles = await _roleService.GetAllRoles();
 			string roleCustomerId = roles.FirstOrDefault(role => role.RoleName == "customer")?.RoleId;
 
@@ -533,7 +520,7 @@ public class UsersController : ControllerBase
 				Email = customer.Email,
 				RoleId = roleCustomerId, // Customer role
 				Phone = customer.Phone,
-				UserId = userId,
+				UserId = "",
 				Gender = customer.Gender,
 				Address = customer.Address,
 				UserAvatar = customer.UserAvatar,
@@ -549,19 +536,12 @@ public class UsersController : ControllerBase
 
 			var jsonString = JsonSerializer.Serialize(u, options);
 
-			// Send the verification email using a third-party email service
-			var emailSent = _emailService.SendVerificationEmail(customer.Email, verificationLink);
-			if (!emailSent)
-			{
-				return BadRequest("Failed to send email verification.");
-			}
+			var userAdded = await _firebaseClient
+				.Child("users")
+				.PostAsync(jsonString);
 
-			await _firebaseClient
-	.Child("users")
-	.Child(userId)
-	.PutAsync(jsonString);
-
-			return Ok("User created. Please verify your email.");
+			return Ok();
+	
 		}
 		catch (FirebaseAuthException ex)
 		{
