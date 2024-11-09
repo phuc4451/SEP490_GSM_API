@@ -212,102 +212,101 @@ namespace Alpha_API.Controllers
 			return Ok(schedules.Select(s => s.Object));
 		}
 
-		// POST: api/Schedule
-		[HttpPost]
-		public async Task<IActionResult> CreateSchedule(string planType, Schedule schedule, List<Slot> sessions)
-		{
-			// Validate sessions based on the plan type
-			var validation = ValidateSessions(planType, sessions);
-			if (!validation.IsValid)
-				return BadRequest(validation.ErrorMessage);
+		//// POST: api/Schedule
+		//[HttpPost]
+		//public async Task<IActionResult> CreateSchedule(string planType, Schedule schedule, List<Slot> sessions)
+		//{
+		//	// Validate sessions based on the plan type
+		//	var validation = ValidateSessions(planType, sessions);
+		//	if (!validation.IsValid)
+		//		return BadRequest(validation.ErrorMessage);
 
-			// Check if Trainer is fully booked on the days of the new sessions
-			var trainerAvailability = await CheckTrainerAvailability(schedule.TrainerId, sessions);
-			if (!trainerAvailability)
-				return BadRequest("Trainer is fully booked for one or more session dates.");
+		//	// Check if Trainer is fully booked on the days of the new sessions
+		//	var trainerAvailability = await CheckTrainerAvailability(schedule.TrainerId, sessions);
+		//	if (!trainerAvailability)
+		//		return BadRequest("Trainer is fully booked for one or more session dates.");
 
-			// Generate IDs and save schedule to Firebase
-			schedule.ScheduleId = Guid.NewGuid().ToString();
-			schedule.SessionCount = sessions.Count;
-			schedule.FirstSession = sessions.Min(s => s.Date);
-			schedule.LastSession = sessions.Max(s => s.Date);
+		//	// Generate IDs and save schedule to Firebase
+		//	schedule.ScheduleId = Guid.NewGuid().ToString();
+		//	schedule.SessionCount = sessions.Count;
+		//	schedule.FirstSession = sessions.Min(s => s.Date);
+		//	schedule.LastSession = sessions.Max(s => s.Date);
 
-			await _firebaseClient
-				.Child("Schedules")
-				.Child(schedule.ScheduleId)
-				.PutAsync(schedule);
+		//	await _firebaseClient
+		//		.Child("Schedules")
+		//		.Child(schedule.ScheduleId)
+		//		.PutAsync(schedule);
 
-			foreach (var session in sessions)
-			{
-				session.SlotId = Guid.NewGuid().ToString();
-				session.ScheduleId = schedule.ScheduleId;
+		//	foreach (var session in sessions)
+		//	{
+		//		session.SlotId = Guid.NewGuid().ToString();
+		//		session.ScheduleId = schedule.ScheduleId;
 
-				await _firebaseClient
-					.Child("Sessions")
-					.Child(session.SlotId)
-					.PutAsync(session);
-			}
+		//		await _firebaseClient
+		//			.Child("Sessions")
+		//			.Child(session.SlotId)
+		//			.PutAsync(session);
+		//	}
 
-			return Ok("Schedule created successfully.");
-		}
+		//	return Ok("Schedule created successfully.");
+		//}
 
-		private (bool IsValid, string ErrorMessage) ValidateSessions(string planType, List<Slot> sessions)
-		{
-			// Group sessions by both year and week number
-			var sessionsByWeek = sessions
-				.GroupBy(s => new
-				{
-					Year = s.Date.Year,
-					Week = CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(s.Date.ToDateTime(s.StartTime), CalendarWeekRule.FirstDay, DayOfWeek.Monday)
-				});
+		//private (bool IsValid, string ErrorMessage) ValidateSessions(string planType, List<Slot> sessions)
+		//{
+		//	// Group sessions by both year and week number
+		//	var sessionsByWeek = sessions
+		//		.GroupBy(s => new
+		//		{
+		//			Year = s.Date.Year,
+		//			Week = CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(s.Date.ToDateTime(s.StartTime), CalendarWeekRule.FirstDay, DayOfWeek.Monday)
+		//		});
 
-			var firstSessionYear = sessionsByWeek.FirstOrDefault().Select(s => s.Date.Year).OrderBy(d => d).First();
-			var lastSessionYear = sessionsByWeek.LastOrDefault().Select(s => s.Date.Year).OrderBy(d => d).Last();
+		//	var firstSessionYear = sessionsByWeek.FirstOrDefault().Select(s => s.Date.Year).OrderBy(d => d).First();
+		//	var lastSessionYear = sessionsByWeek.LastOrDefault().Select(s => s.Date.Year).OrderBy(d => d).Last();
 
-			if (firstSessionYear < lastSessionYear)
-			{
-				//process here
-			}
+		//	if (firstSessionYear < lastSessionYear)
+		//	{
+		//		//process here
+		//	}
 
-			if (planType == "TrainerRental")
-			{
-				// TrainerRental plan should have exactly 5 sessions per full week
-				foreach (var weekGroup in sessionsByWeek)
-				{
-					if (weekGroup.Count() != 5)
-						return (false, "Trainer rental plan requires exactly 5 sessions per week.");
-				}
-			}
-			else if (planType == "Boxing")
-			{
-				// Boxing plan should have exactly 3 sessions on Mon/Wed/Fri or Tue/Thu/Sat, and every week must follow the same pattern
-				var firstWeek = sessionsByWeek.FirstOrDefault();
+		//	if (planType == "TrainerRental")
+		//	{
+		//		// TrainerRental plan should have exactly 5 sessions per full week
+		//		foreach (var weekGroup in sessionsByWeek)
+		//		{
+		//			if (weekGroup.Count() != 5)
+		//				return (false, "Trainer rental plan requires exactly 5 sessions per week.");
+		//		}
+		//	}
+		//	else if (planType == "Boxing")
+		//	{
+		//		// Boxing plan should have exactly 3 sessions on Mon/Wed/Fri or Tue/Thu/Sat, and every week must follow the same pattern
+		//		var firstWeek = sessionsByWeek.FirstOrDefault();
 
-				// Determine the valid days pattern from the first week
-				var daysInFirstWeek = firstWeek.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
-				var validDaysSet1 = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday };
-				var validDaysSet2 = new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday, DayOfWeek.Saturday };
+		//		// Determine the valid days pattern from the first week
+		//		var daysInFirstWeek = firstWeek.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
+		//		var validDaysSet1 = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday };
+		//		var validDaysSet2 = new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday, DayOfWeek.Saturday };
 
-				if (daysInFirstWeek.Count != 3 ||
-					!(daysInFirstWeek.SequenceEqual(validDaysSet1) || daysInFirstWeek.SequenceEqual(validDaysSet2)))
-				{
-					return (false, "Boxing plan must have exactly 3 sessions per week on either Mon/Wed/Fri or Tue/Thu/Sat, consistently.");
-				}
+		//		if (daysInFirstWeek.Count != 3 ||
+		//			!(daysInFirstWeek.SequenceEqual(validDaysSet1) || daysInFirstWeek.SequenceEqual(validDaysSet2)))
+		//		{
+		//			return (false, "Boxing plan must have exactly 3 sessions per week on either Mon/Wed/Fri or Tue/Thu/Sat, consistently.");
+		//		}
 
-				// Use this pattern to validate each subsequent week
-				foreach (var weekGroup in sessionsByWeek)
-				{
-					var daysInWeek = weekGroup.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
-					if (!daysInWeek.SequenceEqual(daysInFirstWeek))
-					{
-						return (false, "All weeks must follow the same days pattern established in the first week: either Mon/Wed/Fri or Tue/Thu/Sat.");
-					}
-				}
-			}
+		//		// Use this pattern to validate each subsequent week
+		//		foreach (var weekGroup in sessionsByWeek)
+		//		{
+		//			var daysInWeek = weekGroup.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
+		//			if (!daysInWeek.SequenceEqual(daysInFirstWeek))
+		//			{
+		//				return (false, "All weeks must follow the same days pattern established in the first week: either Mon/Wed/Fri or Tue/Thu/Sat.");
+		//			}
+		//		}
+		//	}
 
-			return (true, string.Empty);
-		}
-
+		//	return (true, string.Empty);
+		//}
 
 		private async Task<bool> CheckTrainerAvailability(string trainerId, List<Slot> slots)
 		{
