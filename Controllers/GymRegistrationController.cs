@@ -54,8 +54,8 @@ namespace GymManagementAPI.Controllers
 			return registrations.Select(r => r.Object).ToList();
 		}
 
-		// GET: api/GymRegistration
-		[HttpGet]
+		// GET: api/GymRegistration/GetRegisters
+		[HttpGet("GetRegisters")]
 		[Authorize(Roles = "admin,staff")]
 		public async Task<ActionResult<IEnumerable<GymRegisterDto>>> GetRegisters()
 		{
