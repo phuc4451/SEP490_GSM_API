@@ -10,6 +10,7 @@ using FirebaseAdmin.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Alpha_API.Services;
 using System.Security.Claims;
+using Alpha_API.ViewModel;
 
 namespace GymManagementAPI.Controllers
 {
@@ -51,6 +52,55 @@ namespace GymManagementAPI.Controllers
 			}
 
 			return registrations.Select(r => r.Object).ToList();
+		}
+
+		// GET: api/GymRegistration
+		[HttpGet]
+		[Authorize(Roles = "admin,staff")]
+		public async Task<ActionResult<IEnumerable<GymRegisterDto>>> GetRegisters()
+		{
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+			var registrations = await _firebaseClient
+				.Child("GymRegistrations")
+				.OnceAsync<GymRegistration>();
+
+			foreach (var registration in registrations)
+			{
+				registration.Object.RegistrationId = registration.Key;
+			}
+
+			List<GymRegisterDto> registers = new List<GymRegisterDto>();
+
+			foreach (var registration in registrations)
+			{
+				var user = await _firebaseClient
+					.Child("users")
+					.Child(registration.Object.UserId)
+					.OnceSingleAsync<User>();
+
+				var payment = await _firebaseClient
+					.Child("Payments")
+					.Child(registration.Object.PaymentId)
+					.OnceSingleAsync<Payment>();
+
+				GymRegisterDto register = new GymRegisterDto()
+				{
+					UserId = registration.Object.UserId,
+					EndDate = registration.Object.EndDate,
+					StartDate = registration.Object.StartDate,
+					SessionLeft = registration.Object.SessionLeft,
+					IsActive = registration.Object.IsActive,
+					UserName = user.Name,
+					PaymentStatus = payment.PaymentStatus,
+					GymMembershipId = registration.Object.GymMembershipId,
+				};
+
+				if (register.PaymentStatus == "Completed" && register.IsActive)
+					registers.Add(register);
+			}
+
+			return registers.ToList();
 		}
 
 		// GET: api/GymRegistration/{id}
@@ -108,7 +158,7 @@ namespace GymManagementAPI.Controllers
 		// POST: api/GymRegistration
 		[HttpPost]
 		[Authorize(Roles = "admin,staff,customer")] //customer can only pay qr =>call qrcontroller
-		public async Task<ActionResult<GymRegistration>> CreateRegistration(RegisterRequest request)
+		public async Task<ActionResult<GymRegistration>> CreateRegistration(RegisterPackageRequest request)
 		{
 			if (request == null)
 			{

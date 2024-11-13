@@ -1,7 +1,6 @@
 ﻿using Alpha_API.Models;
 using Alpha_API.Utils;
 using Firebase.Database;
-using Alpha_API.Models;
 using Alpha_API.Services;
 using Firebase.Database;
 using Firebase.Database.Query;
@@ -17,10 +16,11 @@ using System.Timers;
 using Alpha_API.Utils;
 using Microsoft.Extensions.Options;
 using DocumentFormat.OpenXml.Spreadsheet;
+using Alpha_API.ViewModel;
 
 namespace Alpha_API.Services
 {
-	public class RegisterService
+    public class RegisterService
 	{
 		private readonly PaymentMethodService _paymentMethodService;
 		private FirebaseClient _firebaseClient;
@@ -38,7 +38,7 @@ namespace Alpha_API.Services
 			_emailService = emailService;
 			_roleService = roleService;
 		}
-		public async Task<RegisterResult> RegisterGym(RegisterRequest request, bool qrPayment)
+		public async Task<RegisterResult> RegisterGym(RegisterPackageRequest request, bool qrPayment)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
@@ -129,7 +129,7 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "CK" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 			else
 			{
@@ -163,7 +163,7 @@ namespace Alpha_API.Services
 			//return (membership, registration, payment, info);
 		}
 
-		public async Task<RegisterResult> RegisterTrainerRental(RegisterRequest request,
+		public async Task<RegisterResult> RegisterTrainerRental(RegisterPackageRequest request,
 			bool qrPayment)
 		{
 			if (string.IsNullOrEmpty(request.ScheduleId))
@@ -344,7 +344,7 @@ namespace Alpha_API.Services
 			};
 			//return (plan, option, registration, payment, info);
 		}
-		public async Task<RegisterResult> RegisterBoxing(RegisterRequest request,
+		public async Task<RegisterResult> RegisterBoxing(RegisterPackageRequest request,
 			bool qrPayment)
 		{
 			if (string.IsNullOrEmpty(request.ScheduleId))

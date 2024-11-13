@@ -11,10 +11,11 @@ using Microsoft.AspNetCore.Authorization;
 using Alpha_API.Services;
 using System.Security.Claims;
 using Alpha_API.Utils;
+using Alpha_API.ViewModel;
 
 namespace Alpha_API.Controllers
 {
-	[Route("api/[controller]")]
+    [Route("api/[controller]")]
 	[ApiController]
 	public class TrainerRentalRegistrationController : ControllerBase
 	{
@@ -116,7 +117,7 @@ namespace Alpha_API.Controllers
 		// POST: api/TrainerRentalRegistration
 		[HttpPost]
 		[Authorize(Roles = "admin,staff,customer")] //customer can only pay qr =>call qrcontroller
-		public async Task<ActionResult<TrainerRentalRegistration>> CreateRegistration(RegisterRequest request)
+		public async Task<ActionResult<TrainerRentalRegistration>> CreateRegistration(RegisterPackageRequest request)
 		{
 			if (request == null)
 			{

@@ -1,4 +1,3 @@
-using Alpha_API.Models;
 using Alpha_API.Services;
 using Firebase.Database;
 using Firebase.Database.Query;
@@ -10,10 +9,11 @@ using System.Text.Json.Serialization;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Alpha_API.Utils;
+using Alpha_API.ViewModel;
 
 namespace Alpha_API.Services
 {
-	public class QrCodeService
+    public class QrCodeService
 	{
 		private readonly IHttpClientFactory _httpClientFactory;
 		private readonly PaymentMethodService _paymentMethodService;
@@ -39,7 +39,7 @@ namespace Alpha_API.Services
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 		}
 
-		public async Task<List<object>> GenerateQrCodeAsync(RegisterRequest request)
+		public async Task<List<object>> GenerateQrCodeAsync(RegisterPackageRequest request)
 		{
 			if (request == null)
 			{
@@ -71,7 +71,7 @@ namespace Alpha_API.Services
 			return qrList;
 		}
 
-		private async Task<object> ProcessRequestAsync(RegisterRequest request, HttpClient client, Func<RegisterRequest, bool, Task<RegisterResult>> registerFunc)
+		private async Task<object> ProcessRequestAsync(RegisterPackageRequest request, HttpClient client, Func<RegisterPackageRequest, bool, Task<RegisterResult>> registerFunc)
 		{
 			bool qrPayment = request.QRPayment;
             if (!qrPayment)
@@ -85,11 +85,21 @@ namespace Alpha_API.Services
 			_createdRegistrationId = registerResult.Registration.Key;
 			StartDeletionTimer();
 
+			//var jsonData = new
+			//{
+			//	accountNo = "0978788128",
+			//	accountName = "DINH DAI DUONG",
+			//	acqId = "970422",
+			//	addInfo = registerResult.Info,
+			//	amount = registerResult.Payment.Amount,
+			//	template = "compact"
+			//};
+
 			var jsonData = new
 			{
-				accountNo = "0978788128",
-				accountName = "DINH DAI DUONG",
-				acqId = "970422",
+				accountNo = "105874147288",
+				accountName = "VU HONG PHUC",
+				acqId = "970415",
 				addInfo = registerResult.Info,
 				amount = registerResult.Payment.Amount,
 				template = "compact"
