@@ -40,7 +40,7 @@ const ManageCustomer = () => {
   });
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 2; // Maximum 2 employees per page
+  const itemsPerPage = 4; // Maximum 2 employees per page
 
   const customerModalRef = useRef(null);
   const successModalRef = useRef(null);
@@ -51,7 +51,7 @@ const ManageCustomer = () => {
     const fetchCustomers = async () => {
       const token = localStorage.getItem("token");
       try {
-        const response = await axios.get("http://localhost:5000/api/users/customers", {
+        const response = await axios.get("http://localhost:5000/api/users/getCustomers", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setCustomerData(response.data);
@@ -315,8 +315,7 @@ const ManageCustomer = () => {
       {/* <!-- ***** Preloader End ***** --> */}
 
       <div className="user-select">
-        <h1>Quản lý người dùng</h1>
-        <h2>Người dùng trong hệ thống SUPER GYM</h2>
+        <h1>Quản lý người dùng trong hệ thống super gym</h1>
 
         <div className="select-search-container">
           <div className="search-container">

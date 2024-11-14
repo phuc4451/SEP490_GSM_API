@@ -215,8 +215,8 @@ body {
 
 .section-heading-home {
   text-align: center;
-  margin-top: 140px;
-  margin-bottom: 80px;
+  margin-top: 40px;
+  margin-bottom: 40px;
 }
 
 .section-heading-home h2 {
@@ -926,10 +926,17 @@ schedule
 
 #schedule {
   padding: 0px 0px 140px 0px;
-  background-image: url(../assets/images/schedule-bg.jpg);
+  /* background-image: url(../assets/images/schedule-bg.jpg); */
   background-position: center center;
   background-repeat: no-repeat;
   background-size: cover;
+  background-color: #29313C;
+}
+
+
+#schedule table th:first-child,
+#schedule table td:first-child {
+  width: 200px; /* Điều chỉnh độ rộng mong muốn cho cột đầu tiên */
 }
 
 #schedule table {
@@ -940,6 +947,11 @@ schedule
 
 #schedule table tbody {
   border-top: 1px solid #fff;
+}
+
+#schedule table th{
+  border: 1px solid #fff; /* Đặt viền cho cả th và td */
+  color: #fff;
 }
 
 #schedule table tbody tr {
@@ -959,15 +971,20 @@ schedule
   letter-spacing: 0.25px;
 }
 
-.schedule-table table {
+.schedule-table {
   width: 100%;
 }
 
+.schedule-table table {
+  min-width: 1220px;
+}
+
 .schedule-table td {
-  width: 25%; /* Tùy chỉnh tỷ lệ phần trăm cho phù hợp */
-  text-align: center;
-  padding: 10px;
-  border: 1px solid #ddd; /* Để dễ thấy cấu trúc */
+  width: 100px; /* Đặt chiều rộng cố định cho các ô */
+  max-width: 100px; /* Giới hạn chiều rộng tối đa */
+  text-align: center; /* Căn giữa nội dung */
+  overflow: hidden; /* Ẩn nội dung thừa nếu có */
+  white-space: nowrap; /* Không cho phép ngắt dòng */
 }
 
 .schedule-table.filtering .ts-item {

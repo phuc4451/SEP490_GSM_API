@@ -14,61 +14,77 @@ const ManageSchedule = () => {
     setActiveFilter(filter); // Cập nhật bộ lọc hiện tại
   };
 
+  // Khung giờ từ 8h sáng đến 8h tối, mỗi khung giờ là 1 giờ
+  const timeSlots = ["8:00AM", "9:00AM", "10:00AM", "11:00AM", "12:00PM", "1:00PM", "2:00PM", "3:00PM", "4:00PM", "5:00PM", "6:00PM", "7:00PM"];
+
   // Dữ liệu lịch tập
   const scheduleData = {
     monday: {
-      fitnessClass: ["10:00AM - 11:30AM", "4:00PM - 5:30PM"],
-      muscleTraining: ["", ""],
-      bodyBuilding: ["2:00PM - 3:30PM", ""],
-      yogaClass: ["", ""],
-      advancedTraining: ["", ""],
+      PT1: Array(timeSlots.length).fill(""),
+      PT2: Array(timeSlots.length).fill(""),
+      PT3: Array(timeSlots.length).fill(""),
+      PT4: Array(timeSlots.length).fill(""),
+      PT5: Array(timeSlots.length).fill(""),
     },
     tuesday: {
-      fitnessClass: ["", "2:00PM - 3:30PM"],
-      muscleTraining: ["", ""],
-      bodyBuilding: ["10:00AM - 11:30AM", ""],
-      yogaClass: ["", ""],
-      advancedTraining: ["", ""],
+      PT1: Array(timeSlots.length).fill(""),
+      PT2: Array(timeSlots.length).fill(""),
+      PT3: Array(timeSlots.length).fill(""),
+      PT4: Array(timeSlots.length).fill(""),
+      PT5: Array(timeSlots.length).fill(""),
     },
     wednesday: {
-      fitnessClass: ["", ""],
-      muscleTraining: ["", ""],
-      bodyBuilding: ["", ""],
-      yogaClass: ["10:00AM - 11:30AM", ""],
-      advancedTraining: ["2:00PM - 3:30PM", ""],
+      PT1: Array(timeSlots.length).fill(""),
+      PT2: Array(timeSlots.length).fill(""),
+      PT3: Array(timeSlots.length).fill(""),
+      PT4: Array(timeSlots.length).fill(""),
+      PT5: Array(timeSlots.length).fill(""),
     },
     thursday: {
-      fitnessClass: ["", ""],
-      muscleTraining: ["", "2:00PM - 3:30PM"],
-      bodyBuilding: ["", ""],
-      yogaClass: ["", ""],
-      advancedTraining: ["10:00AM - 11:30AM", ""],
+      PT1: Array(timeSlots.length).fill(""),
+      PT2: Array(timeSlots.length).fill(""),
+      PT3: Array(timeSlots.length).fill(""),
+      PT4: Array(timeSlots.length).fill(""),
+      PT5: Array(timeSlots.length).fill(""),
     },
     friday: {
-      fitnessClass: ["", ""],
-      muscleTraining: ["10:00AM - 11:30AM", ""],
-      bodyBuilding: ["", ""],
-      yogaClass: ["2:00PM - 3:30PM", ""],
-      advancedTraining: ["", ""],
+      PT1: Array(timeSlots.length).fill(""),
+      PT2: Array(timeSlots.length).fill(""),
+      PT3: Array(timeSlots.length).fill(""),
+      PT4: Array(timeSlots.length).fill(""),
+      PT5: Array(timeSlots.length).fill(""),
     },
+    saturday: {
+      PT1: Array(timeSlots.length).fill(""),
+      PT2: Array(timeSlots.length).fill(""),
+      PT3: Array(timeSlots.length).fill(""),
+      PT4: Array(timeSlots.length).fill(""),
+      PT5: Array(timeSlots.length).fill(""),
+    },
+    sunday: {
+      PT1: Array(timeSlots.length).fill(""),
+      PT2: Array(timeSlots.length).fill(""),
+      PT3: Array(timeSlots.length).fill(""),
+      PT4: Array(timeSlots.length).fill(""),
+      PT5: Array(timeSlots.length).fill(""),
+    },
+  };
+
+  // Hàm ngẫu nhiên hiển thị nút "Chi tiết" hoặc "Thêm"
+  const renderRandomButton = () => {
+    const isDetailButton = Math.random() < 0.5; // 50% xác suất
+    return isDetailButton ? <button className="btn btn-info btn-sm">Chi tiết</button> : <button className="btn btn-success btn-sm">Thêm</button>;
   };
 
   // Hàm lấy lịch của từng loại lớp
   const getSchedule = (classType) => {
-    return scheduleData[activeFilter][classType] || ["", ""];
+    return scheduleData[activeFilter][classType] || Array(timeSlots.length).fill("");
   };
 
   // Hàm render thẻ select nếu có lịch
   const renderSelect = (timeSlot) => {
     return timeSlot ? (
       <div className="select-container">
-        <select className="form-select">
-          {personalTrainers.map((pt, index) => (
-            <option key={index} value={pt}>
-              {pt}
-            </option>
-          ))}
-        </select>
         <div className="select-actions">
           <button className="btn btn-secondary btn-sm">Edit</button>
           <button className="btn btn-primary btn-sm">Save</button>
@@ -89,131 +105,64 @@ const ManageSchedule = () => {
             <div className="col-lg-6 offset-lg-3">
               <div className="section-heading-home dark-bg">
                 <h2>
-                  Classes <em>Schedule</em>
+                  Quản lý <em>Lịch tập</em>
                 </h2>
-                <img src="assets/images/line-dec.png" alt="" />
-                <p>Nunc urna sem, laoreet ut metus id, aliquet consequat magna.</p>
               </div>
             </div>
           </div>
           <div className="row">
-            <div className="col-lg-12">
+            <div className="">
               <div className="filters">
                 <ul className="schedule-filter">
                   <li className={activeFilter === "monday" ? "active" : ""} onClick={() => handleFilterClick("monday")}>
-                    Monday
+                    Thứ hai
                   </li>
                   <li className={activeFilter === "tuesday" ? "active" : ""} onClick={() => handleFilterClick("tuesday")}>
-                    Tuesday
+                    Thứ ba
                   </li>
                   <li className={activeFilter === "wednesday" ? "active" : ""} onClick={() => handleFilterClick("wednesday")}>
-                    Wednesday
+                    Thứ tư
                   </li>
                   <li className={activeFilter === "thursday" ? "active" : ""} onClick={() => handleFilterClick("thursday")}>
-                    Thursday
+                    Thứ năm
                   </li>
                   <li className={activeFilter === "friday" ? "active" : ""} onClick={() => handleFilterClick("friday")}>
-                    Friday
+                    Thứ sáu
+                  </li>
+                  <li className={activeFilter === "saturday" ? "active" : ""} onClick={() => handleFilterClick("saturday")}>
+                    Thứ bảy
+                  </li>
+                  <li className={activeFilter === "sunday" ? "active" : ""} onClick={() => handleFilterClick("sunday")}>
+                    Chủ nhật
                   </li>
                 </ul>
               </div>
             </div>
-            <div className="col-lg-10 offset-lg-1">
+            <div className="">
               <div className="schedule-table filtering">
                 <table>
                   <thead>
                     <tr>
-                      <th></th> {/* Empty header cell */}
-                      <th colSpan="2" style={{ textAlign: "center", color: "white" }}>
-                        {/* Sáng */}
-                      </th>
-                      <th colSpan="2" style={{ textAlign: "center", color: "white" }}>
-                        {/* Chiều */}
-                      </th>
-                    </tr>
-                    <tr>
-                      <th></th> {/* Empty header cell */}
-                      <th style={{ textAlign: "center", color: "white" }}>Sáng</th>
-                      <th style={{ textAlign: "center", color: "white" }}>Chiều</th>
+                      <th></th> {/* Ô trống cho tên PT */}
+                      {timeSlots.map((slot, index) => (
+                        <th key={index} style={{ textAlign: "center", color: "white" }}>
+                          {slot}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
 
                   <tbody>
-                    <tr>
-                      <td className="day-time">Fitness class</td>
-                      <td>
-                        <div className="schedule-item">
-                          {getSchedule("fitnessClass")[0]}
-                          {renderSelect(getSchedule("fitnessClass")[0])}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="schedule-item">
-                          {getSchedule("fitnessClass")[1]}
-                          {renderSelect(getSchedule("fitnessClass")[1])}
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="day-time">Muscle Training</td>
-                      <td>
-                        <div className="schedule-item">
-                          {getSchedule("muscleTraining")[0]}
-                          {renderSelect(getSchedule("muscleTraining")[0])}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="schedule-item">
-                          {getSchedule("muscleTraining")[1]}
-                          {renderSelect(getSchedule("muscleTraining")[1])}
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="day-time">Body Building</td>
-                      <td>
-                        <div className="schedule-item">
-                          {getSchedule("bodyBuilding")[0]}
-                          {renderSelect(getSchedule("bodyBuilding")[0])}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="schedule-item">
-                          {getSchedule("bodyBuilding")[1]}
-                          {renderSelect(getSchedule("bodyBuilding")[1])}
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="day-time">Yoga Training</td>
-                      <td>
-                        <div className="schedule-item">
-                          {getSchedule("yogaClass")[0]}
-                          {renderSelect(getSchedule("yogaClass")[0])}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="schedule-item">
-                          {getSchedule("yogaClass")[1]}
-                          {renderSelect(getSchedule("yogaClass")[1])}
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="day-time">Advanced Training</td>
-                      <td>
-                        <div className="schedule-item">
-                          {getSchedule("advancedTraining")[0]}
-                          {renderSelect(getSchedule("advancedTraining")[0])}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="schedule-item">
-                          {getSchedule("advancedTraining")[1]}
-                          {renderSelect(getSchedule("advancedTraining")[1])}
-                        </div>
-                      </td>
-                    </tr>
+                    {["PT1", "PT2", "PT3", "PT4", "PT5"].map((pt, index) => (
+                      <tr key={index}>
+                        <td className="day-time">{`PT ${index + 1}`}</td>
+                        {getSchedule(pt).map((_, idx) => (
+                          <td key={idx}>
+                            <div className="schedule-item">{renderRandomButton()}</div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

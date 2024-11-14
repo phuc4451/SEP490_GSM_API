@@ -108,6 +108,10 @@ h1 {
   font-size: 24px;
 }
 
+.btn{
+  font-weight: bold;
+}
+
 .btn-custom-equipment{
   background-color: #007bff; /* Màu xanh tùy chọn */
   color: white; /* Màu chữ */
@@ -418,6 +422,11 @@ table.table .avatar {
   animation: slideDown 0.5s ease forwards; 
 }
 
+.modal-header{
+  color: #000;
+  font-weight: bold;
+}
+
 .modal .modal-header,
 .modal .modal-body,
 .modal .modal-footer {
@@ -581,3 +590,28 @@ table.table .avatar {
 .icon-input{
   color: red;
 }
+
+.input-readonly {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #7e868d;
+  text-align: center;
+  border: 1px solid #ced4da;
+  border-left: none; /* Loại bỏ viền trái */
+  border-top-right-radius: 0.25rem;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.readonly-bg-color {
+  background-color: #E9ECEF;
+}
+
+.equipment-price-input,.equipment-size-input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none; /* Loại bỏ viền bên phải */
+}
+
