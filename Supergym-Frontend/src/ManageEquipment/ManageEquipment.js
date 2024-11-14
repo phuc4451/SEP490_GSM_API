@@ -812,9 +812,13 @@ const ManageEquipment = () => {
                     <label>
                       Giá nhập thiết bị <span className="icon-input">(*)</span>
                     </label>
-                    <input disabled={isEditingCode} type="text" className={`form-control ${errors.equipmentImportPrice ? "is-invalid" : ""}`} name="equipmentImportPrice" value={formData.equipmentImportPrice || ""} onChange={handleInputChange} required />
+                    <div className="input-group">
+                      <input type="text" className={`form-control equipment-price-input ${errors.equipmentImportPrice ? "is-invalid" : ""}`} name="equipmentImportPrice" value={formData.equipmentImportPrice || ""} onChange={handleInputChange} required />
+                      <span className="input-readonly">VNĐ</span>
+                    </div>
                     {errors.equipmentImportPrice && <div className="invalid-feedback">{errors.equipmentImportPrice}</div>}
                   </div>
+
                   <div className="form-group col">
                     <label>
                       Nhãn hiệu <span className="icon-input">(*)</span>
@@ -878,14 +882,18 @@ const ManageEquipment = () => {
                 <div className="row">
                   <div className="form-group col">
                     <label>
-                      Kích thước thiết bị <span className="icon-input">(*)</span>
+                      Kích thước thiết bị (cm) <span className="icon-input">(*)</span>
                     </label>
-                    <input disabled={isEditingCode || isExistingEquipment} type="text" className={`form-control ${errors.equipmentSize ? "is-invalid" : ""}`} name="equipmentSize" value={formData.equipmentSize} onChange={handleInputChange} required />
+                    <div className="input-group">
+                      <input disabled={isEditingCode || isExistingEquipment} type="text" className={`form-control equipment-size-input ${errors.equipmentSize ? "is-invalid" : ""}`} name="equipmentSize" value={formData.equipmentSize} onChange={handleInputChange} required />
+                      <span className={`input-readonly input-size-readonly ${isEditingCode || isExistingEquipment ? "readonly-bg-color" : ""}`}>dài * rộng * cao</span>
+                    </div>
+
                     {errors.equipmentSize && <div className="invalid-feedback">{errors.equipmentSize}</div>}
                   </div>
                   <div className="form-group col">
                     <label>
-                      Trọng lượng tải <span className="icon-input">(*)</span>
+                      Trọng lượng tải (kg) <span className="icon-input">(*)</span>
                     </label>
                     <input disabled={isEditingCode || isExistingEquipment} type="number" className={`form-control ${errors.equipmentWeightStack ? "is-invalid" : ""}`} name="equipmentWeightStack" value={formData.equipmentWeightStack} onChange={handleInputChange} required />
                     {errors.equipmentWeightStack && <div className="invalid-feedback">{errors.equipmentWeightStack}</div>}

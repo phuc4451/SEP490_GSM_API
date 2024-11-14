@@ -10,17 +10,17 @@ const ManageCourse = () => {
   const [courses, setCourses] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    courseName: "",
-    courseContent: "",
-    courseDuration: "",
-    coursePrice: "",
+    name: "",
+    durationMonths: "",
+    sessionCount: "",
+    price: "",
   });
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:5000/api/Course", {
+        const response = await axios.get("http://localhost:5000/api/GymMembership", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setCourses(response.data);
@@ -41,14 +41,16 @@ const ManageCourse = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.post("http://localhost:5000/api/Course", formData, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await axios.post("http://localhost:5000/api/GymMembership", formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setCourses((prevCourses) => [...prevCourses, response.data]);
       setShowForm(false);
       setFormData({
-        courseName: "",
-        courseContent: "",
-        courseDuration: "",
-        coursePrice: "",
+        name: "",
+        durationMonths: "",
+        sessionCount: "",
+        price: "",
       });
     } catch (error) {
       console.error("Error adding course:", error);
@@ -74,7 +76,7 @@ const ManageCourse = () => {
 
           <div className="row">
             {courses.map((course) => (
-              <div className="col-lg-6" key={course.courseId}>
+              <div className="col-lg-6" key={course.gymMembershipId}>
                 <ul className="features-items">
                   <li className="feature-item">
                     <div className="left-icon">
@@ -82,8 +84,9 @@ const ManageCourse = () => {
                     </div>
                     <div className="right-content">
                       <div className="course-action">
-                        <h4>{course.courseName}</h4>
-                        <p>{course.courseContent}</p>
+                        <h4>{course.name}</h4>
+                        <p>Thời gian: {course.durationMonths} tháng</p>
+                        <p>Số buổi: {course.sessionCount}</p>
                         <a href="#" className="btn-fix detail-button">
                           Chi tiết
                         </a>
@@ -100,7 +103,7 @@ const ManageCourse = () => {
                           Áp dụng giảm giá
                           <LocalOfferIcon />
                         </button>
-                        <p className="price">Giá: {course.coursePrice.toLocaleString()} VND</p>
+                        <p className="price">Giá: {course.price} VND</p>
                       </div>
                     </div>
                   </li>
@@ -125,19 +128,19 @@ const ManageCourse = () => {
                 <div className="modal-body">
                   <div className="form-group">
                     <label>Tên gói tập</label>
-                    <input type="text" className="form-control" name="courseName" value={formData.courseName} onChange={handleInputChange} required />
+                    <input type="text" className="form-control" name="name" value={formData.name} onChange={handleInputChange} required />
                   </div>
                   <div className="form-group">
-                    <label>Nội dung</label>
-                    <input type="text" className="form-control" name="courseContent" value={formData.courseContent} onChange={handleInputChange} required />
+                    <label>Thời gian (tháng)</label>
+                    <input type="number" className="form-control" name="durationMonths" value={formData.durationMonths} onChange={handleInputChange} required />
                   </div>
                   <div className="form-group">
-                    <label>Thời gian</label>
-                    <input type="text" className="form-control" name="courseDuration" value={formData.courseDuration} onChange={handleInputChange} required />
+                    <label>Số buổi</label>
+                    <input type="number" className="form-control" name="sessionCount" value={formData.sessionCount} onChange={handleInputChange} required />
                   </div>
                   <div className="form-group">
                     <label>Giá</label>
-                    <input type="number" className="form-control" name="coursePrice" value={formData.coursePrice} onChange={handleInputChange} required />
+                    <input type="number" className="form-control" name="price" value={formData.price} onChange={handleInputChange} required />
                   </div>
                 </div>
                 <div className="modal-footer">
