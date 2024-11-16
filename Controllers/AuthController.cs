@@ -47,6 +47,13 @@ public class AuthController : ControllerBase
 	{
 		try
 		{
+			// Check if the email already exists
+			var existingUser = await _firebaseAuth.GetUserByEmailAsync(registerUserDto.Email);
+			if (existingUser != null)
+			{
+				return Conflict(new { message = "The email is already registered." });
+			}
+
 			// Create a Firebase Auth user
 			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
 			{
