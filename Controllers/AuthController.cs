@@ -15,6 +15,7 @@ using System.Net.Http;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using Alpha_API.Utils;
+using System.Collections.Concurrent;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -28,6 +29,7 @@ public class AuthController : ControllerBase
 	private readonly string _firebaseAuthUrl;
 	private readonly string _firebaseBaseUrl;
 	private readonly string _firebaseApiKey;
+	private static readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new ConcurrentDictionary<string, SemaphoreSlim>();
 
 	public AuthController(IConfiguration configuration, EmailService emailService)
 	{
@@ -45,14 +47,17 @@ public class AuthController : ControllerBase
 	[HttpPost("register")]
 	public async Task<ActionResult> Register([FromBody] RegisterUserDto registerUserDto)
 	{
+		var emailLock = _locks.GetOrAdd(registerUserDto.Email, _ => new SemaphoreSlim(1, 1));
+
+		await emailLock.WaitAsync(); // Wait for the email-specific semaphore
 		try
 		{
-			// Check if the email already exists
-			var existingUser = await _firebaseAuth.GetUserByEmailAsync(registerUserDto.Email);
-			if (existingUser != null)
-			{
-				return Conflict(new { message = "The email is already registered." });
-			}
+			//// Check if the email already exists
+			//var existingUser = await _firebaseAuth.GetUserByEmailAsync(registerUserDto.Email);
+			//if (existingUser != null)
+			//{
+			//	return Conflict(new { message = "The email is already registered." });
+			//}
 
 			// Create a Firebase Auth user
 			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
@@ -147,6 +152,15 @@ public class AuthController : ControllerBase
 
 			// For other Firebase errors, return a generic internal server error
 			return StatusCode(500, new { message = "An error occurred during registration." });
+		}
+		finally
+		{
+			emailLock.Release(); // Release the lock for this email
+								 // Clean up unused locks
+			if (emailLock.CurrentCount == 1) // No threads waiting
+			{
+				_locks.TryRemove(registerUserDto.Email, out _);
+			}
 		}
 	}
 
