@@ -1,5 +1,6 @@
 ﻿using Alpha_API.Models;
 using Alpha_API.Services;
+using Alpha_API.ViewModel;
 using Firebase.Database;
 using Firebase.Database.Query;
 using FirebaseAdmin.Auth;
@@ -70,7 +71,7 @@ namespace Alpha_API.Controllers
 		// POST: api/RentalOption
 		[HttpPost]
 		[Authorize(Roles = "admin,staff")]
-		public async Task<ActionResult<RentalOption>> CreateRentalOption(RentalOption rentalOption)
+		public async Task<ActionResult<RentalOption>> CreateRentalOption(RentalOptionDto rentalOption)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
@@ -89,13 +90,19 @@ namespace Alpha_API.Controllers
 				return Conflict(new { message = "A similar rental option already exists." });
 			}
 
+			var options = new JsonSerializerOptions
+			{
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+			};
+
+			var jsonString = System.Text.Json.JsonSerializer.Serialize(rentalOption, options);
+
 			var result = await _firebaseClient
 				.Child("RentalOptions")
 				.PostAsync(rentalOption);
 
-			rentalOption.RentalOptionId = result.Key;
-
-			return CreatedAtAction(nameof(GetRentalOption), new { id = rentalOption.RentalOptionId }, rentalOption);
+			return Ok();
 		}
 
 		// PATCH: api/RentalOption/{id}

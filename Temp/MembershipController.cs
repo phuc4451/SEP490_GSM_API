@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Firebase.Database;
 using Firebase.Database.Query;
-using Alpha_API.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Alpha_API.Temp;
 
 [Route("api/[controller]")]
 [ApiController]

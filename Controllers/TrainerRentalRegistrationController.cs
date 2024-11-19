@@ -127,6 +127,10 @@ namespace Alpha_API.Controllers
 			{
 				return BadRequest("Emails are null");
 			}
+			if (string.IsNullOrEmpty(request.GymMembershipId) && string.IsNullOrEmpty(request.TrainerRentalPlanId) && string.IsNullOrEmpty(request.BoxingMembershipPlanId))
+			{
+				return BadRequest("Memberships or plans are null");
+			}
 			if (request.QRPayment)
 			{
 				try

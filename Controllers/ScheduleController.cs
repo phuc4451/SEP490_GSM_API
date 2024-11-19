@@ -1,171 +1,6 @@
-﻿//using Alpha_API.Models;
-//using Alpha_API.Services;
-//using Firebase.Database;
-//using Firebase.Database.Query;
-//using Microsoft.AspNetCore.Mvc;
-//using System;
-//using System.Collections.Generic;
-//using System.Globalization;
-//using System.Linq;
-//using System.Threading.Tasks;
-
-//namespace Alpha_API.Controllers
-//{
-//	[Route("api/[controller]")]
-//	[ApiController]
-//	public class ScheduleController : ControllerBase
-//	{
-//		private FirebaseClient _firebaseClient;
-//		private readonly FirebaseClientProvider _firebaseClientProvider;
-
-//		public ScheduleController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider)
-//		{
-//			_firebaseClient = firebaseClient;
-//			_firebaseClientProvider = firebaseClientProvider;
-//		}
-
-//		// GET: api/Schedule/User/{userId}
-//		[HttpGet("User/{userId}")]
-//		public async Task<IActionResult> GetUserSchedules(string userId)
-//		{
-//			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
-//			var schedules = await _firebaseClient
-//				.Child("Schedules")
-//				.OrderBy("UserId")
-//				.EqualTo(userId)
-//				.OnceAsync<Schedule>();
-
-//			if (!schedules.Any())
-//				return NotFound("No schedules found for this user.");
-
-//			foreach (var schedule in schedules)
-//			{
-//				schedule.Object.ScheduleId = schedule.Key;
-//			}
-
-//			return Ok(schedules.Select(s => s.Object));
-//		}
-
-//		// POST: api/Schedule
-//		[HttpPost]
-//		public async Task<IActionResult> CreateSchedule(string planType, Schedule schedule, List<Slot> sessions)
-//		{
-//			// Validate sessions based on the plan type
-//			var validation = ValidateSessions(planType, sessions);
-//			if (!validation.IsValid)
-//				return BadRequest(validation.ErrorMessage);
-
-//			// Check if Trainer is fully booked on the days of the new sessions
-//			var trainerAvailability = await CheckTrainerAvailability(schedule.TrainerId, sessions);
-//			if (!trainerAvailability)
-//				return BadRequest("Trainer is fully booked for one or more session dates.");
-
-//			// Generate IDs and save schedule to Firebase
-//			schedule.ScheduleId = Guid.NewGuid().ToString();
-//			schedule.SessionCount = sessions.Count;
-//			schedule.FirstSession = sessions.Min(s => s.Date);
-//			schedule.LastSession = sessions.Max(s => s.Date);
-
-//			await _firebaseClient
-//				.Child("Schedules")
-//				.Child(schedule.ScheduleId)
-//				.PutAsync(schedule);
-
-//			foreach (var session in sessions)
-//			{
-//				session.SlotId = Guid.NewGuid().ToString();
-//				session.ScheduleId = schedule.ScheduleId;
-
-//				await _firebaseClient
-//					.Child("Sessions")
-//					.Child(session.SlotId)
-//					.PutAsync(session);
-//			}
-
-//			return Ok("Schedule created successfully.");
-//		}
-
-//		private (bool IsValid, string ErrorMessage) ValidateSessions(string planType, List<Slot> sessions)
-//		{
-//			// Group sessions by the week of the year
-//			var sessionsByWeek = sessions.GroupBy(s =>
-//				CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(s.Date, CalendarWeekRule.FirstDay, DayOfWeek.Monday));
-
-//			if (planType == "TrainerRental")
-//			{
-//				foreach (var week in sessionsByWeek)
-//				{
-//					if (week.Count() != 5)
-//						return (false, "Trainer rental plan requires exactly 5 sessions per week.");
-//				}
-//			}
-//			else if (planType == "Boxing")
-//			{
-//				var validDays1 = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday };
-//				var validDays2 = new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday, DayOfWeek.Saturday };
-
-//				foreach (var week in sessionsByWeek)
-//				{
-//					var daysInWeek = week.Select(s => s.Date.DayOfWeek).ToList();
-//					if (week.Count() != 3 ||
-//						(!daysInWeek.SequenceEqual(validDays1) && !daysInWeek.SequenceEqual(validDays2)))
-//					{
-//						return (false, "Boxing plan sessions must be exactly 3 per week on Mon/Wed/Fri or Tue/Thu/Sat.");
-//					}
-//				}
-//			}
-
-//			return (true, string.Empty);
-//		}
-
-//		private async Task<bool> CheckTrainerAvailability(string trainerId, List<Slot> sessions)
-//		{
-//			foreach (var session in sessions)
-//			{
-//				var trainerSessions = await _firebaseClient
-//					.Child("Sessions")
-//					.OrderBy("TrainerId")
-//					.EqualTo(trainerId)
-//					.OnceAsync<Session>();
-
-//				var sessionCountForDate = trainerSessions
-//					.Where(s => s.Object.Date.Date == session.Date.Date)
-//					.Count();
-
-//				// Assuming a max of 8 sessions per day for a trainer
-//				if (sessionCountForDate >= 8)
-//					return false;
-//			}
-//			return true;
-//		}
-
-//		// GET: api/Schedule/Trainer/{trainerId}/Availability/{date}
-//		[HttpGet("Trainer/{trainerId}/Availability/{date}")]
-//		public async Task<IActionResult> GetTrainerAvailability(string trainerId, DateTime date)
-//		{
-//			var sessions = await _firebaseClient
-//				.Child("Sessions")
-//				.OrderBy("TrainerId")
-//				.EqualTo(trainerId)
-//				.OnceAsync<Session>();
-
-//			int maxSessionsPerDay = 8;
-//			int sessionCountForDate = sessions
-//				.Where(s => s.Object.Date.Date == date.Date)
-//				.Count();
-
-//			int remainingSlots = maxSessionsPerDay - sessionCountForDate;
-
-//			return remainingSlots <= 0
-//				? Ok("Trainer is fully booked for this date.")
-//				: Ok($"Trainer has {remainingSlots} slots available on {date:yyyy-MM-dd}.");
-//		}
-//	}
-//}
-
-
-using Alpha_API.Models;
+﻿using Alpha_API.Models;
 using Alpha_API.Services;
+using Alpha_API.ViewModel;
 using Firebase.Database;
 using Firebase.Database.Query;
 using Microsoft.AspNetCore.Mvc;
@@ -173,7 +8,15 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Alpha_API.Utils;
+using System.Text;
+using DocumentFormat.OpenXml.Spreadsheet;
+using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
+using DocumentFormat.OpenXml.Office2016.Excel;
+using System.Security.Claims;
 
 namespace Alpha_API.Controllers
 {
@@ -183,172 +26,628 @@ namespace Alpha_API.Controllers
 	{
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
+		private readonly EmailService _emailService;
 
-		public ScheduleController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider)
+
+		public ScheduleController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, EmailService emailService)
 		{
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
+			_emailService = emailService;
 		}
 
-		// GET: api/Schedule/User/{userId}
-		[HttpGet("User/{userId}")]
-		public async Task<IActionResult> GetUserSchedules(string userId)
+		// GET: api/Schedule/Customer/{userId}
+		[HttpGet("Customer/{userId}")]
+		public async Task<ActionResult<IEnumerable<Schedule>>> GetCustomerSchedules(string userId)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 			var schedules = await _firebaseClient
-				.Child("Schedules")
-				.OrderBy("UserId")
-				.EqualTo(userId)
-				.OnceAsync<Schedule>();
+			.Child("Schedules")
+			.OnceAsync<Schedule>();
 
-			if (!schedules.Any())
-				return NotFound("No schedules found for this user.");
+			var userSchedules = schedules.Where(sche =>
+				sche.Object.UserIds != null &&
+				sche.Object.UserIds.Split(',').Contains(userId)
+				);
 
-			foreach (var schedule in schedules)
+			if (!userSchedules.Any())
+				return NotFound("No schedules found for this customer.");
+
+			foreach (var schedule in userSchedules)
 			{
 				schedule.Object.ScheduleId = schedule.Key;
 			}
 
-			return Ok(schedules.Select(s => s.Object));
+			return userSchedules.Select(s => s.Object).ToList();
 		}
 
-		//// POST: api/Schedule
-		//[HttpPost]
-		//public async Task<IActionResult> CreateSchedule(string planType, Schedule schedule, List<Slot> sessions)
-		//{
-		//	// Validate sessions based on the plan type
-		//	var validation = ValidateSessions(planType, sessions);
-		//	if (!validation.IsValid)
-		//		return BadRequest(validation.ErrorMessage);
+		// GET: api/Schedule/Trainer/{userId}
+		[HttpGet("Trainer/{userId}")]
+		public async Task<ActionResult<IEnumerable<Schedule>>> GetTrainerSchedules(string userId)
+		{
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+			var schedules = await _firebaseClient
+			.Child("Schedules")
+			.OrderBy("trainerId")
+			.EqualTo(userId)
+			.OnceAsync<Schedule>();
 
-		//	// Check if Trainer is fully booked on the days of the new sessions
-		//	var trainerAvailability = await CheckTrainerAvailability(schedule.TrainerId, sessions);
-		//	if (!trainerAvailability)
-		//		return BadRequest("Trainer is fully booked for one or more session dates.");
+			var userSchedules = schedules.Where(sche =>
+				sche.Object.TrainerId != null &&
+				sche.Object.TrainerId.Equals(userId)
+				);
 
-		//	// Generate IDs and save schedule to Firebase
-		//	schedule.ScheduleId = Guid.NewGuid().ToString();
-		//	schedule.SessionCount = sessions.Count;
-		//	schedule.FirstSession = sessions.Min(s => s.Date);
-		//	schedule.LastSession = sessions.Max(s => s.Date);
+			if (!userSchedules.Any())
+				return NotFound("No schedules found for this trainer.");
 
-		//	await _firebaseClient
-		//		.Child("Schedules")
-		//		.Child(schedule.ScheduleId)
-		//		.PutAsync(schedule);
+			foreach (var schedule in userSchedules)
+			{
+				schedule.Object.ScheduleId = schedule.Key;
+			}
 
-		//	foreach (var session in sessions)
-		//	{
-		//		session.SlotId = Guid.NewGuid().ToString();
-		//		session.ScheduleId = schedule.ScheduleId;
+			return userSchedules.Select(s => s.Object).ToList();
+		}
 
-		//		await _firebaseClient
-		//			.Child("Sessions")
-		//			.Child(session.SlotId)
-		//			.PutAsync(session);
-		//	}
+		// GET: api/Schedule/MySchedules
+		[HttpGet("MySchedules")]
+		public async Task<ActionResult<IEnumerable<Schedule>>> GetMySchedules()
+		{
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
-		//	return Ok("Schedule created successfully.");
-		//}
+			// Retrieve the uid claim
+			var userIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
 
-		//private (bool IsValid, string ErrorMessage) ValidateSessions(string planType, List<Slot> sessions)
-		//{
-		//	// Group sessions by both year and week number
-		//	var sessionsByWeek = sessions
-		//		.GroupBy(s => new
-		//		{
-		//			Year = s.Date.Year,
-		//			Week = CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(s.Date.ToDateTime(s.StartTime), CalendarWeekRule.FirstDay, DayOfWeek.Monday)
-		//		});
+			if (userIdClaim == null)
+			{
+				return Unauthorized("User not authenticated.");
+			}
 
-		//	var firstSessionYear = sessionsByWeek.FirstOrDefault().Select(s => s.Date.Year).OrderBy(d => d).First();
-		//	var lastSessionYear = sessionsByWeek.LastOrDefault().Select(s => s.Date.Year).OrderBy(d => d).Last();
+			var userId = userIdClaim.Value; // This is the Firebase UID
 
-		//	if (firstSessionYear < lastSessionYear)
-		//	{
-		//		//process here
-		//	}
+			var schedules = await _firebaseClient
+			.Child("Schedules")
+			.OnceAsync<Schedule>();
+			//chua dc
+			var userSchedules = schedules.Where(sche =>
+				sche.Object.UserIds != null &&
+				sche.Object.UserIds.Equals(userId)
+				);
 
-		//	if (planType == "TrainerRental")
-		//	{
-		//		// TrainerRental plan should have exactly 5 sessions per full week
-		//		foreach (var weekGroup in sessionsByWeek)
-		//		{
-		//			if (weekGroup.Count() != 5)
-		//				return (false, "Trainer rental plan requires exactly 5 sessions per week.");
-		//		}
-		//	}
-		//	else if (planType == "Boxing")
-		//	{
-		//		// Boxing plan should have exactly 3 sessions on Mon/Wed/Fri or Tue/Thu/Sat, and every week must follow the same pattern
-		//		var firstWeek = sessionsByWeek.FirstOrDefault();
+			if (!userSchedules.Any())
+				return NotFound("No schedules found for this trainer.");
 
-		//		// Determine the valid days pattern from the first week
-		//		var daysInFirstWeek = firstWeek.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
-		//		var validDaysSet1 = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday };
-		//		var validDaysSet2 = new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday, DayOfWeek.Saturday };
+			foreach (var schedule in userSchedules)
+			{
+				schedule.Object.ScheduleId = schedule.Key;
+			}
 
-		//		if (daysInFirstWeek.Count != 3 ||
-		//			!(daysInFirstWeek.SequenceEqual(validDaysSet1) || daysInFirstWeek.SequenceEqual(validDaysSet2)))
-		//		{
-		//			return (false, "Boxing plan must have exactly 3 sessions per week on either Mon/Wed/Fri or Tue/Thu/Sat, consistently.");
-		//		}
+			return userSchedules.Select(s => s.Object).ToList();
+		}
 
-		//		// Use this pattern to validate each subsequent week
-		//		foreach (var weekGroup in sessionsByWeek)
-		//		{
-		//			var daysInWeek = weekGroup.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
-		//			if (!daysInWeek.SequenceEqual(daysInFirstWeek))
-		//			{
-		//				return (false, "All weeks must follow the same days pattern established in the first week: either Mon/Wed/Fri or Tue/Thu/Sat.");
-		//			}
-		//		}
-		//	}
+		// POST: api/Schedule
+		[HttpPost]
+		public async Task<IActionResult> CreateSchedule([FromBody] RegisterScheduleRequest request)
+		{
+			string planType = "";
+			string trainerId = "";
+			int numberOfUsers = request.Emails.Count;
 
-		//	return (true, string.Empty);
-		//}
+			if (numberOfUsers == 0)
+			{
+				return BadRequest("No emails in request");
+			}
+
+			if (string.IsNullOrEmpty(request.TrainerRentalPlanId) && string.IsNullOrEmpty(request.BoxingMembershipPlanId))
+			{
+				return BadRequest("Memberships or plans are null");
+			}
+
+			List<string> userIds = new List<string>();
+			StringBuilder userIdsBuilder = new StringBuilder();
+
+
+			foreach (var email in request.Emails)
+			{
+				var userId = await _emailService.GetUserIdByEmail(email);
+				userIds.Add(userId);
+			}
+
+			foreach (var userId in userIds)
+				userIdsBuilder.Append(userId).Append(",");
+			if (userIdsBuilder.Length > 0)
+			{
+				userIdsBuilder.Length--; // This removes the last comma
+			}
+
+			string userIdsString = userIdsBuilder.ToString();
+
+			if (!string.IsNullOrEmpty(request.TrainerRentalPlanId))
+			{
+				planType = "TrainerRental";
+
+				var plan = await _firebaseClient
+					.Child("TrainerRentalPlans")
+					.Child(request.TrainerRentalPlanId)
+					.OnceSingleAsync<TrainerRentalPlan>();
+
+				trainerId = plan.TrainerId;
+
+				var option = await _firebaseClient
+					.Child("RentalOptions")
+					.Child(plan.RentalOptionId)
+					.OnceSingleAsync<RentalOption>();
+				option.RentalOptionId = plan.RentalOptionId;
+
+				if (option.MemberCount != numberOfUsers)
+				{
+					return BadRequest($"This plan is for {option.MemberCount} persons");
+				}
+
+				if (!request.DurationMonths.HasValue && !request.Sessions.HasValue || request.Sessions == 0 && request.DurationMonths == 0)
+				{
+					return BadRequest("Invalid months or sessions");
+				}
+
+				if (request.Sessions > option.SessionCountMax || request.Sessions < option.SessionCountMin)
+				{
+					return BadRequest($"The sessions registered are invalid with this rental plan");
+				}
+
+				if (option.SessionCountMax == 0 && option.SessionCountMin == 0)
+				{
+					if (!request.DurationMonths.HasValue || request.DurationMonths == 0)
+					{
+						return BadRequest($"Please fill in number of months to register");
+					}
+
+					if (request.Slots.Count != request.DurationMonths * 5 * 4)
+					{
+						return BadRequest($"With {request.DurationMonths} months must register {request.DurationMonths * 5 * 4} slots!");
+					}
+				}
+				else
+				{
+					if (!request.Sessions.HasValue || request.Sessions == 0)
+					{
+						return BadRequest($"Please fill in number of sessions to register");
+					}
+
+					if (request.Slots.Count != request.Sessions)
+					{
+						return BadRequest($"With {request.Sessions} sessions must register {request.Sessions} slots!");
+					}
+
+				}
+
+			}
+			else if (!string.IsNullOrEmpty(request.BoxingMembershipPlanId))
+			{
+				planType = "Boxing";
+
+				var plan = await _firebaseClient
+					.Child("BoxingMembershipPlans")
+					.Child(request.BoxingMembershipPlanId)
+					.OnceSingleAsync<BoxingMembershipPlan>();
+
+				trainerId = plan.BoxingTrainerId;
+
+				var option = await _firebaseClient
+					.Child("BoxingOptions")
+					.Child(plan.BoxingOptionId)
+					.OnceSingleAsync<BoxingOption>();
+
+				if (option.MemberCount != numberOfUsers)
+				{
+					return BadRequest($"This plan is for {option.MemberCount} persons");
+				}
+			}
+			else if (string.IsNullOrEmpty(request.TrainerRentalPlanId) && string.IsNullOrEmpty(request.BoxingMembershipPlanId))
+			{
+				return BadRequest("No membership or plan yet.");
+			}
+			else
+			{
+				return BadRequest("Invalid request.");
+			}
+
+
+			// Validate slots based on the plan type
+			var validation = ValidateSlots(planType, request.Slots);
+
+			if (!validation.IsValid)
+				return BadRequest(validation.ErrorMessage);
+
+
+			// Check if Trainer is fully booked on the days of the new slots
+			var trainerAvailability = await CheckTrainerAvailability(trainerId, request.Slots);
+			if (!trainerAvailability)
+				return BadRequest("Trainer is fully booked for one or more slot dates.");
+
+			// Generate IDs and save schedule to Firebase
+			var schedule = new
+			{
+				slotCount = request.Slots.Count,
+				firstSlot = request.Slots.Min(s => s.Date),
+				lastSlot = request.Slots.Max(s => s.Date),
+				trainerId = trainerId,
+				userIds = userIdsString,
+			};
+
+			var addedSchedule = await _firebaseClient
+				.Child("Schedules")
+				.PostAsync(schedule);
+
+			var options = new JsonSerializerOptions
+			{
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+			};
+
+
+
+			foreach (var slot in request.Slots)
+			{
+				slot.ScheduleId = addedSchedule.Key;
+
+				var jsonString = JsonSerializer.Serialize(slot, options);
+
+				await _firebaseClient
+					.Child("Slots")
+					.PostAsync(jsonString);
+			}
+
+			//return Ok("Schedule created successfully.");
+			return Ok(new
+			{
+				scheduleId = addedSchedule.Key
+			});
+
+		}
+
+		private (bool IsValid, string ErrorMessage) ValidateSlots(string planType, List<Slot> slots)
+		{
+			// Group slots by both year and week number
+			var slotsByWeek = slots
+				.OrderBy(d => d.Date)
+				.GroupBy(s => new
+				{
+					Year = s.Date.Year,
+					Week = CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(s.Date.ToDateTime(s.StartTime), CalendarWeekRule.FirstDay, DayOfWeek.Monday)
+				});
+
+			// Find the first and last years in the slots
+			var firstYear = slotsByWeek.FirstOrDefault()?.Key.Year ?? 0;
+			var lastYear = slotsByWeek.LastOrDefault()?.Key.Year ?? 0;
+
+			// Loop through each year within the range
+			for (int year = firstYear; year <= lastYear; year++)
+			{
+				var slotsInYear = slotsByWeek
+					.Where(g => g.Key.Year == year)
+					.OrderBy(d => d.Key.Week)
+					.ToList();
+
+				if (planType == "TrainerRental")
+				{
+					// TrainerRental plan should have exactly 5 slots per full week
+					foreach (var weekGroup in slotsInYear)
+					{
+						// Check if the current week has exactly 5 slots
+						if (weekGroup.Count() != 5)
+						{
+							// Calculate all available weekdays from the first slots date until Friday
+							var firstSlotDate = weekGroup.First().Date;
+
+							if (firstSlotDate.DayOfWeek == DayOfWeek.Saturday || firstSlotDate.DayOfWeek == DayOfWeek.Sunday)
+							{
+								return (false, "Can not choose Saturday and Sunday.");
+							}
+
+							// Calculate the end of the week date, ensuring it lands on a Friday
+							var fridayOfWeek = firstSlotDate
+								.AddDays((int)DayOfWeek.Friday - (int)firstSlotDate.DayOfWeek);
+
+							var mondayOfWeek = firstSlotDate
+								.AddDays((int)DayOfWeek.Monday - (int)firstSlotDate.DayOfWeek);
+
+							var isFullWeekDay = fridayOfWeek.Year == mondayOfWeek.Year;
+
+
+							// If it's the last week of the year and not a full week, check if we can combine it with the first week of next year
+							if (weekGroup.Key.Week == slotsInYear.Max(w => w.Key.Week) && !isFullWeekDay && weekGroup.Key.Year != slotsByWeek.Max(x => x.Key.Year))
+							{
+								// Get slots from the first week of the next year
+								var nextYearSlots = slotsByWeek
+									.Where(g => g.Key.Year == year + 1 && g.Key.Week == 1)
+									.SelectMany(g => g)
+									.ToList();
+
+								// Combine slots from the last week of the current year with the first week of the next year
+								var combinedWeekSlots = weekGroup.Concat(nextYearSlots).ToList();
+
+								// Check if the combined slots form a full week
+								if (combinedWeekSlots.Count == 5)
+								{
+									continue; // This combined week is valid, skip further checks for this week
+								}
+							}
+							// Check if this is the first week of the year and needs to be combined with the last week of the previous year
+							else if (weekGroup.Key.Week == 1 && year > firstYear && !isFullWeekDay)
+							{
+								var previousYearSlots = slotsByWeek
+									.Where(g => g.Key.Year == year - 1 && g.Key.Week == slotsByWeek.Where(w => w.Key.Year == year - 1).Max(w => w.Key.Week))
+									.SelectMany(g => g)
+									.ToList();
+
+								var combinedWeekSlots = previousYearSlots.Concat(weekGroup).ToList();
+								if (combinedWeekSlots.Count == 5)
+								{
+									continue;
+								}
+							}
+							// Check if this is the first week of the year and may be a partial week
+							else if (weekGroup.Key.Week == slotsInYear.Min(w => w.Key.Week) && year == firstYear && weekGroup.Count() < 5)
+							{
+								// Generate the list of required weekdays between the first slot date and the calculated end of week (Friday)
+								var requiredWeekdays = Enumerable.Range(0, fridayOfWeek.DayNumber - firstSlotDate.DayNumber)
+									.Select(offset => firstSlotDate.AddDays(offset).DayOfWeek)
+									.Where(d => d >= DayOfWeek.Monday && d <= DayOfWeek.Friday)
+									.ToList();
+
+
+								// Check if a slot is registered on each available weekday
+								var registeredWeekdays = weekGroup.Select(s => s.Date.DayOfWeek).ToList();
+								var missingWeekdays = requiredWeekdays.Except(registeredWeekdays).ToList();
+
+								if (missingWeekdays.Any())
+								{
+									return (false, $"In the first partial week of {year}, slots are missing on these required weekdays: {string.Join(", ", missingWeekdays)}.");
+								}
+
+								continue;
+							}
+
+							// If not valid, return error message
+							return (false, $"Trainer rental plan requires exactly 5 slots per week in year {year}.");
+						}
+
+						// Check that all slots fall on weekdays (Monday to Friday)
+						if (!AreSlotsOnWeekdays(weekGroup))
+						{
+							return (false, "Trainer rental plan slots must occur only on weekdays (Monday to Friday).");
+						}
+					}
+				}
+				else if (planType == "Boxing")
+				{
+					// Boxing plan should have exactly 3 slots on Mon/Wed/Fri or Tue/Thu/Sat, and every week must follow the same pattern
+					var firstWeek = slotsInYear.Find(w => w.Key.Week == slotsInYear.Min(w => w.Key.Week));
+
+					if (firstWeek != null)
+					{
+						var daysInFirstWeek = firstWeek.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
+						var validDaysSet1 = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday };
+						var validDaysSet2 = new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday, DayOfWeek.Saturday };
+						var validSet = new List<DayOfWeek>();
+
+						if (daysInFirstWeek.Count == 3)
+						{
+							if (!(daysInFirstWeek.SequenceEqual(validDaysSet1) || daysInFirstWeek.SequenceEqual(validDaysSet2)))
+							{
+								return (false, "Boxing plan must have exactly 3 slots per week on either Mon/Wed/Fri or Tue/Thu/Sat, consistently.");
+							}
+							else if (daysInFirstWeek.SequenceEqual(validDaysSet1))
+							{
+								validSet = validDaysSet1;
+							}
+							else if (daysInFirstWeek.SequenceEqual(validDaysSet2))
+							{
+								validSet = validDaysSet2;
+							}
+						}
+
+						else if (daysInFirstWeek.Count < 3)
+						{
+							// Ensure all days in this partial week belong to one of the allowed sets
+							bool isValidPartialWeek = false;
+
+							if (daysInFirstWeek.All(day => validDaysSet1.Contains(day)))
+							{
+								validSet = validDaysSet1;
+								isValidPartialWeek = true;
+							}
+
+							if (daysInFirstWeek.All(day => validDaysSet2.Contains(day)))
+							{
+								validSet = validDaysSet2;
+								isValidPartialWeek = true;
+							}
+
+							// Check that if only 2 days are chosen, they are adjacent in the pattern
+							if (isValidPartialWeek && daysInFirstWeek.Count == 2)
+							{
+								bool isAdjacentInValidSet1 = daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday }) ||
+															 daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Wednesday, DayOfWeek.Friday });
+
+								bool isAdjacentInValidSet2 = daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday }) ||
+															 daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Thursday, DayOfWeek.Saturday });
+
+								if (!(isAdjacentInValidSet1 || isAdjacentInValidSet2))
+								{
+									return (false, "Partial weeks with 2 slots must have adjacent days within the same set: Mon/Wed, Wed/Fri, Tue/Thu, or Thu/Sat.");
+								}
+							}
+
+							// Ensure that all slots in the partial week follow the chosen pattern, without skipping days within a set
+							if (!isValidPartialWeek)
+							{
+								return (false, "Partial weeks must only contain slots on allowed days, and slots should be within a single set (Mon/Wed/Fri or Tue/Thu/Sat).");
+							}
+
+							// Check that a partial week with 1 slot is in one of the allowed days
+							if (daysInFirstWeek.Count == 1)
+							{
+								if (!validDaysSet1.Contains(daysInFirstWeek[0]) && !validDaysSet2.Contains(daysInFirstWeek[0]))
+								{
+									return (false, "Single-day slots in a partial week must be on an allowed day (either Mon, Wed, Fri or Tue, Thu, Sat).");
+								}
+							}
+						}
+
+						else if (daysInFirstWeek.Count > 3)
+						{
+							return (false, "Boxing plan cannot have more than 3 slots per week.");
+						}
+
+						else
+						{
+							return (false, "Boxing plan must have exactly 3 slots per week on either Mon/Wed/Fri or Tue/Thu/Sat, consistently.");
+						}
+
+						// Validate each week to follow the established pattern
+						foreach (var weekGroup in slotsInYear)
+						{
+							var daysInWeek = weekGroup.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
+
+							if (daysInWeek.Count == 3)
+							{
+								// Full week, must match the valid pattern exactly
+								if (!daysInWeek.SequenceEqual(validSet))
+								{
+									return (false, $"All full weeks in year {year} must follow the same pattern: either Mon/Wed/Fri or Tue/Thu/Sat.");
+								}
+							}
+							else
+							{
+								// Partial week: must only contain days from the valid pattern
+								if (!daysInWeek.All(d => validSet.Contains(d)))
+								{
+									return (false, "Partial weeks must only contain sessions on allowed days based on the established pattern.");
+								}
+							}
+						}
+
+						// Get the date of the last session
+						var lastSessionDate = slotsInYear.Max(w => w.Max(s => s.Date));
+
+						// Calculate the start of the week for the last session
+						var startOfLastWeek = lastSessionDate.AddDays(-(int)lastSessionDate.DayOfWeek + (int)DayOfWeek.Monday);
+
+						// Check if the last week's sessions form a complete valid pattern
+						var lastWeekSlots = slotsInYear.Last();
+						var lastWeekDays = lastWeekSlots.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
+
+						// If the last week has fewer than 3 days, ensure all days align with the valid pattern
+						if (lastWeekDays.Count < 3)
+						{
+							if (!lastWeekDays.All(day => validSet.Contains(day)))
+							{
+								return (false, "Sessions crossing into a new year must still follow the chosen pattern in partial weeks.");
+							}
+						}
+
+						// Ensure no extra days in the last week that don’t align with the valid pattern
+						if (lastWeekDays.Count > 3 || !lastWeekDays.SequenceEqual(validSet.Take(lastWeekDays.Count)))
+						{
+							return (false, "The final week's sessions do not align with the chosen pattern.");
+						}
+
+					}
+				}
+			}
+
+			return (true, string.Empty);
+		}
+		// Helper method to check if all slots in a week are on weekdays
+		private bool AreSlotsOnWeekdays(IEnumerable<Slot> weekGroup)
+		{
+			var weekdays = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday };
+			return weekGroup.All(s => weekdays.Contains(s.Date.DayOfWeek));
+		}
 
 		private async Task<bool> CheckTrainerAvailability(string trainerId, List<Slot> slots)
 		{
-			foreach (var slot in slots)
+			var endSlotDate = slots.Max(s => s.Date);
+			var startSlotDate = slots.Min(s => s.Date);
+
+			// Group requested slots by date
+			var slotsByDay = slots
+				.GroupBy(s => s.Date)
+				.Where(g => g.Key.DayOfWeek >= DayOfWeek.Monday && g.Key.DayOfWeek <= DayOfWeek.Friday) // Monday to Friday only
+				.ToDictionary(g => g.Key, g => g.ToList());
+
+			// Retrieve the trainer's existing schedules
+			var trainerSchedules = await _firebaseClient
+				.Child("Schedules")
+				.OrderBy("trainerId")
+				.EqualTo(trainerId)
+				.OnceAsync<Schedule>();
+
+			// Collect all the trainer's existing slots in the relevant date range
+			List<Slot> trainerSlotsList = new List<Slot>();
+			foreach (var schedule in trainerSchedules)
 			{
-				var trainerSessions = await _firebaseClient
-					.Child("Sessions")
-					.OrderBy("TrainerId")
-					.EqualTo(trainerId)
+				var trainerSlots = await _firebaseClient
+					.Child("Slots")
+					.OrderBy("scheduleId")
+					.EqualTo(schedule.Object.ScheduleId)
 					.OnceAsync<Slot>();
 
-				var sessionCountForDate = trainerSessions
-					.Where(s => s.Object.Date == slot.Date)
-					.Count();
-
-				// Assuming a max of 8 sessions per day for a trainer
-				if (sessionCountForDate >= 8)
-					return false;
+				trainerSlotsList.AddRange(
+					trainerSlots.Select(sl => sl.Object)
+					.Where(sl => sl.Date <= endSlotDate && sl.Date >= startSlotDate));
 			}
-			return true;
+
+			// Group trainer's existing slots by date (Monday to Friday only)
+			var trainerSlotsByDay = trainerSlotsList
+				.GroupBy(s => s.Date)
+				.Where(g => g.Key.DayOfWeek >= DayOfWeek.Monday && g.Key.DayOfWeek <= DayOfWeek.Friday)
+				.ToDictionary(g => g.Key, g => g.ToList());
+
+			// Check availability for each requested date
+			foreach (var requestedDay in slotsByDay)
+			{
+				var requestedDate = requestedDay.Key;
+				var requestedSlots = requestedDay.Value;
+
+				// Check if this date already has some slots scheduled
+				if (trainerSlotsByDay.TryGetValue(requestedDate, out var existingSlots))
+				{
+					// Total slots for the day, including existing and requested ones
+					int totalSlotsForDay = existingSlots.Count + requestedSlots.Count;
+
+					// Ensure total slots do not exceed 8
+					if (totalSlotsForDay > 8)
+					{
+						return false; // Exceeds allowed slots for the day
+					}
+
+					// Check for time conflicts within the requested slots
+					foreach (var requestedSlot in requestedSlots)
+					{
+						if (existingSlots.Any(existingSlot => SlotsOverlap(existingSlot, requestedSlot)))
+						{
+							return false; // Conflicting slot found
+						}
+					}
+				}
+				else
+				{
+					// No existing slots on this day; just check if requested slots exceed the limit
+					if (requestedSlots.Count > 1)
+					{
+						return false; // Exceeds allowed slots for the day
+					}
+				}
+			}
+
+			return true; // All requested slots are available
 		}
 
-		// GET: api/Schedule/Trainer/{trainerId}/Availability/{date}
-		[HttpGet("Trainer/{trainerId}/Availability/{date}")]
-		public async Task<IActionResult> GetTrainerAvailability(string trainerId, DateTime date)
+		// Helper method to check if two slots overlap
+		private bool SlotsOverlap(Slot existingSlot, Slot requestedSlot)
 		{
-			var sessions = await _firebaseClient
-				.Child("Sessions")
-				.OrderBy("TrainerId")
-				.EqualTo(trainerId)
-				.OnceAsync<Slot>();
-
-			int maxSessionsPerDay = 8;
-			int sessionCountForDate = sessions
-				.Where(s => s.Object.Date == DateOnly.FromDateTime(date))
-				.Count();
-
-			int remainingSlots = maxSessionsPerDay - sessionCountForDate;
-
-			return remainingSlots <= 0
-				? Ok("Trainer is fully booked for this date.")
-				: Ok($"Trainer has {remainingSlots} slots available on {date:yyyy-MM-dd}.");
+			return existingSlot.StartTime < requestedSlot.EndTime && requestedSlot.StartTime < existingSlot.EndTime;
 		}
 	}
 }

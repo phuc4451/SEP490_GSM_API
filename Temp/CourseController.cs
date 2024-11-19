@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Firebase.Database;
-using Alpha_API.Models;
 using Firebase.Database.Query;
 using Microsoft.AspNetCore.Authorization;
+using Alpha_API.Temp;
 
 [Route("api/[controller]")]
 [ApiController]

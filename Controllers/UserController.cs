@@ -313,10 +313,10 @@ public class UsersController : ControllerBase
 
 	// POST: api/users/addstaff
 	[Authorize(Roles = "admin")]
-	[HttpPost("addstaff")]
+	[HttpPost("addStaff")]
 	public async Task<ActionResult> AddStaff([FromBody] RegisterStaffDto staff)
 	{
-		if (staff == null ||  string.IsNullOrEmpty(staff.IdCard) || string.IsNullOrEmpty(staff.Email) || string.IsNullOrEmpty(staff.Password))
+		if (staff == null ||  string.IsNullOrEmpty(staff.IdCard) || string.IsNullOrEmpty(staff.Phone) || string.IsNullOrEmpty(staff.Name))
 		{
 			return BadRequest();
 		}
@@ -324,25 +324,6 @@ public class UsersController : ControllerBase
 
 		try
 		{
-			// Create a Firebase Auth user
-			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
-			{
-				Email = staff.Email,
-				Password = staff.Password,
-				DisplayName = staff.Name,
-				EmailVerified = false,
-				Disabled = false
-			});
-
-			if (createUserResponse == null)
-			{
-				return BadRequest("User registration failed.");
-			}
-			var userId = createUserResponse.Uid;
-
-			// Generate email verification link
-			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(staff.Email);
-
 			var roles = await _roleService.GetAllRoles();
 			string roleStaffId = roles.FirstOrDefault(role => role.RoleName == "staff")?.RoleId;
 
@@ -352,7 +333,7 @@ public class UsersController : ControllerBase
 				Email = staff.Email,
 				RoleId = roleStaffId, // Staff role
 				Phone = staff.Phone,
-				UserId = userId,
+				UserId = "",
 				Gender = staff.Gender,
 				Address = staff.Address,
 				UserAvatar = staff.UserAvatar,
@@ -368,16 +349,10 @@ public class UsersController : ControllerBase
 
 			var jsonString = JsonSerializer.Serialize(u, options);
 
-			// Send the verification email using a third-party email service
-			var emailSent = _emailService.SendVerificationEmail(staff.Email, verificationLink);
-			if (!emailSent)
-			{
-				return BadRequest("Failed to send email verification.");
-			}
 
 			await _firebaseClient
 	.Child("users")
-	.Child(userId)
+	.Child("")
 	.PutAsync(jsonString);
 
 			return Ok("User created. Please verify your email.");
@@ -494,7 +469,7 @@ public class UsersController : ControllerBase
 
 	// POST: api/users/addcustomer
 	[Authorize(Roles = "admin,staff")]
-	[HttpPost("addcustomer")]
+	[HttpPost("addCustomer")]
 	public async Task<ActionResult> AddCustomer([FromBody] RegisterCustomerDto customer)
 	{
 		if (customer == null)

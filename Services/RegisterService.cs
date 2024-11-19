@@ -289,7 +289,7 @@ namespace Alpha_API.Services
 			}
 			else
 			{
-				throw new ArgumentException("Fill missing required fields in trainer rental register form");
+				throw new ArgumentException("Required fields are missing or invalid");
 			}
 
 			Payment payment = new Payment()
@@ -511,7 +511,6 @@ namespace Alpha_API.Services
 				Registration = registration,
 				Payment = payment,
 				Info = info
-
 			};
 
 			//return (plan, option, registration, payment, info);
