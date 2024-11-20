@@ -28,7 +28,7 @@ namespace Alpha_API.Controllers
 		// GET: api/BoxingMembershipPlan
 		[HttpGet]
 		[Authorize(Roles = "admin,staff,customer")]
-		public async Task<ActionResult<IEnumerable<BoxingMembershipPlan>>> GetBoxingMembershipPlans()
+		public async Task<ActionResult<IEnumerable<Object>>> GetBoxingMembershipPlans()
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 			var plans = await _firebaseClient
@@ -41,7 +41,34 @@ namespace Alpha_API.Controllers
 				plan.Object.BoxingMembershipPlanId = plan.Key;
 			}
 
-			return plans.Select(m => m.Object).ToList();
+			var listPlan = plans.Select(p => p.Object).ToList();
+			var list = new List<Object>();
+			foreach (var plan in listPlan)
+			{
+				var trainer = await _firebaseClient
+					.Child("Trainers")
+					.Child(plan.BoxingTrainerId)
+					.OnceSingleAsync<Trainer>();
+
+				var option = await _firebaseClient
+					.Child("BoxingOptions")
+					.Child(plan.BoxingOptionId)
+					.OnceSingleAsync<BoxingOption>();
+
+				var pl = new
+				{
+					plan.BoxingMembershipPlanId,
+					trainerName = trainer.Name,
+					option.Description,
+					option.Sessions,
+					option.Months,
+					option.MemberCount,
+					option.TotalPrice,
+				};
+
+				list.Add(pl);
+			}
+			return list;
 		}
 
 		// GET: api/BoxingMembershipPlan/{id}

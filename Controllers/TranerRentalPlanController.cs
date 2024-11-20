@@ -29,7 +29,7 @@ namespace Alpha_API.Controllers
 		// GET: api/TrainerRentalPlan
 		[HttpGet]
 		[Authorize(Roles = "admin,staff,customer")]
-		public async Task<ActionResult<IEnumerable<TrainerRentalPlan>>> GetTrainerRentalPlans()
+		public async Task<ActionResult<IEnumerable<Object>>> GetTrainerRentalPlans()
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 			var plans = await _firebaseClient
@@ -41,7 +41,35 @@ namespace Alpha_API.Controllers
 				plan.Object.TrainerRentalPlanId = plan.Key;
 			}
 
-			return plans.Select(p => p.Object).ToList();
+			var listPlan = plans.Select(p => p.Object).ToList();
+			var list = new List<Object>();
+			foreach (var plan in listPlan)
+			{
+				var trainer = await _firebaseClient
+					.Child("Trainers")
+					.Child(plan.TrainerId)
+					.OnceSingleAsync<Trainer>();
+
+				var option = await _firebaseClient
+					.Child("RentalOptions")
+					.Child(plan.RentalOptionId)
+					.OnceSingleAsync<RentalOption>();
+
+				var pl = new
+				{
+					plan.TrainerRentalPlanId,
+					trainerName=trainer.Name,
+					option.Description,
+					option.PricePerPersonPerSession,
+					option.PricePerPersonPerMonth,
+					option.SessionCountMax,
+					option.SessionCountMin,
+					option.MemberCount,
+				};
+
+				list.Add(pl);
+			}
+			return list;
 		}
 
 		// GET: api/TrainerRentalPlan/{id}
