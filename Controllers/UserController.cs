@@ -73,10 +73,48 @@ public class UsersController : ControllerBase
 		foreach (var user in users)
 		{
 			var roleName = await _roleService.GetRoleName(user.Object.RoleId);
-			if ( roleName == "staff")
+			if (roleName == "staff")
 				userList.Add(user.Object);
 		}
 
+		return Ok(userList);
+	}
+
+	// GET: api/users/GetTrainers
+	[Authorize(Roles = "admin,staff")]
+	[HttpGet("GetTrainers")]
+	public async Task<ActionResult<IEnumerable<User>>> GetTrainers()
+	{
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+		var users = await _firebaseClient
+			.Child("users")
+			.OnceAsync<User>();
+
+		var trainers = await _firebaseClient
+			.Child("Trainers")
+			.OnceAsync<Trainer>();
+
+		var userList = new List<User>();
+		foreach (var user in users)
+		{
+			var roleName = await _roleService.GetRoleName(user.Object.RoleId);
+			if (roleName == "pt")
+			{
+				foreach (var trainer in trainers)
+				{
+					if (trainer.Object.UserId == user.Object.UserId)
+					{
+						var pt = new
+						{
+							trainerId = trainer.Object.TrainerId,
+
+						};
+						userList.Add(user.Object);
+					}
+
+				}
+			}
+		}
 		return Ok(userList);
 	}
 
@@ -284,13 +322,13 @@ public class UsersController : ControllerBase
 
 		User user = new User()
 		{
-			Address=u.Address,
-			Dob= u.Dob,
-			Email=u.Email,
-			Gender=u.Gender,
-			IdCard=u.IdCard,
-			Name=u.Name,
-			Phone=u.Phone,
+			Address = u.Address,
+			Dob = u.Dob,
+			Email = u.Email,
+			Gender = u.Gender,
+			IdCard = u.IdCard,
+			Name = u.Name,
+			Phone = u.Phone,
 			UserAvatar = u.UserAvatar,
 		};
 
@@ -316,7 +354,7 @@ public class UsersController : ControllerBase
 	[HttpPost("addStaff")]
 	public async Task<ActionResult> AddStaff([FromBody] RegisterStaffDto staff)
 	{
-		if (staff == null ||  string.IsNullOrEmpty(staff.IdCard) || string.IsNullOrEmpty(staff.Phone) || string.IsNullOrEmpty(staff.Name))
+		if (staff == null || string.IsNullOrEmpty(staff.IdCard) || string.IsNullOrEmpty(staff.Phone) || string.IsNullOrEmpty(staff.Name))
 		{
 			return BadRequest();
 		}
@@ -444,12 +482,12 @@ public class UsersController : ControllerBase
 			Trainer addTrainer = new Trainer()
 			{
 				Name = trainer.Name,
-				UserId=userId,
+				UserId = userId,
 				IsTrainerBoxing = trainer.IsBoxer,
 				IsTrainerGym = trainer.IsGymer,
 			};
 
-			var trainerName= await _trainerService.AddTrainerAsync(addTrainer);
+			var trainerName = await _trainerService.AddTrainerAsync(addTrainer);
 
 			return Ok($"Trainer {trainerName} created. Please verify your email.");
 		}
@@ -516,7 +554,7 @@ public class UsersController : ControllerBase
 				.PostAsync(jsonString);
 
 			return Ok();
-	
+
 		}
 		catch (FirebaseAuthException ex)
 		{

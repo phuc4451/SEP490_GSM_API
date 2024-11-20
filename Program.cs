@@ -1,6 +1,7 @@
 using Alpha_API.Controllers;
 using Alpha_API.Services;
 using Alpha_API.Utils;
+using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using Firebase.Database;
 using FirebaseAdmin;
 using FirebaseAdmin.Auth;
@@ -14,11 +15,12 @@ using Microsoft.OpenApi.Models;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+
 namespace WebAPI
 {
 	public class Program
 	{
-		public static void Main(string[] args)
+		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
 
@@ -40,6 +42,8 @@ namespace WebAPI
 			builder.Services.AddScoped<TrainerService>();
 			builder.Services.AddScoped<QrCodeService>();
 			builder.Services.AddSingleton<PaymentMethodService>();
+			builder.Services.AddSingleton<TimeSlotService>();
+			builder.Services.AddScoped<IScheduleService, ScheduleService>();
 			builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 			builder.Services.AddScoped<FirebaseClientProvider>(provider =>
 				new FirebaseClientProvider(
@@ -131,6 +135,12 @@ namespace WebAPI
 
 			var app = builder.Build();
 
+			using (var scope = app.Services.CreateScope())
+			{
+				var timeSlotService = scope.ServiceProvider.GetRequiredService<TimeSlotService>();
+				await timeSlotService.LoadTimeSlotsAsync();
+			}
+
 			if (app.Environment.IsDevelopment())
 			{
 				app.UseSwagger();
@@ -138,7 +148,7 @@ namespace WebAPI
 			}
 
 			app.UseHttpsRedirection();
-			app.UseRouting();	
+			app.UseRouting();
 			app.UseCors("CORSPolicy");
 			app.UseAuthentication();
 			app.UseAuthorization();

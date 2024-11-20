@@ -20,16 +20,17 @@ using Alpha_API.ViewModel;
 
 namespace Alpha_API.Services
 {
-    public class RegisterService
+	public class RegisterService
 	{
 		private readonly PaymentMethodService _paymentMethodService;
 		private FirebaseClient _firebaseClient;
 		private readonly EmailService _emailService;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private readonly RoleService _roleService;
+		private readonly IScheduleService _scheduleService;
 
 		public RegisterService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider,
-			PaymentMethodService paymentMethodService, EmailService emailService, RoleService roleService)
+			PaymentMethodService paymentMethodService, EmailService emailService, RoleService roleService, IScheduleService scheduleService)
 		{
 
 			_firebaseClient = firebaseClient;
@@ -37,6 +38,7 @@ namespace Alpha_API.Services
 			_paymentMethodService = paymentMethodService;
 			_emailService = emailService;
 			_roleService = roleService;
+			_scheduleService = scheduleService;
 		}
 		public async Task<RegisterResult> RegisterGym(RegisterPackageRequest request, bool qrPayment)
 		{
@@ -86,7 +88,7 @@ namespace Alpha_API.Services
 				GymMembershipId = request.GymMembershipId,
 				StartDate = DateTime.Now,
 				EndDate = DateTime.Now.AddMonths((int)membership.DurationMonths),
-				SessionLeft = membership.SessionCount ?? 0,
+				SessionLeft = membership.SessionCount ?? membership.DurationMonths.Value * 7,
 				IsActive = false,
 				PaymentId = "Pending",
 			};
@@ -166,10 +168,21 @@ namespace Alpha_API.Services
 		public async Task<RegisterResult> RegisterTrainerRental(RegisterPackageRequest request,
 			bool qrPayment)
 		{
-			if (string.IsNullOrEmpty(request.ScheduleId))
+			if (string.IsNullOrEmpty(request.SelectedTimeSlot))
 			{
-				throw new ArgumentException("Missing Schedule", nameof(request.ScheduleId));
+				throw new ArgumentException("Missing timeslot", nameof(request.SelectedTimeSlot));
 			}
+
+			RegisterScheduleRequest scheduleRequest = new RegisterScheduleRequest()
+			{
+				BoxingMembershipPlanId = request.BoxingMembershipPlanId,
+				TrainerRentalPlanId = request.TrainerRentalPlanId,
+				Duration = request.Duration,
+				Emails = request.Emails,
+				IsMonWedFri = request.IsMonWedFri,
+				SelectedTimeSlot = request.SelectedTimeSlot,
+			};
+			var scheduleId = await _scheduleService.CreateSchedule(scheduleRequest);
 
 			var plan = await _firebaseClient
 							.Child("TrainerRentalPlans")
@@ -196,7 +209,7 @@ namespace Alpha_API.Services
 				hasActiveRegistration = existingRegistrations.Any(reg =>
 				reg.Object.UserIds != null &&
 				reg.Object.UserIds.Split(',').Contains(userId) &&
-				reg.Object.EndDate >= DateTime.Now
+				(reg.Object.EndDate >= DateTime.Now || reg.Object.SessionLeft > 0)
 				);
 				if (userId == null)
 				{
@@ -246,18 +259,29 @@ namespace Alpha_API.Services
 			//	}
 			//}
 
-			if (!request.DurationMonths.HasValue && !request.Sessions.HasValue || request.Sessions == 0 && request.DurationMonths == 0)
+			if (!request.Duration.HasValue || request.Duration == 0)
 			{
 				throw new ArgumentException("Invalid months or sessions");
+			}
+
+			int monthToAdd = 0;
+			int sessionToAdd = 0;
+			if (option.SessionCountMax == 0 && option.SessionCountMin == 0)
+			{
+				monthToAdd = request.Duration.Value;
+			}
+			else
+			{
+				sessionToAdd = request.Duration.Value;
 			}
 			TrainerRentalRegistration trainerRegistration = new TrainerRentalRegistration()
 			{
 				UserIds = userIdsString,
 				PlanId = request.TrainerRentalPlanId,
-				ScheduleId = request.ScheduleId,
+				ScheduleId = scheduleId,
 				StartDate = DateTime.Now,
-				EndDate = DateTime.Now.AddMonths(request.DurationMonths ?? 0),
-				SessionLeft = request.Sessions ?? 0,
+				EndDate = DateTime.Now.AddMonths(monthToAdd),
+				SessionLeft = sessionToAdd,
 				IsActive = false,
 				PaymentId = "Pending"
 			};
@@ -279,18 +303,41 @@ namespace Alpha_API.Services
 			string qrPaymentMethodId = methods.FirstOrDefault(method => method.MethodName == paymentMethod)?.PaymentMethodId;
 
 			decimal price = 0;
-			if (request.Sessions != null && request.Sessions >= option.SessionCountMin && request.Sessions <= option.SessionCountMax && request.Emails.Count == option.MemberCount)
+			if (request.Emails.Count == option.MemberCount)
 			{
-				price = (decimal)(option.PricePerPersonPerSession * request.Sessions * request.Emails.Count);
-			}
-			else if (request.DurationMonths != null && request.Emails.Count == option.MemberCount)
-			{
-				price = (decimal)(option.PricePerPersonPerMonth * request.DurationMonths * request.Emails.Count);
+				if (option.SessionCountMax == 0 && option.SessionCountMin == 0)
+				{
+					price = (decimal)(option.PricePerPersonPerMonth * request.Duration * request.Emails.Count);
+				}
+				else
+				{
+					if (request.Duration >= option.SessionCountMin && request.Duration <= option.SessionCountMax)
+					{
+						price = (decimal)(option.PricePerPersonPerSession * request.Duration * request.Emails.Count);
+					}
+					else
+					{
+						throw new ArgumentException("Number of sessions is not valid to register this membership");
+					}
+				}
 			}
 			else
 			{
-				throw new ArgumentException("Required fields are missing or invalid");
+				throw new ArgumentException("Number of emails is not valid to register this membership");
 			}
+
+			//if (request.Sessions != null && request.Sessions >= option.SessionCountMin && request.Sessions <= option.SessionCountMax && request.Emails.Count == option.MemberCount)
+			//{
+			//	price = (decimal)(option.PricePerPersonPerSession * request.Sessions * request.Emails.Count);
+			//}
+			//else if (request.DurationMonths != null && request.Emails.Count == option.MemberCount)
+			//{
+			//	price = (decimal)(option.PricePerPersonPerMonth * request.DurationMonths * request.Emails.Count);
+			//}
+			//else
+			//{
+			//	throw new ArgumentException("Required fields are missing or invalid");
+			//}
 
 			Payment payment = new Payment()
 			{
@@ -311,7 +358,7 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "CK" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 			else
 			{
@@ -347,10 +394,21 @@ namespace Alpha_API.Services
 		public async Task<RegisterResult> RegisterBoxing(RegisterPackageRequest request,
 			bool qrPayment)
 		{
-			if (string.IsNullOrEmpty(request.ScheduleId))
+			if (string.IsNullOrEmpty(request.SelectedTimeSlot))
 			{
-				throw new ArgumentException("Missing Schedule", nameof(request.ScheduleId));
+				throw new ArgumentException("Missing timeslot", nameof(request.SelectedTimeSlot));
 			}
+
+			RegisterScheduleRequest scheduleRequest = new RegisterScheduleRequest()
+			{
+				BoxingMembershipPlanId = request.BoxingMembershipPlanId,
+				TrainerRentalPlanId = request.TrainerRentalPlanId,
+				Duration = request.Duration,
+				Emails = request.Emails,
+				IsMonWedFri = request.IsMonWedFri,
+				SelectedTimeSlot = request.SelectedTimeSlot,
+			};
+			var scheduleId = await _scheduleService.CreateSchedule(scheduleRequest);
 
 			var plan = await _firebaseClient
 							.Child("BoxingMembershipPlans")
@@ -376,7 +434,7 @@ namespace Alpha_API.Services
 				hasActiveRegistration = existingRegistrations.Any(reg =>
 				reg.Object.UserIds != null &&
 				reg.Object.UserIds.Split(',').Contains(userId) &&
-				reg.Object.EndDate >= DateTime.Now
+				(reg.Object.SessionLeft > 0)
 				);
 				if (userId == null)
 				{
@@ -427,7 +485,7 @@ namespace Alpha_API.Services
 			BoxingRegistration boxingRegistration = new BoxingRegistration()
 			{
 				UserIds = userIdsString,
-				ScheduleId = request.ScheduleId,
+				ScheduleId = scheduleId,
 				BoxingMembershipPlanId = request.BoxingMembershipPlanId,
 				StartDate = DateTime.Now,
 				EndDate = DateTime.Now.AddMonths(option.Months),
@@ -459,7 +517,7 @@ namespace Alpha_API.Services
 			}
 			else
 			{
-				throw new ArgumentException("Number of students does not match the package", nameof(request.Emails.Count));
+				throw new ArgumentException("Number of emails does not match the package", nameof(request.Emails.Count));
 			}
 
 			Payment payment = new Payment()
@@ -481,7 +539,7 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "CK" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 			else
 			{
