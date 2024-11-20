@@ -17,6 +17,7 @@ using DocumentFormat.OpenXml.Spreadsheet;
 using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using DocumentFormat.OpenXml.Office2016.Excel;
 using System.Security.Claims;
+using ExcelDataReader.Log;
 
 namespace Alpha_API.Controllers
 {
@@ -27,13 +28,15 @@ namespace Alpha_API.Controllers
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private readonly EmailService _emailService;
+		private readonly TimeSlotService _timeSlotService;
 
 
-		public ScheduleController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, EmailService emailService)
+		public ScheduleController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, EmailService emailService, TimeSlotService timeSlotService)
 		{
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
 			_emailService = emailService;
+			_timeSlotService = timeSlotService;
 		}
 
 		// GET: api/Schedule/Customer/{userId}
@@ -59,6 +62,59 @@ namespace Alpha_API.Controllers
 			}
 
 			return userSchedules.Select(s => s.Object).ToList();
+		}
+
+		// GET: api/Schedule/Customer/{userId}
+		[HttpGet("Slot/Customer/{userId}")]
+		public async Task<ActionResult<IEnumerable<Object>>> GetCustomerSchedulesByDate(string userId)
+		{
+
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+			var schedules = await _firebaseClient
+			.Child("Schedules")
+			.OnceAsync<Schedule>();
+
+			List<Object> slotList = new List<Object>();
+			var userSchedules = schedules.Where(sche =>
+				sche.Object.UserIds != null &&
+				sche.Object.UserIds.Split(',').Contains(userId)
+				);
+
+			if (!userSchedules.Any())
+				return NotFound("No schedules found for this customer.");
+
+			foreach (var schedule in userSchedules)
+			{
+				schedule.Object.ScheduleId = schedule.Key;
+				var slots = await _firebaseClient
+					.Child("Slots")
+					.OrderBy("scheduleId")
+					.OnceAsync<Slot>();
+
+				var list = slots.Select(s => s.Object).ToList();
+
+				foreach (var slot in list)
+				{
+					var trainer = await _firebaseClient
+					.Child("Trainers")
+					.Child(schedule.Object.TrainerId)
+					.OnceSingleAsync<Trainer>();
+
+					var timeSlot = _timeSlotService.GetTimeSlot(slot.TimeSlotId);
+
+					var sl = new
+					{
+						trainerName = trainer.Name,
+						timeSlot,
+						Date = slot.Date.ToString("yyyy-MM-dd")  // Convert DateOnly to string
+					};
+
+					slotList.Add(sl);
+				}
+			}
+
+
+			return slotList;
 		}
 
 		// GET: api/Schedule/Trainer/{userId}
@@ -494,323 +550,323 @@ namespace Alpha_API.Controllers
 		//	return existingSlot.StartTime < requestedSlot.EndTime && requestedSlot.StartTime < existingSlot.EndTime;
 		//}
 
-		private List<DateOnly> GenerateSlotDates(DateOnly startDate, DateOnly endDate, bool isMonWedFri, bool isBoxing, int? sessions)
-		{
-			//boxing
-			if (isBoxing)
-			{
-				var dates = new List<DateOnly>();
+		//private List<DateOnly> GenerateSlotDates(DateOnly startDate, DateOnly endDate, bool isMonWedFri, bool isBoxing, int? sessions)
+		//{
+		//	//boxing
+		//	if (isBoxing)
+		//	{
+		//		var dates = new List<DateOnly>();
 
-				for (var date = startDate; sessions != 0; date = date.AddDays(1))
-				{
-					if (isMonWedFri && (date.DayOfWeek == DayOfWeek.Monday || date.DayOfWeek == DayOfWeek.Wednesday || date.DayOfWeek == DayOfWeek.Friday))
-					{
-						dates.Add(date);
-						sessions--;
-					}
-					else if (!isMonWedFri && (date.DayOfWeek == DayOfWeek.Tuesday || date.DayOfWeek == DayOfWeek.Thursday || date.DayOfWeek == DayOfWeek.Saturday))
-					{
-						dates.Add(date);
-						sessions--;
-					}
-				}
+		//		for (var date = startDate; sessions != 0; date = date.AddDays(1))
+		//		{
+		//			if (isMonWedFri && (date.DayOfWeek == DayOfWeek.Monday || date.DayOfWeek == DayOfWeek.Wednesday || date.DayOfWeek == DayOfWeek.Friday))
+		//			{
+		//				dates.Add(date);
+		//				sessions--;
+		//			}
+		//			else if (!isMonWedFri && (date.DayOfWeek == DayOfWeek.Tuesday || date.DayOfWeek == DayOfWeek.Thursday || date.DayOfWeek == DayOfWeek.Saturday))
+		//			{
+		//				dates.Add(date);
+		//				sessions--;
+		//			}
+		//		}
 
-				return dates;
-			}
-			//trainer rental
-			else
-			{
-				if (sessions.HasValue && sessions != 0)
-				{
-					var dates = new List<DateOnly>();
+		//		return dates;
+		//	}
+		//	//trainer rental
+		//	else
+		//	{
+		//		if (sessions.HasValue && sessions != 0)
+		//		{
+		//			var dates = new List<DateOnly>();
 
-					for (var date = startDate; sessions != 0; date = date.AddDays(1))
-					{
-						if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
-						{
-							dates.Add(date);
-							sessions--;
-						}
-					}
-					return dates;
-				}
-				else
-				{
-					var dates = new List<DateOnly>();
+		//			for (var date = startDate; sessions != 0; date = date.AddDays(1))
+		//			{
+		//				if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
+		//				{
+		//					dates.Add(date);
+		//					sessions--;
+		//				}
+		//			}
+		//			return dates;
+		//		}
+		//		else
+		//		{
+		//			var dates = new List<DateOnly>();
 
-					for (var date = startDate; date <= endDate; date = date.AddDays(1))
-					{
-						if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
-						{
-							dates.Add(date);
-						}
-					}
-					return dates;
-				}
+		//			for (var date = startDate; date <= endDate; date = date.AddDays(1))
+		//			{
+		//				if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
+		//				{
+		//					dates.Add(date);
+		//				}
+		//			}
+		//			return dates;
+		//		}
 
-			}
-		}
+		//	}
+		//}
 
-		private (bool IsValid, string ErrorMessage) ValidateSlots(string planType, List<Slot> slots)
-		{
-			// Group slots by both year and week number
-			var slotsByWeek = slots
-				.OrderBy(d => d.Date)
-				.GroupBy(s => new
-				{
-					Year = s.Date.Year,
-					Week = CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(s.Date.ToDateTime(s.StartTime), CalendarWeekRule.FirstDay, DayOfWeek.Monday)
-				});
+		//private (bool IsValid, string ErrorMessage) ValidateSlots(string planType, List<Slot> slots)
+		//{
+		//	// Group slots by both year and week number
+		//	var slotsByWeek = slots
+		//		.OrderBy(d => d.Date)
+		//		.GroupBy(s => new
+		//		{
+		//			Year = s.Date.Year,
+		//			Week = CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(s.Date.ToDateTime(s.StartTime), CalendarWeekRule.FirstDay, DayOfWeek.Monday)
+		//		});
 
-			// Find the first and last years in the slots
-			var firstYear = slotsByWeek.FirstOrDefault()?.Key.Year ?? 0;
-			var lastYear = slotsByWeek.LastOrDefault()?.Key.Year ?? 0;
+		//	// Find the first and last years in the slots
+		//	var firstYear = slotsByWeek.FirstOrDefault()?.Key.Year ?? 0;
+		//	var lastYear = slotsByWeek.LastOrDefault()?.Key.Year ?? 0;
 
-			// Loop through each year within the range
-			for (int year = firstYear; year <= lastYear; year++)
-			{
-				var slotsInYear = slotsByWeek
-					.Where(g => g.Key.Year == year)
-					.OrderBy(d => d.Key.Week)
-					.ToList();
+		//	// Loop through each year within the range
+		//	for (int year = firstYear; year <= lastYear; year++)
+		//	{
+		//		var slotsInYear = slotsByWeek
+		//			.Where(g => g.Key.Year == year)
+		//			.OrderBy(d => d.Key.Week)
+		//			.ToList();
 
-				if (planType == "TrainerRental")
-				{
-					// TrainerRental plan should have exactly 5 slots per full week
-					foreach (var weekGroup in slotsInYear)
-					{
-						// Check if the current week has exactly 5 slots
-						if (weekGroup.Count() != 5)
-						{
-							// Calculate all available weekdays from the first slots date until Friday
-							var firstSlotDate = weekGroup.First().Date;
+		//		if (planType == "TrainerRental")
+		//		{
+		//			// TrainerRental plan should have exactly 5 slots per full week
+		//			foreach (var weekGroup in slotsInYear)
+		//			{
+		//				// Check if the current week has exactly 5 slots
+		//				if (weekGroup.Count() != 5)
+		//				{
+		//					// Calculate all available weekdays from the first slots date until Friday
+		//					var firstSlotDate = weekGroup.First().Date;
 
-							if (firstSlotDate.DayOfWeek == DayOfWeek.Saturday || firstSlotDate.DayOfWeek == DayOfWeek.Sunday)
-							{
-								return (false, "Can not choose Saturday and Sunday.");
-							}
+		//					if (firstSlotDate.DayOfWeek == DayOfWeek.Saturday || firstSlotDate.DayOfWeek == DayOfWeek.Sunday)
+		//					{
+		//						return (false, "Can not choose Saturday and Sunday.");
+		//					}
 
-							// Calculate the end of the week date, ensuring it lands on a Friday
-							var fridayOfWeek = firstSlotDate
-								.AddDays((int)DayOfWeek.Friday - (int)firstSlotDate.DayOfWeek);
+		//					// Calculate the end of the week date, ensuring it lands on a Friday
+		//					var fridayOfWeek = firstSlotDate
+		//						.AddDays((int)DayOfWeek.Friday - (int)firstSlotDate.DayOfWeek);
 
-							var mondayOfWeek = firstSlotDate
-								.AddDays((int)DayOfWeek.Monday - (int)firstSlotDate.DayOfWeek);
+		//					var mondayOfWeek = firstSlotDate
+		//						.AddDays((int)DayOfWeek.Monday - (int)firstSlotDate.DayOfWeek);
 
-							var isFullWeekDay = fridayOfWeek.Year == mondayOfWeek.Year;
-
-
-							// If it's the last week of the year and not a full week, check if we can combine it with the first week of next year
-							if (weekGroup.Key.Week == slotsInYear.Max(w => w.Key.Week) && !isFullWeekDay && weekGroup.Key.Year != slotsByWeek.Max(x => x.Key.Year))
-							{
-								// Get slots from the first week of the next year
-								var nextYearSlots = slotsByWeek
-									.Where(g => g.Key.Year == year + 1 && g.Key.Week == 1)
-									.SelectMany(g => g)
-									.ToList();
-
-								// Combine slots from the last week of the current year with the first week of the next year
-								var combinedWeekSlots = weekGroup.Concat(nextYearSlots).ToList();
-
-								// Check if the combined slots form a full week
-								if (combinedWeekSlots.Count == 5)
-								{
-									continue; // This combined week is valid, skip further checks for this week
-								}
-							}
-							// Check if this is the first week of the year and needs to be combined with the last week of the previous year
-							else if (weekGroup.Key.Week == 1 && year > firstYear && !isFullWeekDay)
-							{
-								var previousYearSlots = slotsByWeek
-									.Where(g => g.Key.Year == year - 1 && g.Key.Week == slotsByWeek.Where(w => w.Key.Year == year - 1).Max(w => w.Key.Week))
-									.SelectMany(g => g)
-									.ToList();
-
-								var combinedWeekSlots = previousYearSlots.Concat(weekGroup).ToList();
-								if (combinedWeekSlots.Count == 5)
-								{
-									continue;
-								}
-							}
-							// Check if this is the first week of the year and may be a partial week
-							else if (weekGroup.Key.Week == slotsInYear.Min(w => w.Key.Week) && year == firstYear && weekGroup.Count() < 5)
-							{
-								// Generate the list of required weekdays between the first slot date and the calculated end of week (Friday)
-								var requiredWeekdays = Enumerable.Range(0, fridayOfWeek.DayNumber - firstSlotDate.DayNumber)
-									.Select(offset => firstSlotDate.AddDays(offset).DayOfWeek)
-									.Where(d => d >= DayOfWeek.Monday && d <= DayOfWeek.Friday)
-									.ToList();
+		//					var isFullWeekDay = fridayOfWeek.Year == mondayOfWeek.Year;
 
 
-								// Check if a slot is registered on each available weekday
-								var registeredWeekdays = weekGroup.Select(s => s.Date.DayOfWeek).ToList();
-								var missingWeekdays = requiredWeekdays.Except(registeredWeekdays).ToList();
+		//					// If it's the last week of the year and not a full week, check if we can combine it with the first week of next year
+		//					if (weekGroup.Key.Week == slotsInYear.Max(w => w.Key.Week) && !isFullWeekDay && weekGroup.Key.Year != slotsByWeek.Max(x => x.Key.Year))
+		//					{
+		//						// Get slots from the first week of the next year
+		//						var nextYearSlots = slotsByWeek
+		//							.Where(g => g.Key.Year == year + 1 && g.Key.Week == 1)
+		//							.SelectMany(g => g)
+		//							.ToList();
 
-								if (missingWeekdays.Any())
-								{
-									return (false, $"In the first partial week of {year}, slots are missing on these required weekdays: {string.Join(", ", missingWeekdays)}.");
-								}
+		//						// Combine slots from the last week of the current year with the first week of the next year
+		//						var combinedWeekSlots = weekGroup.Concat(nextYearSlots).ToList();
 
-								continue;
-							}
+		//						// Check if the combined slots form a full week
+		//						if (combinedWeekSlots.Count == 5)
+		//						{
+		//							continue; // This combined week is valid, skip further checks for this week
+		//						}
+		//					}
+		//					// Check if this is the first week of the year and needs to be combined with the last week of the previous year
+		//					else if (weekGroup.Key.Week == 1 && year > firstYear && !isFullWeekDay)
+		//					{
+		//						var previousYearSlots = slotsByWeek
+		//							.Where(g => g.Key.Year == year - 1 && g.Key.Week == slotsByWeek.Where(w => w.Key.Year == year - 1).Max(w => w.Key.Week))
+		//							.SelectMany(g => g)
+		//							.ToList();
 
-							// If not valid, return error message
-							return (false, $"Trainer rental plan requires exactly 5 slots per week in year {year}.");
-						}
+		//						var combinedWeekSlots = previousYearSlots.Concat(weekGroup).ToList();
+		//						if (combinedWeekSlots.Count == 5)
+		//						{
+		//							continue;
+		//						}
+		//					}
+		//					// Check if this is the first week of the year and may be a partial week
+		//					else if (weekGroup.Key.Week == slotsInYear.Min(w => w.Key.Week) && year == firstYear && weekGroup.Count() < 5)
+		//					{
+		//						// Generate the list of required weekdays between the first slot date and the calculated end of week (Friday)
+		//						var requiredWeekdays = Enumerable.Range(0, fridayOfWeek.DayNumber - firstSlotDate.DayNumber)
+		//							.Select(offset => firstSlotDate.AddDays(offset).DayOfWeek)
+		//							.Where(d => d >= DayOfWeek.Monday && d <= DayOfWeek.Friday)
+		//							.ToList();
 
-						// Check that all slots fall on weekdays (Monday to Friday)
-						if (!AreSlotsOnWeekdays(weekGroup))
-						{
-							return (false, "Trainer rental plan slots must occur only on weekdays (Monday to Friday).");
-						}
-					}
-				}
-				else if (planType == "Boxing")
-				{
-					// Boxing plan should have exactly 3 slots on Mon/Wed/Fri or Tue/Thu/Sat, and every week must follow the same pattern
-					var firstWeek = slotsInYear.Find(w => w.Key.Week == slotsInYear.Min(w => w.Key.Week));
 
-					if (firstWeek != null)
-					{
-						var daysInFirstWeek = firstWeek.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
-						var validDaysSet1 = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday };
-						var validDaysSet2 = new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday, DayOfWeek.Saturday };
-						var validSet = new List<DayOfWeek>();
+		//						// Check if a slot is registered on each available weekday
+		//						var registeredWeekdays = weekGroup.Select(s => s.Date.DayOfWeek).ToList();
+		//						var missingWeekdays = requiredWeekdays.Except(registeredWeekdays).ToList();
 
-						if (daysInFirstWeek.Count == 3)
-						{
-							if (!(daysInFirstWeek.SequenceEqual(validDaysSet1) || daysInFirstWeek.SequenceEqual(validDaysSet2)))
-							{
-								return (false, "Boxing plan must have exactly 3 slots per week on either Mon/Wed/Fri or Tue/Thu/Sat, consistently.");
-							}
-							else if (daysInFirstWeek.SequenceEqual(validDaysSet1))
-							{
-								validSet = validDaysSet1;
-							}
-							else if (daysInFirstWeek.SequenceEqual(validDaysSet2))
-							{
-								validSet = validDaysSet2;
-							}
-						}
+		//						if (missingWeekdays.Any())
+		//						{
+		//							return (false, $"In the first partial week of {year}, slots are missing on these required weekdays: {string.Join(", ", missingWeekdays)}.");
+		//						}
 
-						else if (daysInFirstWeek.Count < 3)
-						{
-							// Ensure all days in this partial week belong to one of the allowed sets
-							bool isValidPartialWeek = false;
+		//						continue;
+		//					}
 
-							if (daysInFirstWeek.All(day => validDaysSet1.Contains(day)))
-							{
-								validSet = validDaysSet1;
-								isValidPartialWeek = true;
-							}
+		//					// If not valid, return error message
+		//					return (false, $"Trainer rental plan requires exactly 5 slots per week in year {year}.");
+		//				}
 
-							if (daysInFirstWeek.All(day => validDaysSet2.Contains(day)))
-							{
-								validSet = validDaysSet2;
-								isValidPartialWeek = true;
-							}
+		//				// Check that all slots fall on weekdays (Monday to Friday)
+		//				if (!AreSlotsOnWeekdays(weekGroup))
+		//				{
+		//					return (false, "Trainer rental plan slots must occur only on weekdays (Monday to Friday).");
+		//				}
+		//			}
+		//		}
+		//		else if (planType == "Boxing")
+		//		{
+		//			// Boxing plan should have exactly 3 slots on Mon/Wed/Fri or Tue/Thu/Sat, and every week must follow the same pattern
+		//			var firstWeek = slotsInYear.Find(w => w.Key.Week == slotsInYear.Min(w => w.Key.Week));
 
-							// Check that if only 2 days are chosen, they are adjacent in the pattern
-							if (isValidPartialWeek && daysInFirstWeek.Count == 2)
-							{
-								bool isAdjacentInValidSet1 = daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday }) ||
-															 daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Wednesday, DayOfWeek.Friday });
+		//			if (firstWeek != null)
+		//			{
+		//				var daysInFirstWeek = firstWeek.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
+		//				var validDaysSet1 = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday };
+		//				var validDaysSet2 = new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday, DayOfWeek.Saturday };
+		//				var validSet = new List<DayOfWeek>();
 
-								bool isAdjacentInValidSet2 = daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday }) ||
-															 daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Thursday, DayOfWeek.Saturday });
+		//				if (daysInFirstWeek.Count == 3)
+		//				{
+		//					if (!(daysInFirstWeek.SequenceEqual(validDaysSet1) || daysInFirstWeek.SequenceEqual(validDaysSet2)))
+		//					{
+		//						return (false, "Boxing plan must have exactly 3 slots per week on either Mon/Wed/Fri or Tue/Thu/Sat, consistently.");
+		//					}
+		//					else if (daysInFirstWeek.SequenceEqual(validDaysSet1))
+		//					{
+		//						validSet = validDaysSet1;
+		//					}
+		//					else if (daysInFirstWeek.SequenceEqual(validDaysSet2))
+		//					{
+		//						validSet = validDaysSet2;
+		//					}
+		//				}
 
-								if (!(isAdjacentInValidSet1 || isAdjacentInValidSet2))
-								{
-									return (false, "Partial weeks with 2 slots must have adjacent days within the same set: Mon/Wed, Wed/Fri, Tue/Thu, or Thu/Sat.");
-								}
-							}
+		//				else if (daysInFirstWeek.Count < 3)
+		//				{
+		//					// Ensure all days in this partial week belong to one of the allowed sets
+		//					bool isValidPartialWeek = false;
 
-							// Ensure that all slots in the partial week follow the chosen pattern, without skipping days within a set
-							if (!isValidPartialWeek)
-							{
-								return (false, "Partial weeks must only contain slots on allowed days, and slots should be within a single set (Mon/Wed/Fri or Tue/Thu/Sat).");
-							}
+		//					if (daysInFirstWeek.All(day => validDaysSet1.Contains(day)))
+		//					{
+		//						validSet = validDaysSet1;
+		//						isValidPartialWeek = true;
+		//					}
 
-							// Check that a partial week with 1 slot is in one of the allowed days
-							if (daysInFirstWeek.Count == 1)
-							{
-								if (!validDaysSet1.Contains(daysInFirstWeek[0]) && !validDaysSet2.Contains(daysInFirstWeek[0]))
-								{
-									return (false, "Single-day slots in a partial week must be on an allowed day (either Mon, Wed, Fri or Tue, Thu, Sat).");
-								}
-							}
-						}
+		//					if (daysInFirstWeek.All(day => validDaysSet2.Contains(day)))
+		//					{
+		//						validSet = validDaysSet2;
+		//						isValidPartialWeek = true;
+		//					}
 
-						else if (daysInFirstWeek.Count > 3)
-						{
-							return (false, "Boxing plan cannot have more than 3 slots per week.");
-						}
+		//					// Check that if only 2 days are chosen, they are adjacent in the pattern
+		//					if (isValidPartialWeek && daysInFirstWeek.Count == 2)
+		//					{
+		//						bool isAdjacentInValidSet1 = daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday }) ||
+		//													 daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Wednesday, DayOfWeek.Friday });
 
-						else
-						{
-							return (false, "Boxing plan must have exactly 3 slots per week on either Mon/Wed/Fri or Tue/Thu/Sat, consistently.");
-						}
+		//						bool isAdjacentInValidSet2 = daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday }) ||
+		//													 daysInFirstWeek.SequenceEqual(new List<DayOfWeek> { DayOfWeek.Thursday, DayOfWeek.Saturday });
 
-						// Validate each week to follow the established pattern
-						foreach (var weekGroup in slotsInYear)
-						{
-							var daysInWeek = weekGroup.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
+		//						if (!(isAdjacentInValidSet1 || isAdjacentInValidSet2))
+		//						{
+		//							return (false, "Partial weeks with 2 slots must have adjacent days within the same set: Mon/Wed, Wed/Fri, Tue/Thu, or Thu/Sat.");
+		//						}
+		//					}
 
-							if (daysInWeek.Count == 3)
-							{
-								// Full week, must match the valid pattern exactly
-								if (!daysInWeek.SequenceEqual(validSet))
-								{
-									return (false, $"All full weeks in year {year} must follow the same pattern: either Mon/Wed/Fri or Tue/Thu/Sat.");
-								}
-							}
-							else
-							{
-								// Partial week: must only contain days from the valid pattern
-								if (!daysInWeek.All(d => validSet.Contains(d)))
-								{
-									return (false, "Partial weeks must only contain sessions on allowed days based on the established pattern.");
-								}
-							}
-						}
+		//					// Ensure that all slots in the partial week follow the chosen pattern, without skipping days within a set
+		//					if (!isValidPartialWeek)
+		//					{
+		//						return (false, "Partial weeks must only contain slots on allowed days, and slots should be within a single set (Mon/Wed/Fri or Tue/Thu/Sat).");
+		//					}
 
-						// Get the date of the last session
-						var lastSessionDate = slotsInYear.Max(w => w.Max(s => s.Date));
+		//					// Check that a partial week with 1 slot is in one of the allowed days
+		//					if (daysInFirstWeek.Count == 1)
+		//					{
+		//						if (!validDaysSet1.Contains(daysInFirstWeek[0]) && !validDaysSet2.Contains(daysInFirstWeek[0]))
+		//						{
+		//							return (false, "Single-day slots in a partial week must be on an allowed day (either Mon, Wed, Fri or Tue, Thu, Sat).");
+		//						}
+		//					}
+		//				}
 
-						// Calculate the start of the week for the last session
-						var startOfLastWeek = lastSessionDate.AddDays(-(int)lastSessionDate.DayOfWeek + (int)DayOfWeek.Monday);
+		//				else if (daysInFirstWeek.Count > 3)
+		//				{
+		//					return (false, "Boxing plan cannot have more than 3 slots per week.");
+		//				}
 
-						// Check if the last week's sessions form a complete valid pattern
-						var lastWeekSlots = slotsInYear.Last();
-						var lastWeekDays = lastWeekSlots.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
+		//				else
+		//				{
+		//					return (false, "Boxing plan must have exactly 3 slots per week on either Mon/Wed/Fri or Tue/Thu/Sat, consistently.");
+		//				}
 
-						// If the last week has fewer than 3 days, ensure all days align with the valid pattern
-						if (lastWeekDays.Count < 3)
-						{
-							if (!lastWeekDays.All(day => validSet.Contains(day)))
-							{
-								return (false, "Sessions crossing into a new year must still follow the chosen pattern in partial weeks.");
-							}
-						}
+		//				// Validate each week to follow the established pattern
+		//				foreach (var weekGroup in slotsInYear)
+		//				{
+		//					var daysInWeek = weekGroup.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
 
-						// Ensure no extra days in the last week that don’t align with the valid pattern
-						if (lastWeekDays.Count > 3 || !lastWeekDays.SequenceEqual(validSet.Take(lastWeekDays.Count)))
-						{
-							return (false, "The final week's sessions do not align with the chosen pattern.");
-						}
+		//					if (daysInWeek.Count == 3)
+		//					{
+		//						// Full week, must match the valid pattern exactly
+		//						if (!daysInWeek.SequenceEqual(validSet))
+		//						{
+		//							return (false, $"All full weeks in year {year} must follow the same pattern: either Mon/Wed/Fri or Tue/Thu/Sat.");
+		//						}
+		//					}
+		//					else
+		//					{
+		//						// Partial week: must only contain days from the valid pattern
+		//						if (!daysInWeek.All(d => validSet.Contains(d)))
+		//						{
+		//							return (false, "Partial weeks must only contain sessions on allowed days based on the established pattern.");
+		//						}
+		//					}
+		//				}
 
-					}
-				}
-			}
+		//				// Get the date of the last session
+		//				var lastSessionDate = slotsInYear.Max(w => w.Max(s => s.Date));
 
-			return (true, string.Empty);
-		}
-		// Helper method to check if all slots in a week are on weekdays
-		private bool AreSlotsOnWeekdays(IEnumerable<Slot> weekGroup)
-		{
-			var weekdays = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday };
-			return weekGroup.All(s => weekdays.Contains(s.Date.DayOfWeek));
-		}
+		//				// Calculate the start of the week for the last session
+		//				var startOfLastWeek = lastSessionDate.AddDays(-(int)lastSessionDate.DayOfWeek + (int)DayOfWeek.Monday);
+
+		//				// Check if the last week's sessions form a complete valid pattern
+		//				var lastWeekSlots = slotsInYear.Last();
+		//				var lastWeekDays = lastWeekSlots.Select(s => s.Date.DayOfWeek).OrderBy(d => d).ToList();
+
+		//				// If the last week has fewer than 3 days, ensure all days align with the valid pattern
+		//				if (lastWeekDays.Count < 3)
+		//				{
+		//					if (!lastWeekDays.All(day => validSet.Contains(day)))
+		//					{
+		//						return (false, "Sessions crossing into a new year must still follow the chosen pattern in partial weeks.");
+		//					}
+		//				}
+
+		//				// Ensure no extra days in the last week that don’t align with the valid pattern
+		//				if (lastWeekDays.Count > 3 || !lastWeekDays.SequenceEqual(validSet.Take(lastWeekDays.Count)))
+		//				{
+		//					return (false, "The final week's sessions do not align with the chosen pattern.");
+		//				}
+
+		//			}
+		//		}
+		//	}
+
+		//	return (true, string.Empty);
+		//}
+		//// Helper method to check if all slots in a week are on weekdays
+		//private bool AreSlotsOnWeekdays(IEnumerable<Slot> weekGroup)
+		//{
+		//	var weekdays = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday };
+		//	return weekGroup.All(s => weekdays.Contains(s.Date.DayOfWeek));
+		//}
 
 	}
 }

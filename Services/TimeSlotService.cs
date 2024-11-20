@@ -6,26 +6,32 @@ namespace Alpha_API.Services
 	public class TimeSlotService
 	{
 		private readonly FirebaseClient _firebaseClient;
-		private Dictionary<int, string> _timeSlots;
+		private Dictionary<string, string> _timeSlots;
 
 		public TimeSlotService(FirebaseClient firebaseClient)
 		{
 			_firebaseClient = firebaseClient;
 		}
 
+
 		public async Task LoadTimeSlotsAsync()
 		{
+			// Fetch the raw JSON response as a List of TimeSlot
 			var timeSlots = await _firebaseClient
 				.Child("TimeSlots")
-				.OnceAsync<TimeSlots>();
+				.OnceAsync<TimeSlot>();
 
-			_timeSlots = timeSlots.ToDictionary(
-				ts => ts.Object.TimeSlotId,
-				ts => ts.Object.TimeSlot
-			);
+			// Filter out null or invalid entries
+			_timeSlots = timeSlots
+				.Where(ts => ts.Object != null) // Ignore null entries
+				.ToDictionary(
+					ts => ts.Key, // Use TimeslotId as the key
+					ts => ts.Object.Time // Use TimeSlot as the value
+				);
 		}
 
-		public string GetTimeSlot(int timeSlotId)
+
+		public string GetTimeSlot(string timeSlotId)
 		{
 			if (_timeSlots.TryGetValue(timeSlotId, out var timeSlot))
 			{
@@ -35,10 +41,9 @@ namespace Alpha_API.Services
 			throw new KeyNotFoundException($"TimeSlotId {timeSlotId} not found.");
 		}
 
-		public Dictionary<int, string> GetAllTimeSlots()
+		public Dictionary<string, string> GetAllTimeSlots()
 		{
 			return _timeSlots;
 		}
 	}
-
 }

@@ -94,12 +94,12 @@ namespace Alpha_API.Services
 				// Handle rental options for months
 				if (option.SessionCountMax == 0 && option.SessionCountMin == 0)
 				{
-					return await HandleRentalOptionForMonths(request, plan, option, numberOfUsers, trainerId, plan.TrainerRentalPlanId);
+					return await HandleRentalOptionForMonths(request, plan, option, numberOfUsers, trainerId, plan.TrainerRentalPlanId, userIdsString);
 				}
 				else
 				{
 					// Handle rental options for sessions
-					return await HandleRentalOptionForSessions(request, plan, option, numberOfUsers, trainerId, plan.TrainerRentalPlanId);
+					return await HandleRentalOptionForSessions(request, plan, option, numberOfUsers, trainerId, plan.TrainerRentalPlanId, userIdsString);
 				}
 			}
 			else if (!string.IsNullOrEmpty(request.BoxingMembershipPlanId))
@@ -128,7 +128,7 @@ namespace Alpha_API.Services
 					throw new InvalidOperationException("Please fill in number of months to register");
 				}
 
-				return await HandleBoxingMembershipPlan(request, plan, option, numberOfUsers, trainerId, plan.BoxingMembershipPlanId);
+				return await HandleBoxingMembershipPlan(request, plan, option, numberOfUsers, trainerId, plan.BoxingMembershipPlanId, userIdsString);
 			}
 			else
 			{
@@ -136,7 +136,7 @@ namespace Alpha_API.Services
 			}
 		}
 
-		private async Task<string> HandleRentalOptionForMonths(RegisterScheduleRequest request, TrainerRentalPlan plan, RentalOption option, int numberOfUsers, string trainerId, string rentalPlanId)
+		private async Task<string> HandleRentalOptionForMonths(RegisterScheduleRequest request, TrainerRentalPlan plan, RentalOption option, int numberOfUsers, string trainerId, string rentalPlanId, string userIdsString)
 		{
 			int duration = request.Duration.Value;
 			var startDate = DateOnly.FromDateTime(DateTime.Now);
@@ -146,7 +146,6 @@ namespace Alpha_API.Services
 			var scheduleId = Guid.NewGuid().ToString();
 			var slots = new List<Slot>();
 			int slotCount = 0;
-			var times = request.SelectedTimeSlot.Split('-');
 
 			foreach (var date in slotDates)
 			{
@@ -154,8 +153,9 @@ namespace Alpha_API.Services
 				{
 					ScheduleId = scheduleId,
 					Date = date,
-					StartTime = TimeOnly.ParseExact(times[0], "H:mm"),
-					EndTime = TimeOnly.ParseExact(times[1], "H:mm"),
+					//StartTime = TimeOnly.ParseExact(times[0], "H:mm"),
+					//EndTime = TimeOnly.ParseExact(times[1], "H:mm"),
+					TimeSlotId= request.SelectedTimeSlotId,
 					Attended = false
 				};
 				slots.Add(slot);
@@ -169,7 +169,7 @@ namespace Alpha_API.Services
 			var schedule = new
 			{
 				ScheduleId = scheduleId,
-				UserIds = string.Join(",", request.Emails), // user IDs as comma-separated values
+				UserIds = userIdsString, // user IDs as comma-separated values
 				TrainerId = plan.TrainerId,
 				FirstSlot = slotDates.Min(d => d),
 				LastSlot = slotDates.Max(d => d),
@@ -179,8 +179,8 @@ namespace Alpha_API.Services
 			await SaveScheduleAndSlotsToFirebase(scheduleId, slots, schedule);
 			return scheduleId;
 		}
-						  
-		private async Task<string> HandleRentalOptionForSessions(RegisterScheduleRequest request, TrainerRentalPlan plan, RentalOption option, int numberOfUsers, string trainerId, string rentalPlanId)
+
+		private async Task<string> HandleRentalOptionForSessions(RegisterScheduleRequest request, TrainerRentalPlan plan, RentalOption option, int numberOfUsers, string trainerId, string rentalPlanId, string userIdsString)
 		{
 			if (request.Duration > option.SessionCountMax || request.Duration < option.SessionCountMin)
 			{
@@ -195,7 +195,7 @@ namespace Alpha_API.Services
 			var scheduleId = Guid.NewGuid().ToString();
 			var slots = new List<Slot>();
 			int slotCount = 0;
-			var times = request.SelectedTimeSlot.Split('-');
+			var times = request.SelectedTimeSlotId.Split('-');
 
 			foreach (var date in slotDates)
 			{
@@ -203,8 +203,9 @@ namespace Alpha_API.Services
 				{
 					ScheduleId = scheduleId,
 					Date = date,
-					StartTime = TimeOnly.ParseExact(times[0], "H:mm"),
-					EndTime = TimeOnly.ParseExact(times[1], "H:mm"),
+					//StartTime = TimeOnly.ParseExact(times[0], "H:mm"),
+					//EndTime = TimeOnly.ParseExact(times[1], "H:mm"),
+					TimeSlotId = request.SelectedTimeSlotId,
 					Attended = false
 				};
 				slots.Add(slot);
@@ -218,7 +219,7 @@ namespace Alpha_API.Services
 			var schedule = new
 			{
 				ScheduleId = scheduleId,
-				UserIds = string.Join(",", request.Emails), // user IDs as comma-separated values
+				UserIds = userIdsString, // user IDs as comma-separated values
 				TrainerId = plan.TrainerId,
 				FirstSlot = slotDates.Min(d => d),
 				LastSlot = slotDates.Max(d => d),
@@ -228,8 +229,8 @@ namespace Alpha_API.Services
 			await SaveScheduleAndSlotsToFirebase(scheduleId, slots, schedule);
 			return scheduleId;
 		}
-					
-		private async Task<string> HandleBoxingMembershipPlan(RegisterScheduleRequest request, BoxingMembershipPlan plan, BoxingOption option, int numberOfUsers, string trainerId, string boxingMembershipPlanId)
+
+		private async Task<string> HandleBoxingMembershipPlan(RegisterScheduleRequest request, BoxingMembershipPlan plan, BoxingOption option, int numberOfUsers, string trainerId, string boxingMembershipPlanId, string userIdsString)
 		{
 			int duration = option.Sessions;
 			var startDate = DateOnly.FromDateTime(DateTime.Now);
@@ -239,7 +240,7 @@ namespace Alpha_API.Services
 			var scheduleId = Guid.NewGuid().ToString();
 			var slots = new List<Slot>();
 			int slotCount = 0;
-			var times = request.SelectedTimeSlot.Split('-');
+			var times = request.SelectedTimeSlotId.Split('-');
 
 			foreach (var date in slotDates)
 			{
@@ -247,8 +248,9 @@ namespace Alpha_API.Services
 				{
 					ScheduleId = scheduleId,
 					Date = date,
-					StartTime = TimeOnly.ParseExact(times[0], "H:mm"),
-					EndTime = TimeOnly.ParseExact(times[1], "H:mm"),
+					//StartTime = TimeOnly.ParseExact(times[0], "H:mm"),
+					//EndTime = TimeOnly.ParseExact(times[1], "H:mm"),
+					TimeSlotId = request.SelectedTimeSlotId,
 					Attended = false
 				};
 				slots.Add(slot);
@@ -262,7 +264,7 @@ namespace Alpha_API.Services
 			var schedule = new
 			{
 				ScheduleId = scheduleId,
-				UserIds = string.Join(",", request.Emails), // user IDs as comma-separated values
+				UserIds = userIdsString, // user IDs as comma-separated values
 				TrainerId = plan.BoxingTrainerId,
 				FirstSlot = slotDates.Min(d => d),
 				LastSlot = slotDates.Max(d => d),
@@ -278,7 +280,8 @@ namespace Alpha_API.Services
 			var options = new JsonSerializerOptions
 			{
 				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+				Converters = { new DateOnlyJsonConverter(), new TimeOnlyJsonConverter() } // Add the custom converter
 			};
 
 			var jsonString = JsonSerializer.Serialize(schedule, options);
@@ -419,7 +422,7 @@ namespace Alpha_API.Services
 
 		private bool SlotsOverlap(Slot existingSlot, Slot requestedSlot)
 		{
-			return existingSlot.StartTime < requestedSlot.EndTime && requestedSlot.StartTime < existingSlot.EndTime;
+			return existingSlot.TimeSlotId == requestedSlot.TimeSlotId;
 		}
 	}
 

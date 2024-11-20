@@ -9,7 +9,7 @@ namespace Alpha_API.ViewModel
 		public int? Duration { get; set; }
 		public string? BoxingMembershipPlanId { get; set; }
 		public string? TrainerRentalPlanId { get; set; }
-		public string SelectedTimeSlot { get; set; }
+		public string SelectedTimeSlotId { get; set; }
 		public bool IsMonWedFri { get; set; }
 	}
 }

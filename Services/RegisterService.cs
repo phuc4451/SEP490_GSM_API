@@ -180,7 +180,7 @@ namespace Alpha_API.Services
 				Duration = request.Duration,
 				Emails = request.Emails,
 				IsMonWedFri = request.IsMonWedFri,
-				SelectedTimeSlot = request.SelectedTimeSlot,
+				SelectedTimeSlotId = request.SelectedTimeSlot,
 			};
 			var scheduleId = await _scheduleService.CreateSchedule(scheduleRequest);
 
@@ -406,7 +406,7 @@ namespace Alpha_API.Services
 				Duration = request.Duration,
 				Emails = request.Emails,
 				IsMonWedFri = request.IsMonWedFri,
-				SelectedTimeSlot = request.SelectedTimeSlot,
+				SelectedTimeSlotId = request.SelectedTimeSlot,
 			};
 			var scheduleId = await _scheduleService.CreateSchedule(scheduleRequest);
 
