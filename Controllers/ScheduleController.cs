@@ -112,13 +112,88 @@ namespace Alpha_API.Controllers
 					slotList.Add(sl);
 				}
 			}
-
-
 			return slotList;
 		}
+        [HttpGet("Slot/Trainer/{userId}")]
+        public async Task<ActionResult<IEnumerable<Object>>> GetTrainerCustomerSchedulesByDate(string userId)
+        {
+            _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
-		// GET: api/Schedule/Trainer/{userId}
-		[HttpGet("Trainer/{userId}")]
+            // Tìm TrainerId từ UserId
+            var trainer = (await _firebaseClient
+                .Child("Trainers")
+                .OnceAsync<Trainer>())
+                .FirstOrDefault(t => t.Object.UserId == userId);
+
+            if (trainer == null)
+            {
+                return NotFound("Trainer not found for the given userId.");
+            }
+
+            var trainerId = trainer.Key; // Lấy TrainerId từ kết quả
+
+            // Lấy tất cả các Slots
+            var slots = await _firebaseClient
+                .Child("Slots")
+                .OnceAsync<Slot>();
+
+            // Lọc các Slots có liên kết với Schedule của Trainer
+            var trainerSlots = new List<Object>();
+            foreach (var slot in slots)
+            {
+                // Lấy ScheduleId từ Slot
+                var scheduleId = slot.Object.ScheduleId;
+
+                // Lấy thông tin Schedule từ ScheduleId
+                var schedule = await _firebaseClient
+                    .Child("Schedules")
+                    .Child(scheduleId)
+                    .OnceSingleAsync<Schedule>();
+
+                // Kiểm tra Schedule có thuộc về TrainerId không
+                if (schedule.TrainerId == trainerId)
+                {
+                    // Lấy danh sách UserId từ Schedule
+                    if (!string.IsNullOrEmpty(schedule.UserIds))
+                    {
+                        var userIds = schedule.UserIds.Split(',');
+
+                        foreach (var customerId in userIds)
+                        {
+                            // Lấy thông tin User từ UserId
+                            var customer = await _firebaseClient
+                                .Child("users")
+                                .Child(customerId)
+                                .OnceSingleAsync<User>();
+
+                            if (customer != null)
+                            {
+                                // Lấy thông tin TimeSlot từ slot
+                                var timeSlot = _timeSlotService.GetTimeSlot(slot.Object.TimeSlotId);
+
+                                // Thêm vào danh sách
+                                var customerSlot = new
+                                {
+                                    userName = customer.Name,
+                                    date = slot.Object.Date.ToString("yyyy-MM-dd"), // Convert DateOnly to string
+                                    timeSlot,
+                                };
+
+                                trainerSlots.Add(customerSlot);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!trainerSlots.Any())
+                return NotFound("No schedules found for this trainer.");
+
+            return trainerSlots;
+        }
+
+        // GET: api/Schedule/Trainer/{userId}
+        [HttpGet("Trainer/{userId}")]
 		public async Task<ActionResult<IEnumerable<Schedule>>> GetTrainerSchedules(string userId)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
