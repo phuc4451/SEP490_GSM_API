@@ -63,37 +63,6 @@ namespace Alpha_API.ViewModel
                     },
                 };
             }
-            //return new
-            //{
-            //	gymMembership = new
-            //	{
-            //		Membership.Name,
-            //		Membership.DurationMonths,
-            //		Membership.SessionCount,
-            //		TotalPrice = Membership.Price,
-            //	},
-
-            //	trainerRentalPlan = new
-            //	{
-            //		RentalPlan.TrainerId,
-            //		RentalOption.Description,
-            //		RentalOption.PricePerPersonPerSession,
-            //		RentalOption.PricePerPersonPerMonth,
-            //		RentalOption.MemberCount,
-            //		TotalPrice = Payment.Amount
-            //	},
-
-            //	boxingMembershipPlan = new
-            //	{
-            //		BoxingPlan.BoxingTrainerId,
-            //		BoxingOption.Description,
-            //		BoxingOption.TotalPrice,
-            //		BoxingOption.Sessions,
-            //		BoxingOption.MemberCount,
-            //		BoxingOption.Months,
-            //	},
-            //};
-
             return null;
         }
     }

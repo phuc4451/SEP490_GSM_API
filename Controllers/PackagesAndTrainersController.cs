@@ -135,7 +135,6 @@ namespace Alpha_API.Controllers
                         .Child(plan.Object.BoxingTrainerId)
                         .OnceSingleAsync<Trainer>();
 
-                    // Lấy chuyên môn từ trường con
                     var specialization = await _firebaseClient
                         .Child("Trainers")
                         .Child(plan.Object.BoxingTrainerId)
@@ -153,7 +152,8 @@ namespace Alpha_API.Controllers
                             IsMonthlyPackage = matchingOption.Object.Months > 0,
                             MinSessions = matchingOption.Object.Months > 0 ? (int?)null : matchingOption.Object.Sessions,
                             MaxSessions = matchingOption.Object.Months > 0 ? (int?)null : matchingOption.Object.Sessions,
-                            MemberCount = matchingOption.Object.MemberCount
+                            MemberCount = matchingOption.Object.MemberCount,
+                            BoxingMembershipPlanId = plan.Key // Thêm BoxingMembershipPlanId
                         });
                     }
                 }
@@ -187,7 +187,6 @@ namespace Alpha_API.Controllers
                         .Child(plan.Object.TrainerId)
                         .OnceSingleAsync<Trainer>();
 
-                    // Lấy chuyên môn từ trường con
                     var specialization = await _firebaseClient
                         .Child("Trainers")
                         .Child(plan.Object.TrainerId)
@@ -205,7 +204,8 @@ namespace Alpha_API.Controllers
                             IsMonthlyPackage = matchingOption.Object.PricePerPersonPerMonth > 0,
                             MinSessions = matchingOption.Object.PricePerPersonPerMonth > 0 ? (int?)null : matchingOption.Object.SessionCountMin,
                             MaxSessions = matchingOption.Object.PricePerPersonPerMonth > 0 ? (int?)null : matchingOption.Object.SessionCountMax,
-                            MemberCount = matchingOption.Object.MemberCount
+                            MemberCount = matchingOption.Object.MemberCount,
+                            TrainerRentalPlanId = plan.Key // Thêm TrainerRentalPlanId
                         });
                     }
                 }
@@ -218,6 +218,7 @@ namespace Alpha_API.Controllers
 
             return Ok(trainers);
         }
+
 
     }
 

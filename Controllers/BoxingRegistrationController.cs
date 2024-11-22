@@ -116,7 +116,7 @@ namespace Alpha_API.Controllers
 
 		// POST: api/BoxingRegistration
 		[HttpPost]
-		[Authorize(Roles = "admin,staff,customer")] //customer can only pay qr =>call qrcontroller
+		//[Authorize(Roles = "admin,staff,customer")] //customer can only pay qr =>call qrcontroller
 		public async Task<ActionResult<BoxingRegistration>> CreateRegistration(RegisterPackageRequest request)
 		{
 			if (request == null)
