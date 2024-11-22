@@ -447,7 +447,7 @@ namespace Alpha_API.Services
 				}
 				if (hasActiveRegistration)
 				{
-					throw new InvalidOperationException("The user already has an active Trainer Rental Registration.");
+					throw new InvalidOperationException("The user already has an active Boxing Registration.");
 				}
 				userIds.Append(userId).Append(",");
 			}

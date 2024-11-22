@@ -123,11 +123,6 @@ namespace Alpha_API.Services
 					throw new InvalidOperationException($"This plan is for {option.MemberCount} persons");
 				}
 
-				if (!request.Duration.HasValue || request.Duration == 0)
-				{
-					throw new InvalidOperationException("Please fill in number of months to register");
-				}
-
 				return await HandleBoxingMembershipPlan(request, plan, option, numberOfUsers, trainerId, plan.BoxingMembershipPlanId, userIdsString);
 			}
 			else
