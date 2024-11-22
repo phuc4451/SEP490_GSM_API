@@ -109,7 +109,17 @@ namespace Alpha_API.Controllers
 
             if (!string.IsNullOrEmpty(boxingOptionId))
             {
-                // Lấy tất cả các BoxingMembershipPlans dựa trên BoxingOptionId
+                // Lấy thông tin gói boxing
+                var boxingOptions = await _firebaseClient
+                    .Child("BoxingOptions")
+                    .OnceAsync<BoxingOption>();
+
+                var matchingOption = boxingOptions.FirstOrDefault(option => option.Key == boxingOptionId);
+                if (matchingOption == null)
+                {
+                    return NotFound("No matching boxing option found.");
+                }
+
                 var boxingPlans = await _firebaseClient
                     .Child("BoxingMembershipPlans")
                     .OnceAsync<BoxingMembershipPlan>();
@@ -125,13 +135,25 @@ namespace Alpha_API.Controllers
                         .Child(plan.Object.BoxingTrainerId)
                         .OnceSingleAsync<Trainer>();
 
+                    // Lấy chuyên môn từ trường con
+                    var specialization = await _firebaseClient
+                        .Child("Trainers")
+                        .Child(plan.Object.BoxingTrainerId)
+                        .Child("specialization")
+                        .OnceSingleAsync<string>();
+
                     if (trainer != null)
                     {
                         trainers.Add(new
                         {
                             TrainerId = plan.Object.BoxingTrainerId,
                             Name = trainer.Name,
-                            UserId = trainer.UserId
+                            UserId = trainer.UserId,
+                            Specialization = specialization,
+                            IsMonthlyPackage = matchingOption.Object.Months > 0,
+                            MinSessions = matchingOption.Object.Months > 0 ? (int?)null : matchingOption.Object.Sessions,
+                            MaxSessions = matchingOption.Object.Months > 0 ? (int?)null : matchingOption.Object.Sessions,
+                            MemberCount = matchingOption.Object.MemberCount
                         });
                     }
                 }
@@ -139,7 +161,17 @@ namespace Alpha_API.Controllers
 
             if (!string.IsNullOrEmpty(rentalOptionId))
             {
-                // Lấy tất cả các TrainerRentalPlans dựa trên RentalOptionId
+                // Lấy thông tin gói thuê huấn luyện viên
+                var rentalOptions = await _firebaseClient
+                    .Child("RentalOptions")
+                    .OnceAsync<RentalOption>();
+
+                var matchingOption = rentalOptions.FirstOrDefault(option => option.Key == rentalOptionId);
+                if (matchingOption == null)
+                {
+                    return NotFound("No matching rental option found.");
+                }
+
                 var rentalPlans = await _firebaseClient
                     .Child("TrainerRentalPlans")
                     .OnceAsync<TrainerRentalPlan>();
@@ -155,13 +187,25 @@ namespace Alpha_API.Controllers
                         .Child(plan.Object.TrainerId)
                         .OnceSingleAsync<Trainer>();
 
+                    // Lấy chuyên môn từ trường con
+                    var specialization = await _firebaseClient
+                        .Child("Trainers")
+                        .Child(plan.Object.TrainerId)
+                        .Child("specialization")
+                        .OnceSingleAsync<string>();
+
                     if (trainer != null)
                     {
                         trainers.Add(new
                         {
                             TrainerId = plan.Object.TrainerId,
                             Name = trainer.Name,
-                            UserId = trainer.UserId
+                            UserId = trainer.UserId,
+                            Specialization = specialization,
+                            IsMonthlyPackage = matchingOption.Object.PricePerPersonPerMonth > 0,
+                            MinSessions = matchingOption.Object.PricePerPersonPerMonth > 0 ? (int?)null : matchingOption.Object.SessionCountMin,
+                            MaxSessions = matchingOption.Object.PricePerPersonPerMonth > 0 ? (int?)null : matchingOption.Object.SessionCountMax,
+                            MemberCount = matchingOption.Object.MemberCount
                         });
                     }
                 }
@@ -174,6 +218,7 @@ namespace Alpha_API.Controllers
 
             return Ok(trainers);
         }
+
     }
 
 }

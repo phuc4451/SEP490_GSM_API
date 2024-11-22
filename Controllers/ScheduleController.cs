@@ -299,15 +299,19 @@ namespace Alpha_API.Controllers
                 return NotFound("No TimeSlots found.");
             }
 
-            // Map dữ liệu từ Firebase thành danh sách TimeSlot
-            var result = timeSlots.Select(ts => new TimeSlot
-            {
-                TimeSlotId = ts.Key,
-                Time = ts.Object.Time
-            }).ToList();
+            // Map dữ liệu từ Firebase thành danh sách TimeSlot và sắp xếp theo Time
+            var result = timeSlots
+                .Select(ts => new TimeSlot
+                {
+                    TimeSlotId = ts.Key,
+                    Time = ts.Object.Time
+                })
+                .OrderBy(ts => TimeSpan.Parse(ts.Time.Split('-')[0])) // Sắp xếp theo giờ bắt đầu
+                .ToList();
 
             return result;
         }
+
 
         //// POST: api/Schedule
         //[HttpPost]
