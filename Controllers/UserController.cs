@@ -290,8 +290,39 @@ public class UsersController : ControllerBase
 		return Ok(user);
 	}
 
-	// POST: api/users/updatestaff/{id}
-	[Authorize(Roles = "admin")]
+    // GET: api/users/GetUserByEmail/{email}
+    [HttpGet("GetUserByEmail/{email}")]
+    public async Task<ActionResult<object>> GetUserByEmail(string email)
+    {
+        _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+        // Truy vấn trực tiếp để tìm người dùng có email khớp
+        var users = await _firebaseClient
+            .Child("users")
+            .OrderBy("email")
+            .EqualTo(email)
+            .OnceAsync<User>();
+
+        var matchingUser = users.FirstOrDefault();
+
+        if (matchingUser == null)
+        {
+            return NotFound($"No user found with the email {email}");
+        }
+
+        // Trả về chỉ các trường cần thiết
+        var result = new
+        {
+            UserId = matchingUser.Key,
+            Name = matchingUser.Object.Name,
+            Email = matchingUser.Object.Email
+        };
+
+        return Ok(result);
+    }
+
+    // POST: api/users/updatestaff/{id}
+    [Authorize(Roles = "admin")]
 	[HttpPatch("updateStaff/{id}")]
 	public async Task<ActionResult> UpdateStaff(string id, [FromBody] User u)
 	{
