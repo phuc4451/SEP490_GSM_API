@@ -174,7 +174,7 @@ namespace Alpha_API.Controllers
         //        {
         //            var storageTask = new FirebaseStorage("sgm-management-c98cd.appspot.com")
         //                .Child("post_images")           // Directory for post images
-        //                .Child(Guid.NewGuid().ToString() + "_" + image.FileName) // Unique file name
+        //                .Child(Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15) + "_" + image.FileName) // Unique file name
         //                .PutAsync(stream);
 
         //            imageUrl = await storageTask; // Retrieve image URL

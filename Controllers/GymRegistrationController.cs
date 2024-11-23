@@ -157,7 +157,7 @@ namespace GymManagementAPI.Controllers
 
 		// POST: api/GymRegistration
 		[HttpPost]
-		[Authorize(Roles = "admin,staff,customer")] //customer can only pay qr =>call qrcontroller
+		//[Authorize(Roles = "admin,staff,customer")] //customer can only pay qr =>call qrcontroller
 		public async Task<ActionResult<GymRegistration>> CreateRegistration(RegisterPackageRequest request)
 		{
 			if (request == null)
@@ -169,50 +169,53 @@ namespace GymManagementAPI.Controllers
 			{
 				return BadRequest("Emails are null");
 			}
+
 			if (string.IsNullOrEmpty(request.GymMembershipId) && string.IsNullOrEmpty(request.TrainerRentalPlanId) && string.IsNullOrEmpty(request.BoxingMembershipPlanId))
 			{
 				return BadRequest("Memberships or plans are null");
 			}
-			if (request.QRPayment)
+
+			try
 			{
-				try
+				if (request.QRPayment)
 				{
 					var qrList = await _qrCodeService.GenerateQrCodeAsync(request);
 					return Ok(qrList);
 				}
-				catch (ArgumentNullException ex)
+				else if (!request.QRPayment)
 				{
-					return BadRequest(new { message = ex.Message });
+					await _registerService.RegisterGym(request, request.QRPayment);
+					return Ok();
 				}
-				catch (UnauthorizedAccessException ex)
-				{
-					return BadRequest(new { message = ex.Message });
-				}
-				catch (InvalidOperationException ex)
-				{
-					return BadRequest(new { message = ex.Message });
-				}
-				catch (ArgumentException ex)
-				{
-					// Handle specific ArgumentExceptions as BadRequest
-					return BadRequest(ex.Message);
-				}
-				catch (HttpRequestException ex)
-				{
-					return StatusCode(502, new { message = "Failed to generate QR code", details = ex.Message });
-				}
-				catch (Exception ex)
-				{
-					// Log the exception (if using a logger)
-					return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
-				}
+				else { return BadRequest("QR Payment is required but was not provided."); }
 			}
-			else if (!request.QRPayment)
+
+			catch (ArgumentNullException ex)
 			{
-				var registerService = await _registerService.RegisterGym(request, request.QRPayment);
-				return CreatedAtAction(nameof(GetRegistration), new { id = registerService.Registration.Key }, registerService.Registration);
+				return BadRequest(new { message = ex.Message });
 			}
-			else { return BadRequest("QR Payment is required but was not provided."); }
+			catch (UnauthorizedAccessException ex)
+			{
+				return BadRequest(new { message = ex.Message });
+			}
+			catch (InvalidOperationException ex)
+			{
+				return BadRequest(new { message = ex.Message });
+			}
+			catch (ArgumentException ex)
+			{
+				// Handle specific ArgumentExceptions as BadRequest
+				return BadRequest(ex.Message);
+			}
+			catch (HttpRequestException ex)
+			{
+				return StatusCode(502, new { message = "Failed to generate QR code", details = ex.Message });
+			}
+			catch (Exception ex)
+			{
+				// Log the exception (if using a logger)
+				return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+			}
 		}
 
 		// POST: api/GymRegistration/{id}

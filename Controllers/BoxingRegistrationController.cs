@@ -15,7 +15,7 @@ using Alpha_API.ViewModel;
 
 namespace Alpha_API.Controllers
 {
-    [Route("api/[controller]")]
+	[Route("api/[controller]")]
 	[ApiController]
 	public class BoxingRegistrationController : ControllerBase
 	{
@@ -131,46 +131,47 @@ namespace Alpha_API.Controllers
 			{
 				return BadRequest("Memberships or plans are null");
 			}
-			if (request.QRPayment)
+			try
 			{
-				try
+				if (request.QRPayment)
 				{
 					var qrList = await _qrCodeService.GenerateQrCodeAsync(request);
 					return Ok(qrList);
 				}
-				catch (ArgumentNullException ex)
+				else if (!request.QRPayment)
 				{
-					return BadRequest(new { message = ex.Message });
+					var registerService = await _registerService.RegisterBoxing(request, request.QRPayment);
+					return Ok();
 				}
-				catch (UnauthorizedAccessException ex)
-				{
-					return BadRequest(new { message = ex.Message });
-				}
-				catch (InvalidOperationException ex)
-				{
-					return BadRequest(new { message = ex.Message });
-				}
-				catch (ArgumentException ex)
-				{
-					// Handle specific ArgumentExceptions as BadRequest
-					return BadRequest(ex.Message);
-				}
-				catch (HttpRequestException ex)
-				{
-					return StatusCode(502, new { message = "Failed to generate QR code", details = ex.Message });
-				}
-				catch (Exception ex)
-				{
-					// Log the exception (if using a logger)
-					return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
-				}
+				else { return BadRequest("QR Payment is required but was not provided."); }
 			}
-			else if (!request.QRPayment)
+			catch (ArgumentNullException ex)
 			{
-				var registerService = await _registerService.RegisterBoxing(request, request.QRPayment);
-				return CreatedAtAction(nameof(GetRegistration), new { id = registerService.Registration.Key }, registerService.Registration);
+				return BadRequest(new { message = ex.Message });
 			}
-			else { return BadRequest("QR Payment is required but was not provided."); }
+			catch (UnauthorizedAccessException ex)
+			{
+				return BadRequest(new { message = ex.Message });
+			}
+			catch (InvalidOperationException ex)
+			{
+				return BadRequest(new { message = ex.Message });
+			}
+			catch (ArgumentException ex)
+			{
+				// Handle specific ArgumentExceptions as BadRequest
+				return BadRequest(ex.Message);
+			}
+			catch (HttpRequestException ex)
+			{
+				return StatusCode(502, new { message = "Failed to generate QR code", details = ex.Message });
+			}
+			catch (Exception ex)
+			{
+				// Log the exception (if using a logger)
+				return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+			}
+
 		}
 
 		// POST: api/BoxingRegistration/{id}

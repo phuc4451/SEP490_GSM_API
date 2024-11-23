@@ -50,11 +50,25 @@ namespace Alpha_API.Services
 			List<string> userIds = new List<string>();
 			StringBuilder userIdsBuilder = new StringBuilder();
 
-			foreach (var email in request.Emails)
+			// Fetch user IDs in parallel
+			var tasks = request.Emails.Select(async email =>
 			{
 				var userId = await _emailService.GetUserIdByEmail(email);
-				userIds.Add(userId);
-			}
+				return userId;
+			});
+
+			// Wait for all tasks to complete
+			var userIdResults = await Task.WhenAll(tasks);
+
+			// Filter out empty results (if the user was not found)
+			userIds = userIdResults.Where(id => !string.IsNullOrEmpty(id)).ToList();
+
+
+			//foreach (var email in request.Emails)
+			//{
+			//	var userId = await _emailService.GetUserIdByEmail(email);
+			//	userIds.Add(userId);
+			//}
 
 			foreach (var userId in userIds)
 				userIdsBuilder.Append(userId).Append(",");
@@ -138,7 +152,7 @@ namespace Alpha_API.Services
 			var endDate = startDate.AddDays(1).AddMonths(duration);
 			var slotDates = GenerateSlotDates(startDate, endDate, request.IsMonWedFri, false, 0);
 
-			var scheduleId = Guid.NewGuid().ToString();
+			var scheduleId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			var slots = new List<Slot>();
 			int slotCount = 0;
 
@@ -187,7 +201,7 @@ namespace Alpha_API.Services
 			var endDate = startDate.AddDays(duration);
 			var slotDates = GenerateSlotDates(startDate, endDate, request.IsMonWedFri, false, duration);
 
-			var scheduleId = Guid.NewGuid().ToString();
+			var scheduleId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			var slots = new List<Slot>();
 			int slotCount = 0;
 			var times = request.SelectedTimeSlotId.Split('-');
@@ -232,7 +246,7 @@ namespace Alpha_API.Services
 			var endDate = startDate.AddDays(1).AddMonths(1);
 			var slotDates = GenerateSlotDates(startDate, endDate, request.IsMonWedFri, true, duration);
 
-			var scheduleId = Guid.NewGuid().ToString();
+			var scheduleId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			var slots = new List<Slot>();
 			int slotCount = 0;
 			var times = request.SelectedTimeSlotId.Split('-');
@@ -279,14 +293,21 @@ namespace Alpha_API.Services
 				Converters = { new DateOnlyJsonConverter(), new TimeOnlyJsonConverter() } // Add the custom converter
 			};
 
-			var jsonString = JsonSerializer.Serialize(schedule, options);
-			await _firebaseClient.Child("Schedules").Child(scheduleId).PutAsync(jsonString);
 
-			foreach (var slot in slots)
-			{
-				jsonString = JsonSerializer.Serialize(slot, options);
-				await _firebaseClient.Child("Slots").PostAsync(jsonString);
-			}
+			// Serialize schedule and save it
+			var scheduleJson = JsonSerializer.Serialize(schedule, options);
+			var scheduleTask = _firebaseClient.Child("Schedules").Child(scheduleId).PutAsync(scheduleJson);
+
+			// Create a dictionary to batch insert slots
+			var slotsDictionary = slots.ToDictionary(slot => Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15), slot =>
+				slot);
+
+			// Serialize slots dictionary as a single batch insert
+			var slotsJson = JsonSerializer.Serialize(slotsDictionary, options);
+			var slotsTask = _firebaseClient.Child("Slots").PatchAsync(slotsJson);
+
+			// Await both tasks concurrently
+			await Task.WhenAll(scheduleTask, slotsTask);
 		}
 
 		private List<DateOnly> GenerateSlotDates(DateOnly startDate, DateOnly endDate, bool isMonWedFri, bool isBoxing, int? sessions)
@@ -362,19 +383,41 @@ namespace Alpha_API.Services
 				.EqualTo(trainerId)
 				.OnceAsync<Schedule>();
 
-			List<Slot> trainerSlotsList = new List<Slot>();
-			foreach (var schedule in trainerSchedules)
+			//List<Slot> trainerSlotsList = new List<Slot>();
+			//foreach (var schedule in trainerSchedules)
+			//{
+			//	var trainerSlots = await _firebaseClient
+			//		.Child("Slots")
+			//		.OrderBy("scheduleId")
+			//		.EqualTo(schedule.Object.ScheduleId)
+			//		.OnceAsync<Slot>();
+
+			//	trainerSlotsList.AddRange(
+			//		trainerSlots.Select(sl => sl.Object)
+			//		.Where(sl => sl.Date <= endSlotDate && sl.Date >= startSlotDate));
+			//}
+
+			// Collect all schedule IDs to batch fetch slots
+			var scheduleIds = trainerSchedules.Select(s => s.Object.ScheduleId).ToList();
+			if (!scheduleIds.Any())
 			{
-				var trainerSlots = await _firebaseClient
+				return true; // No existing schedules, trainer is available
+			}
+
+			// Batch fetch all slots for the trainer's schedules
+			var trainerSlotsTasks = scheduleIds.Select(scheduleId =>
+				_firebaseClient
 					.Child("Slots")
 					.OrderBy("scheduleId")
-					.EqualTo(schedule.Object.ScheduleId)
-					.OnceAsync<Slot>();
+					.EqualTo(scheduleId)
+					.OnceAsync<Slot>());
+			var trainerSlotsResults = await Task.WhenAll(trainerSlotsTasks);
 
-				trainerSlotsList.AddRange(
-					trainerSlots.Select(sl => sl.Object)
-					.Where(sl => sl.Date <= endSlotDate && sl.Date >= startSlotDate));
-			}
+			// Flatten and filter slots to relevant dates
+			var trainerSlotsList = trainerSlotsResults
+				.SelectMany(result => result.Select(slot => slot.Object))
+				.Where(sl => sl.Date <= endSlotDate && sl.Date >= startSlotDate)
+				.ToList();
 
 			var trainerSlotsByDay = trainerSlotsList
 				.GroupBy(s => s.Date)

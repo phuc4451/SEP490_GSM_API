@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Alpha_API.Utils;
 using Alpha_API.ViewModel;
+using Alpha_API.Models;
 
 namespace Alpha_API.Services
 {
@@ -21,9 +22,6 @@ namespace Alpha_API.Services
 		private readonly RegisterService _registerService;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private FirebaseClient _firebaseClient;
-		private string _createdPaymentId;
-		private string _createdRegistrationId;
-		private System.Timers.Timer _deleteTimer; // Timer for deletion
 
 		public QrCodeService(IHttpClientFactory httpClientFactory,
 							 FirebaseClientProvider firebaseClientProvider,
@@ -81,10 +79,7 @@ namespace Alpha_API.Services
 
 			var registerResult = await registerFunc(request, qrPayment);
 
-			_createdPaymentId = registerResult.Payment.PaymentId;
-			_createdRegistrationId = registerResult.Registration.Key;
-			StartDeletionTimer();
-
+			#region MBBank
 			//var jsonData = new
 			//{
 			//	accountNo = "0978788128",
@@ -94,14 +89,15 @@ namespace Alpha_API.Services
 			//	amount = registerResult.Payment.Amount,
 			//	template = "compact"
 			//};
+			#endregion
 
 			var jsonData = new
 			{
 				accountNo = "105874147288",
 				accountName = "VU HONG PHUC",
 				acqId = "970415",
-				addInfo = registerResult.Info,
-				amount = registerResult.Payment.Amount,
+				addInfo = registerResult.TransactionContent,
+				amount = registerResult.MoneyToPay,
 				template = "compact"
 			};
 
@@ -134,29 +130,5 @@ namespace Alpha_API.Services
 			}
 		}
 
-		private void StartDeletionTimer()
-		{
-			// If the timer is already running, stop it
-			if (_deleteTimer != null)
-			{
-				_deleteTimer.Stop();
-				_deleteTimer.Dispose();
-			}
-
-			// Create and start a new timer
-			_deleteTimer = new System.Timers.Timer(10000); // Set for 10 seconds
-			_deleteTimer.Elapsed += async (sender, e) => await DeleteMembershipsAsync();
-			_deleteTimer.AutoReset = false; // Run only once
-			_deleteTimer.Start();
-		}
-
-		private async Task DeleteMembershipsAsync()
-		{
-
-			//await _firebaseClient.Child("Memberships").Child(_createdPaymentId).DeleteAsync();
-
-			_createdPaymentId = ""; // Clear the list after deletion
-			_createdRegistrationId = "";
-		}
 	}
 }

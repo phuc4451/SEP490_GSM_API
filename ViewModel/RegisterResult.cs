@@ -12,9 +12,10 @@ namespace Alpha_API.ViewModel
         public TrainerRentalPlan RentalPlan { get; set; }
         public RentalOption RentalOption { get; set; }
         public BoxingOption BoxingOption { get; set; }
-        public FirebaseObject<string> Registration { get; set; }
-        public Payment Payment { get; set; }
-        public string Info { get; set; }
+        public string RegistrationType { get; set; }
+        public string RegistrationId { get; set; }
+        public decimal MoneyToPay { get; set; }
+        public string TransactionContent { get; set; }
 
         public object ToQrDetails()
         {
@@ -27,7 +28,7 @@ namespace Alpha_API.ViewModel
                         Membership.Name,
                         Membership.DurationMonths,
                         Membership.SessionCount,
-                        TotalPrice = Membership.Price,
+                        TotalPrice = MoneyToPay,
                     },
                 };
             }
@@ -43,7 +44,7 @@ namespace Alpha_API.ViewModel
                         RentalOption.PricePerPersonPerSession,
                         RentalOption.PricePerPersonPerMonth,
                         RentalOption.MemberCount,
-                        TotalPrice = Payment.Amount
+                        TotalPrice = MoneyToPay
                     },
                 };
             }

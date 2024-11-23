@@ -262,7 +262,7 @@ namespace Alpha_API.Controllers
 
 			 new Claim(ClaimTypes.Email, email),  // Use ClaimTypes.Email for email claim
 			 new Claim(ClaimTypes.NameIdentifier, uid),  // Use ClaimTypes.Email for email claim
-			new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+			new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15)),
 			new Claim(ClaimTypes.Role, role)  // Include the user's role in the token
         };
 

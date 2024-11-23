@@ -10,6 +10,6 @@
 		public decimal Amount { get; set; }
 		public DateTime PaymentDate { get; set; }
 		public string PaymentStatus { get; set; } // "Completed", "Pending", "Cancel"
-		public string PaymentMethodId { get; set; } // FK to PaymentMethod
+		public string PaymentMethod { get; set; } // FK to PaymentMethod
 	}
 }

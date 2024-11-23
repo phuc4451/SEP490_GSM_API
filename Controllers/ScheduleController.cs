@@ -392,7 +392,7 @@ namespace Alpha_API.Controllers
         //			var slotDates = GenerateSlotDates(startDate, endDate, request.IsMonWedFri, false, 0);
 
         //			// Generate schedule and slots
-        //			var scheduleId = Guid.NewGuid().ToString();
+        //			var scheduleId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
         //			var slots = new List<Slot>();
         //			int slotCount = 0;
 
@@ -453,7 +453,7 @@ namespace Alpha_API.Controllers
         //			var slotDates = GenerateSlotDates(startDate, endDate, request.IsMonWedFri, false, duration);
 
         //			// Generate schedule and slots
-        //			var scheduleId = Guid.NewGuid().ToString();
+        //			var scheduleId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
         //			var slots = new List<Slot>();
         //			int slotCount = 0;
 
@@ -533,7 +533,7 @@ namespace Alpha_API.Controllers
         //		var slotDates = GenerateSlotDates(startDate, endDate, request.IsMonWedFri, true, duration);
 
         //		// Generate schedule and slots
-        //		var scheduleId = Guid.NewGuid().ToString();
+        //		var scheduleId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
         //		var slots = new List<Slot>();
         //		int slotCount = 0;
 
