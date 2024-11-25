@@ -98,7 +98,7 @@ namespace Alpha_API.Services
 				acqId = "970415",
 				addInfo = registerResult.TransactionContent,
 				amount = registerResult.MoneyToPay,
-				template = "compact"
+				template = "compact2"
 			};
 
 			var jsonContent = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(jsonData), Encoding.UTF8, "application/json");

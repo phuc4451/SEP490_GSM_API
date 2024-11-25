@@ -30,8 +30,8 @@ namespace Alpha_API.Services
 		private readonly RoleService _roleService;
 		private readonly IScheduleService _scheduleService;
 		private readonly Dictionary<string, System.Timers.Timer> _customerTimers = new();
-		private readonly Dictionary<string, (string PaymentId, string RegistrationType, string RegistrationId)> _pendingRegistrations = new();
-
+		private readonly Dictionary<string, (string PaymentId, string RegistrationType, string RegistrationId, string ScheduleId)> _pendingRegistrations = new();
+		private readonly double paymentWaitingTime = 10000;
 
 		public RegisterService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider,
 			PaymentMethodService paymentMethodService, EmailService emailService, RoleService roleService, IScheduleService scheduleService)
@@ -147,7 +147,7 @@ namespace Alpha_API.Services
 				.Child(info)
 				.PutAsync(paymentJSON);
 
-			StartDeletionTimer("no", info, "Gym", regisId);
+			StartDeletionTimer("no", info, "Gym", regisId, "");
 
 			return new RegisterResult
 			{
@@ -403,7 +403,7 @@ namespace Alpha_API.Services
 				.Child(info)
 				.PutAsync(paymentJSON);
 
-			StartDeletionTimer("no", info, "Trainer", regisId);
+			StartDeletionTimer("no", info, "TrainerRental", regisId, scheduleId);
 
 			return new RegisterResult
 			{
@@ -611,7 +611,7 @@ namespace Alpha_API.Services
 				.Child(info)
 				.PutAsync(jsonString);
 
-			StartDeletionTimer("no", info, "Boxing", regisId);
+			StartDeletionTimer("no", info, "Boxing", regisId, scheduleId);
 
 			return new RegisterResult
 			{
@@ -624,7 +624,7 @@ namespace Alpha_API.Services
 			//return (plan, option, registration, payment, info);
 		}
 
-		private void StartDeletionTimer(string customerId, string paymentId, string registrationType, string registrationId)
+		private void StartDeletionTimer(string customerId, string paymentId, string registrationType, string registrationId, string scheduleId)
 		{
 			// If there's already a timer for this customer, stop and dispose it
 			if (_customerTimers.TryGetValue(customerId, out var existingTimer))
@@ -634,10 +634,10 @@ namespace Alpha_API.Services
 			}
 
 			// Track the registration details
-			_pendingRegistrations[customerId] = (paymentId, registrationType, registrationId);
+			_pendingRegistrations[customerId] = (paymentId, registrationType, registrationId, scheduleId);
 
 			// Create and start a new timer
-			var timer = new System.Timers.Timer(20000); // 20 seconds
+			var timer = new System.Timers.Timer(paymentWaitingTime);
 			timer.Elapsed += async (sender, e) => await DeleteMembershipsAsync(customerId);
 			timer.AutoReset = false; // Run only once
 			timer.Start();
@@ -651,33 +651,43 @@ namespace Alpha_API.Services
 			if (!_pendingRegistrations.TryGetValue(customerId, out var registrationDetails))
 				return;
 
-			var (paymentId, registrationType, registrationId) = registrationDetails;
+			var (paymentId, registrationType, registrationId, scheduleId) = registrationDetails;
 
-			// Check payment status
-			var createdPayment = await _firebaseClient.Child("Payments").Child(paymentId).OnceSingleAsync<Payment>();
-			if (createdPayment != null && !createdPayment.PaymentStatus.Equals("Completed"))
+			try
 			{
-				// Delete payment and registration
-				await _firebaseClient.Child("Payments").Child(paymentId).DeleteAsync();
-
-				switch (registrationType)
+				// Check payment status
+				var createdPayment = await _firebaseClient.Child("Payments").Child(paymentId).OnceSingleAsync<Payment>();
+				if (createdPayment != null && !createdPayment.PaymentStatus.Equals("Completed"))
 				{
-					case "Gym":
-						await _firebaseClient.Child("GymRegistrations").Child(registrationId).DeleteAsync();
-						break;
-					case "Trainer":
-						await _firebaseClient.Child("TrainerRentalRegistrations").Child(registrationId).DeleteAsync();
-						break;
-					case "Boxing":
-						await _firebaseClient.Child("BoxingRegistrations").Child(registrationId).DeleteAsync();
-						break;
+					// Prepare deletion tasks
+					var tasks = new List<Task>
+			{
+				_firebaseClient.Child("Payments").Child(paymentId).DeleteAsync()
+			};
+
+					tasks.Add(_firebaseClient.Child($"{registrationType}Registrations").Child(registrationId).DeleteAsync());
+					tasks.Add(_firebaseClient.Child("Schedules").Child(scheduleId).DeleteAsync());
+
+					// Handle slot deletions
+					var slots = await _firebaseClient.Child("Slots")
+						.OrderBy("scheduleId").EqualTo(scheduleId).OnceAsync<Slot>();
+					tasks.AddRange(slots.Select(slot => _firebaseClient.Child("Slots").Child(slot.Key).DeleteAsync()));
+
+					// Execute all deletions
+					await Task.WhenAll(tasks);
 				}
+			}
+			catch (Exception ex)
+			{
+				// Log or handle exception as needed
+				Console.WriteLine($"Error during deletion for customer {customerId}: {ex.Message}");
 			}
 
 			// Clean up state
 			_pendingRegistrations.Remove(customerId);
 			_customerTimers.Remove(customerId);
 		}
+
 
 	}
 }

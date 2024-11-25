@@ -227,7 +227,7 @@ namespace Alpha_API.Services
 
 			var schedule = new
 			{
-				ScheduleId = scheduleId,
+				//ScheduleId = scheduleId,
 				UserIds = userIdsString, // user IDs as comma-separated values
 				TrainerId = plan.TrainerId,
 				FirstSlot = slotDates.Min(d => d),
@@ -272,7 +272,7 @@ namespace Alpha_API.Services
 
 			var schedule = new
 			{
-				ScheduleId = scheduleId,
+				//ScheduleId = scheduleId,
 				UserIds = userIdsString, // user IDs as comma-separated values
 				TrainerId = plan.BoxingTrainerId,
 				FirstSlot = slotDates.Min(d => d),
