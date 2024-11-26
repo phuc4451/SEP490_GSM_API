@@ -139,6 +139,7 @@ public class UsersController : ControllerBase
 		return Ok(userList);
 	}
 
+	// GET: api/users/ExportStaffsToExcel
 	[HttpGet("ExportStaffsToExcel")]
 	[Authorize(Roles = "admin")]
 	public async Task<IActionResult> ExportStaffsToExcel()
@@ -185,6 +186,7 @@ public class UsersController : ControllerBase
 		}
 	}
 
+	// GET: api/users/ExportCustomersToExcel
 	[HttpGet("ExportCustomersToExcel")]
 	[Authorize(Roles = "admin,staff")]
 	public async Task<IActionResult> ExportCustomersToExcel()
@@ -230,6 +232,7 @@ public class UsersController : ControllerBase
 			}
 		}
 	}
+
 	// GET: api/users/getcurrentuser
 	[Authorize(Roles = "admin,staff,customer,pt")]
 	[HttpGet("GetCurrentUser")]
@@ -290,48 +293,49 @@ public class UsersController : ControllerBase
 		return Ok(user);
 	}
 
-    // GET: api/users/GetUserByEmail/{email}
-    [HttpGet("GetUserByEmail/{email}")]
-    public async Task<ActionResult<object>> GetUserByEmail(string email)
-    {
-        _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+	// GET: api/users/GetUserByEmail/{email}
+	//[Authorize(Roles = "admin")]
+	[HttpGet("GetUserByEmail/{email}")]
+	public async Task<ActionResult<object>> GetUserByEmail(string email)
+	{
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
-        // Truy vấn trực tiếp để tìm người dùng có email khớp
-        var users = await _firebaseClient
-            .Child("users")
-            .OrderBy("email")
-            .EqualTo(email)
-            .OnceAsync<User>();
+		// Truy vấn trực tiếp để tìm người dùng có email khớp
+		var users = await _firebaseClient
+			.Child("users")
+			.OrderBy("email")
+			.EqualTo(email)
+			.OnceAsync<User>();
 
-        var matchingUser = users.FirstOrDefault();
+		var matchingUser = users.FirstOrDefault();
 
-        if (matchingUser == null)
-        {
-            return NotFound($"No user found with the email {email}");
-        }
+		if (matchingUser == null)
+		{
+			return NotFound($"No user found with the email {email}");
+		}
 
-        // Trả về chỉ các trường cần thiết
-        var result = new
-        {
-            UserId = matchingUser.Key,
-            Name = matchingUser.Object.Name,
-            Email = matchingUser.Object.Email
-        };
+		// Trả về chỉ các trường cần thiết
+		var result = new
+		{
+			UserId = matchingUser.Key,
+			Name = matchingUser.Object.Name,
+			Email = matchingUser.Object.Email
+		};
 
-        return Ok(result);
-    }
+		return Ok(result);
+	}
 
-    // POST: api/users/updatestaff/{id}
-    [Authorize(Roles = "admin")]
+	// POST: api/users/updatestaff/{id}
+	[Authorize(Roles = "admin")]
 	[HttpPatch("updateStaff/{id}")]
 	public async Task<ActionResult> UpdateStaff(string id, [FromBody] User u)
 	{
 		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 		var existingUser = await _firebaseClient
-.Child("users")
-.Child(id)
-.OnceSingleAsync<User>();
+			.Child("users")
+			.Child(id)
+			.OnceSingleAsync<User>();
 
 		if (existingUser == null)
 		{
@@ -379,6 +383,63 @@ public class UsersController : ControllerBase
 		return NoContent();
 	}
 
+	// PUT: api/users/updatecustomer/{id}
+	[Authorize(Roles = "admin,staff")]
+	[HttpPatch("updateCustomer/{id}")]
+	public async Task<ActionResult> UpdateCustomer(string id, [FromBody] User u)
+	{
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+		var existingUser = await _firebaseClient
+			.Child("users")
+			.Child(id)
+			.OnceSingleAsync<User>();
+
+		if (existingUser == null)
+		{
+			return NotFound("User not found");
+		}
+
+		if (string.IsNullOrEmpty(existingUser.Email) || string.IsNullOrEmpty(existingUser.RoleId))
+		{
+			return BadRequest("User is missing required fields: Email, RoleId");
+		}
+
+		// Call GetRoleName method to get the role name
+		string roleName = await _roleService.GetRoleName(existingUser.RoleId);
+
+		if (roleName != "customer")
+		{
+			return Forbid();
+		}
+
+		User user = new User()
+		{
+			Address = u.Address,
+			Dob = u.Dob,
+			Email = u.Email,
+			Gender = u.Gender,
+			IdCard = u.IdCard,
+			Name = u.Name,
+			Phone = u.Phone,
+			UserAvatar = u.UserAvatar,
+		};
+
+		var options = new JsonSerializerOptions
+		{
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+			DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+		};
+
+		var jsonString = JsonSerializer.Serialize(user, options);
+
+		await _firebaseClient
+			.Child("users")
+			.Child(id)
+			.PatchAsync(jsonString);
+
+		return NoContent();
+	}
 
 	// POST: api/users/addstaff
 	[Authorize(Roles = "admin")]
@@ -387,7 +448,7 @@ public class UsersController : ControllerBase
 	{
 		if (staff == null || string.IsNullOrEmpty(staff.IdCard) || string.IsNullOrEmpty(staff.Phone) || string.IsNullOrEmpty(staff.Name))
 		{
-			return BadRequest();
+			return BadRequest("Missing required fields");
 		}
 		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
@@ -396,13 +457,15 @@ public class UsersController : ControllerBase
 			var roles = await _roleService.GetAllRoles();
 			string roleStaffId = roles.FirstOrDefault(role => role.RoleName == "staff")?.RoleId;
 
+			string id = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+
 			User u = new User()
 			{
 				Name = staff.Name,
 				Email = staff.Email,
 				RoleId = roleStaffId, // Staff role
 				Phone = staff.Phone,
-				UserId = "",
+				UserId = id,
 				Gender = staff.Gender,
 				Address = staff.Address,
 				UserAvatar = staff.UserAvatar,
@@ -420,11 +483,11 @@ public class UsersController : ControllerBase
 
 
 			await _firebaseClient
-	.Child("users")
-	.Child("")
-	.PutAsync(jsonString);
+				.Child("users")
+				.Child(id)
+				.PutAsync(jsonString);
 
-			return Ok("User created. Please verify your email.");
+			return Ok("Staff added sucessfully. Please verify email.");
 		}
 		catch (FirebaseAuthException ex)
 		{
@@ -441,13 +504,13 @@ public class UsersController : ControllerBase
 	}
 
 	// POST: api/users/addTrainer
-	[Authorize(Roles = "admin")]
+	[Authorize(Roles = "admin,staff")]
 	[HttpPost("addTrainer")]
 	public async Task<ActionResult> AddTrainer([FromBody] RegisterTrainerDto trainer)
 	{
 		if (trainer == null || string.IsNullOrEmpty(trainer.IdCard) || string.IsNullOrEmpty(trainer.Email) || string.IsNullOrEmpty(trainer.Password))
 		{
-			return BadRequest();
+			return BadRequest("Missing required fields");
 		}
 		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
@@ -558,13 +621,15 @@ public class UsersController : ControllerBase
 			var roles = await _roleService.GetAllRoles();
 			string roleCustomerId = roles.FirstOrDefault(role => role.RoleName == "customer")?.RoleId;
 
+			string id = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+
 			User u = new User()
 			{
 				Name = customer.Name,
 				Email = customer.Email,
 				RoleId = roleCustomerId, // Customer role
 				Phone = customer.Phone,
-				UserId = "",
+				UserId = id,
 				Gender = customer.Gender,
 				Address = customer.Address,
 				UserAvatar = customer.UserAvatar,
@@ -580,11 +645,12 @@ public class UsersController : ControllerBase
 
 			var jsonString = JsonSerializer.Serialize(u, options);
 
-			var userAdded = await _firebaseClient
+			await _firebaseClient
 				.Child("users")
-				.PostAsync(jsonString);
+				.Child(id)
+				.PutAsync(jsonString);
 
-			return Ok();
+			return Ok("Customer added sucessfully. Please verify email.");
 
 		}
 		catch (FirebaseAuthException ex)
@@ -628,37 +694,6 @@ public class UsersController : ControllerBase
 
 		user.UserId = result.Key; // Firebase generates a unique key
 		return CreatedAtAction(nameof(GetUserById), new { id = result.Key }, user);
-	}
-
-	// PUT: api/users/{id}
-	[HttpPut("{id}")]
-	public async Task<ActionResult> PutUser(string id, [FromBody] User user)
-	{
-		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
-		var existingUser = await _firebaseClient
-	.Child("users")
-	.Child(id)
-	.OnceSingleAsync<User>();
-
-		if (existingUser == null)
-		{
-			return NotFound("User not found");
-		}
-
-		var options = new JsonSerializerOptions
-		{
-			PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-			DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-		};
-
-		var jsonString = JsonSerializer.Serialize(user, options);
-
-		await _firebaseClient
-			.Child("users")
-			.Child(id)
-			.PutAsync(jsonString);
-
-		return NoContent(); // 204 No Content
 	}
 
 	// PATCH: api/users/{id}

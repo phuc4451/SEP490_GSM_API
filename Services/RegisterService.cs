@@ -48,34 +48,37 @@ namespace Alpha_API.Services
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
-			var membership = await _firebaseClient
-			.Child("GymMemberships")
-			.Child(request.GymMembershipId)
-			.OnceSingleAsync<GymMembership>();
-
 			var userId = await _emailService.GetUserIdByEmail(request.Emails.FirstOrDefault());
 
 			if (userId == null)
 			{
 				throw new InvalidOperationException($"No user found with the email {request.Emails.FirstOrDefault()}. The user must be registered.");
 			}
-			var roleName = await _roleService.GetRoleOfUser(userId);
-			if (!roleName.Equals("customer"))
-			{
-				throw new UnauthorizedAccessException("User does not have the required 'customer' role.");
-			}
+			var roleName = _roleService.GetRoleOfUser(userId);
+
+			var membership = _firebaseClient
+				.Child("GymMemberships")
+				.Child(request.GymMembershipId)
+				.OnceSingleAsync<GymMembership>();
 
 			// Query to find all GymRegistrations with the specified UserId
-			var existingRegistrations = await _firebaseClient
+			var existingRegistrations = _firebaseClient
 				.Child("GymRegistrations")
 				.OrderBy("userId")
 				.EqualTo(userId)
 				.OnceAsync<GymRegistration>();
 
-			if (existingRegistrations.Count != 0)
+			await Task.WhenAll(roleName, existingRegistrations, membership);
+
+			if (!roleName.Result.Equals("customer"))
+			{
+				throw new UnauthorizedAccessException("User does not have the required 'customer' role.");
+			}
+
+			if (existingRegistrations.Result.Count != 0)
 			{
 				// Check for active registrations
-				var hasActiveRegistration = existingRegistrations.Any(exReg =>
+				var hasActiveRegistration = existingRegistrations.Result.Any(exReg =>
 				exReg.Object.IsActive &&
 				(exReg.Object.EndDate >= DateTime.Now || exReg.Object.SessionLeft > 0));
 
@@ -103,11 +106,11 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).Replace("-", "").Substring(0, 15);
+				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 			else
 			{
-				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).Replace("-", "").Substring(0, 15);
+				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 
 			GymRegistration gymRegistration = new GymRegistration()
@@ -115,23 +118,23 @@ namespace Alpha_API.Services
 				UserId = userId,
 				GymMembershipId = request.GymMembershipId,
 				StartDate = DateTime.Now,
-				EndDate = DateTime.Now.AddMonths((int)membership.DurationMonths),
-				SessionLeft = membership.SessionCount ?? membership.DurationMonths.Value * 7,
+				EndDate = DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0),
+				SessionLeft = membership.Result.SessionCount ?? (DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0) - DateTime.Now).Days,
 				IsActive = false,
 				PaymentId = info,
 			};
 
-			var gym = JsonSerializer.Serialize(gymRegistration, options);
+			var jsonString = JsonSerializer.Serialize(gymRegistration, options);
 
-			await _firebaseClient
+			var regTask = _firebaseClient
 				.Child("GymRegistrations")
 				.Child(regisId)
-				.PutAsync(gym);
+				.PutAsync(jsonString);
 
 			Payment payment = new Payment()
 			{
 				GymRegistrationId = regisId,
-				Amount = membership.Price,
+				Amount = membership.Result.Price,
 				BoxingRegistrationId = "",
 				TrainerRentalRegistrationId = "",
 				PaymentDate = DateTime.MinValue,
@@ -140,21 +143,22 @@ namespace Alpha_API.Services
 				TransactionId = "Pending",
 			};
 
-			var paymentJSON = JsonSerializer.Serialize(payment, options);
+			jsonString = JsonSerializer.Serialize(payment, options);
 
-			await _firebaseClient
+			var paymentTask = _firebaseClient
 				.Child("Payments")
 				.Child(info)
-				.PutAsync(paymentJSON);
+				.PutAsync(jsonString);
+
+			await Task.WhenAll(paymentTask, regTask);
 
 			StartDeletionTimer("no", info, "Gym", regisId, "");
 
 			return new RegisterResult
 			{
-				Membership = membership,
+				Membership = membership.Result,
 				MoneyToPay = payment.Amount,
 				TransactionContent = info
-
 			};
 			//return (membership, registration, payment, info);
 		}
@@ -331,11 +335,11 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).Replace("-", "").Substring(0, 15);
+				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 			else
 			{
-				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).Replace("-", "").Substring(0, 15);
+				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 
 			var regisId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
@@ -358,12 +362,12 @@ namespace Alpha_API.Services
 				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
 			};
 
-			var trainerRental = JsonSerializer.Serialize(trainerRegistration, options);
+			var jsonString = JsonSerializer.Serialize(trainerRegistration, options);
 
-			await _firebaseClient
+			var regTask = _firebaseClient
 							.Child("TrainerRentalRegistrations")
 							.Child(regisId)
-							.PutAsync(trainerRental);
+							.PutAsync(jsonString);
 
 			//var methods = await _paymentMethodService.GetAllPaymentMethods();
 			string paymentMethod = qrPayment ? "QR" : "cash";
@@ -396,12 +400,14 @@ namespace Alpha_API.Services
 				TransactionId = "Pending",
 			};
 
-			var paymentJSON = JsonSerializer.Serialize(payment, options);
+			jsonString = JsonSerializer.Serialize(payment, options);
 
-			await _firebaseClient
+			var paymentTask = _firebaseClient
 				.Child("Payments")
 				.Child(info)
-				.PutAsync(paymentJSON);
+				.PutAsync(jsonString);
+
+			await Task.WhenAll(paymentTask, regTask);
 
 			StartDeletionTimer("no", info, "TrainerRental", regisId, scheduleId);
 
@@ -554,11 +560,11 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).Replace("-", "").Substring(0, 15);
+				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 			else
 			{
-				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).Replace("-", "").Substring(0, 15);
+				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 
 			var regisId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
@@ -583,7 +589,7 @@ namespace Alpha_API.Services
 
 			var jsonString = JsonSerializer.Serialize(boxingRegistration, options);
 
-			await _firebaseClient
+			var regTask = _firebaseClient
 							.Child("BoxingRegistrations")
 							.Child(regisId)
 							.PutAsync(jsonString);
@@ -606,10 +612,12 @@ namespace Alpha_API.Services
 
 			jsonString = JsonSerializer.Serialize(payment, options);
 
-			await _firebaseClient
+			var paymentTask = _firebaseClient
 				.Child("Payments")
 				.Child(info)
 				.PutAsync(jsonString);
+
+			await Task.WhenAll(paymentTask, regTask);
 
 			StartDeletionTimer("no", info, "Boxing", regisId, scheduleId);
 
@@ -687,7 +695,6 @@ namespace Alpha_API.Services
 			_pendingRegistrations.Remove(customerId);
 			_customerTimers.Remove(customerId);
 		}
-
 
 	}
 }
