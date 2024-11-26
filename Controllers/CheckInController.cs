@@ -202,6 +202,61 @@ namespace Alpha_API.Controllers
 				}
 			}
 		}
+
+		[HttpGet("checkInDates/{userId}")]
+		public async Task<IActionResult> GetCheckInDatesByUserId(string userId)
+		{
+			// Lấy dữ liệu check-in từ Firebase
+			var checkIns = (await _firebaseClient
+				.Child("CheckIns")
+				.OnceAsync<CheckIn>())
+				.Where(c => c.Object.UserId == userId)
+				.Select(c => c.Object)
+				.ToList();
+
+			if (!checkIns.Any())
+			{
+				// Trả về JSON với CheckInDates là một mảng trống
+				return Ok(new CheckInDatesResponse { CheckInDates = new List<DateTime>() });
+			}
+
+			// Nhóm check-in theo ngày (chỉ lấy ngày mà không lấy giờ)
+			var checkInDates = checkIns
+				.Where(c => c.Time.HasValue)
+				.Select(c => c.Time.Value.Date)
+				.Distinct()  // Lấy các ngày duy nhất
+				.OrderBy(d => d)  // Sắp xếp theo ngày
+				.ToList();
+
+			// Trả về danh sách các ngày check-in dưới dạng JSON
+			return Ok(new CheckInDatesResponse { CheckInDates = checkInDates });
+		}
+
+
+
+		[HttpGet("hasCheckIn/{userId}/{date}")]
+		public async Task<IActionResult> HasCheckInOnDate(string userId, string date)
+		{
+			// Chuyển chuỗi ngày nhận được từ query (format yyyy-MM-dd) thành DateTime
+			if (!DateTime.TryParse(date, out var parsedDate))
+			{
+				return BadRequest("Invalid date format. Please use yyyy-MM-dd.");
+			}
+
+			// Lấy dữ liệu check-in từ Firebase
+			var checkIns = (await _firebaseClient
+				.Child("CheckIns")
+				.OnceAsync<CheckIn>())
+				.Where(c => c.Object.UserId == userId)
+				.Select(c => c.Object)
+				.ToList();
+
+			// Kiểm tra nếu có check-in cho ngày yêu cầu
+			var hasCheckIn = checkIns.Any(c => c.Time?.Date == parsedDate.Date);
+
+			// Trả về true nếu có check-in trong ngày đó, ngược lại false
+			return Ok(new { HasCheckIn = hasCheckIn });
+		}
 	}
 
 	// Models
@@ -209,6 +264,10 @@ namespace Alpha_API.Controllers
 	{
 		public string UserId { get; set; }
 		public DateTime? Time { get; set; }
+	}
+	public class CheckInDatesResponse
+	{
+		public List<DateTime> CheckInDates { get; set; }
 	}
 
 	public class CheckInRequest
