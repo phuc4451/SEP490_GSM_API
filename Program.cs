@@ -39,8 +39,8 @@ namespace WebAPI
 			builder.Services.AddSingleton(FirebaseAuth.DefaultInstance);
 			builder.Services.AddSingleton<RoleService>();
 			builder.Services.AddScoped<RegisterService>();
-			builder.Services.AddSingleton<TrainerService>();
-			builder.Services.AddSingleton<GymMembershipCheckService>();
+			builder.Services.AddScoped<TrainerService>();
+			builder.Services.AddScoped<GymMembershipCheckService>();
 			builder.Services.AddScoped<QrCodeService>();
 			builder.Services.AddSingleton<PaymentMethodService>();
 			builder.Services.AddSingleton<TimeSlotService>();
