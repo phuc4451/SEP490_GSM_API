@@ -12,7 +12,7 @@ using Alpha_API.Services;
 using System.Security.Claims;
 using Alpha_API.ViewModel;
 
-namespace GymManagementAPI.Controllers
+namespace Alpha_API.Controllers
 {
 	[Route("api/[controller]")]
 	[ApiController]

@@ -7,5 +7,7 @@
 		public string Name { get; set; }
 		public bool IsTrainerGym { get; set; }
 		public bool IsTrainerBoxing { get; set; }
+		public string Bio {  get; set; }
+		public string Specialization { get; set; }
 	}
 }

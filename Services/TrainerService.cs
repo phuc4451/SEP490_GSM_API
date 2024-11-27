@@ -33,9 +33,11 @@ namespace Alpha_API.Services
 				.PostAsync(new
 				{
 					name = trainer.Name,
-					userId=trainer.UserId,
+					userId = trainer.UserId,
 					isTrainerBoxing = trainer.IsTrainerBoxing,
-					isTrainerGym=trainer.IsTrainerGym
+					isTrainerGym = trainer.IsTrainerGym,
+					bio = trainer.Bio,
+					specialization = trainer.Specialization
 				});
 
 			return trainer.Name;
@@ -73,7 +75,7 @@ namespace Alpha_API.Services
 		}
 
 		// Update an existing trainer
-		public async Task<bool> UpdateTrainerAsync(Trainer trainer)
+		public async Task<bool> UpdateTrainerAsync(string id,Trainer trainer)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
@@ -86,12 +88,14 @@ namespace Alpha_API.Services
 				name = trainer.Name,
 				userId = trainer.UserId,
 				isTrainerBoxing = trainer.IsTrainerBoxing,
-				isTrainerGym = trainer.IsTrainerGym
+				isTrainerGym = trainer.IsTrainerGym,
+				bio = trainer.Bio,
+				specialization = trainer.Specialization
 			};
 
 			await _firebaseClient
 				.Child("Trainers")
-				.Child(trainer.TrainerId)
+				.Child(id)
 				.PatchAsync(addTrainer);
 
 			return true;
