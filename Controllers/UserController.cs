@@ -61,7 +61,7 @@ public class UsersController : ControllerBase
 
 	// GET: api/users/GetStaffs
 	[Authorize(Roles = "admin")]
-	[HttpGet("GetStaffs")]
+	[HttpGet("GetStaffAccounts")]
 	public async Task<ActionResult<IEnumerable<User>>> GetStaffs()
 	{
 		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
@@ -82,7 +82,7 @@ public class UsersController : ControllerBase
 
 	// GET: api/users/GetTrainers
 	[Authorize(Roles = "admin,staff")]
-	[HttpGet("GetTrainers")]
+	[HttpGet("GetTrainerAccounts")]
 	public async Task<ActionResult<IEnumerable<User>>> GetTrainers()
 	{
 		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
@@ -120,7 +120,7 @@ public class UsersController : ControllerBase
 
 	// GET: api/users/GetCustomers
 	[Authorize(Roles = "admin,staff")]
-	[HttpGet("GetCustomers")]
+	[HttpGet("GetCustomerAccounts")]
 	public async Task<ActionResult<IEnumerable<User>>> GetCustomers()
 	{
 		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
@@ -568,9 +568,9 @@ public class UsersController : ControllerBase
 			}
 
 			await _firebaseClient
-	.Child("users")
-	.Child(userId)
-	.PutAsync(jsonString);
+				.Child("users")
+				.Child(userId)
+				.PutAsync(jsonString);
 
 
 			Trainer addTrainer = new Trainer()

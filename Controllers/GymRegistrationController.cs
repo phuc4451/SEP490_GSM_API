@@ -22,17 +22,19 @@ namespace Alpha_API.Controllers
 		private FirebaseClient _firebaseClient;
 		private readonly RegisterService _registerService;
 		private readonly QrCodeService _qrCodeService;
+		private readonly GymMembershipCheckService _gymMembershipCheckService;
 
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 
 		public GymRegistrationController(RegisterService registerService, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient
-			, FirebaseAuth firebaseAuth, QrCodeService qrCodeService)
+			, FirebaseAuth firebaseAuth, QrCodeService qrCodeService, GymMembershipCheckService gymMembershipCheckService)
 		{
 			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;
 			_registerService = registerService;
 			_firebaseClientProvider = firebaseClientProvider;
 			_qrCodeService = qrCodeService;
+			_gymMembershipCheckService=gymMembershipCheckService;
 		}
 
 		// GET: api/GymRegistration
@@ -153,6 +155,16 @@ namespace Alpha_API.Controllers
 			}
 
 			return registration;
+		}
+
+		// POST: api/GymRegistration/CheckRegistration/{id}
+		[HttpPost("CheckRegistration/{id}")]
+		[Authorize(Roles = "admin,staff,customer")]
+		public async Task<ActionResult<bool>> CheckRegistration(string id)
+		{
+			var result = await _gymMembershipCheckService.CheckGymMembership(id);
+
+			return Ok(result);
 		}
 
 		// POST: api/GymRegistration

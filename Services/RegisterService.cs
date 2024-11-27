@@ -28,13 +28,15 @@ namespace Alpha_API.Services
 		private readonly EmailService _emailService;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private readonly RoleService _roleService;
+		private readonly GymMembershipCheckService _gymMembershipCheckService;
 		private readonly IScheduleService _scheduleService;
 		private readonly Dictionary<string, System.Timers.Timer> _customerTimers = new();
 		private readonly Dictionary<string, (string PaymentId, string RegistrationType, string RegistrationId, string ScheduleId)> _pendingRegistrations = new();
 		private readonly double paymentWaitingTime = 10000;
 
 		public RegisterService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider,
-			PaymentMethodService paymentMethodService, EmailService emailService, RoleService roleService, IScheduleService scheduleService)
+			PaymentMethodService paymentMethodService, EmailService emailService, RoleService roleService,
+			IScheduleService scheduleService, GymMembershipCheckService gymMembershipCheckService)
 		{
 
 			_firebaseClient = firebaseClient;
@@ -43,6 +45,7 @@ namespace Alpha_API.Services
 			_emailService = emailService;
 			_roleService = roleService;
 			_scheduleService = scheduleService;
+			_gymMembershipCheckService = gymMembershipCheckService;
 		}
 		public async Task<RegisterResult> RegisterGym(RegisterPackageRequest request, bool qrPayment)
 		{
@@ -283,16 +286,39 @@ namespace Alpha_API.Services
 			}
 
 			// Query for active registrations
-			var activeRegistrations = await _firebaseClient
+			var activeRentalRegistrations = await _firebaseClient
 				.Child("TrainerRentalRegistrations")
 				.OrderBy("isActive")
 				.EqualTo(true)
 				.OnceAsync<TrainerRentalRegistration>();
 
-			if (activeRegistrations.Count != 0)
+			var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembership(userId));
+
+			var hasMembership = await Task.WhenAll(checkMembershipTask);
+
+			if (hasMembership.Any(membership => !membership))
+			{
+				throw new InvalidOperationException("User don't have active gym membership");
+			}
+
+			//var existingGymRegistrations = userIds.Select(userId => _firebaseClient
+			//	.Child("GymRegistrations")
+			//	.OrderBy("userId")
+			//	.EqualTo(userId)
+			//	.OnceAsync<GymRegistration>());
+
+			//var gymResult = await Task.WhenAll(existingGymRegistrations);
+
+			//if (!gymResult.Any(exReg => exReg.Any(ex => ex.Object.IsActive &&
+			//	(ex.Object.EndDate >= DateTime.Now || ex.Object.SessionLeft > 0))))
+			//{
+			//	throw new InvalidOperationException("User don't have active gym membership");
+			//}
+
+			if (activeRentalRegistrations.Count != 0)
 			{
 				// Check if any user has active registrations
-				var hasActiveRegistration = activeRegistrations.Any(reg =>
+				var hasActiveRegistration = activeRentalRegistrations.Any(reg =>
 					reg.Object.UserIds != null &&
 					reg.Object.UserIds.Split(',').Any(userId => userIds.Contains(userId)) &&
 					(reg.Object.EndDate >= DateTime.Now || reg.Object.SessionLeft > 0)
