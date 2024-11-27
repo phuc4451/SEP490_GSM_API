@@ -45,9 +45,10 @@ namespace Alpha_API.Controllers
 
 		// GET: api/trainer/GetAllTrainers
 		[Authorize(Roles = "admin,staff,customer")]
-		[HttpGet("GetAllTrainers")]
-		public async Task<ActionResult<List<Trainer>>> GetAllTrainers()
+		[HttpGet("GetAllTrainersWithOptions")]
+		public async Task<ActionResult<List<Object>>> GetAllTrainers()
 		{
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 			var result = await _trainerService.GetAllTrainersAsync();
 
 			if (result == null)
@@ -55,7 +56,40 @@ namespace Alpha_API.Controllers
 				return NotFound("No trainers found");
 			}
 
-			return Ok(result);
+			List<Object> list = new List<Object>();
+
+			foreach (var trainer in result)
+			{
+				var boxingPlansTask = _firebaseClient.Child("BoxingMembershipPlans").OrderBy("boxingTrainerId").EqualTo(trainer.TrainerId).OnceAsync<BoxingMembershipPlan>();
+
+				var rentalPlansTask = _firebaseClient.Child("TrainerRentalPlans").OrderBy("trainerId").EqualTo(trainer.TrainerId).OnceAsync<TrainerRentalPlan>();
+
+				await Task.WhenAll(boxingPlansTask, rentalPlansTask);
+
+				var boxingOptions = boxingPlansTask.Result.Select(plan => _firebaseClient.Child("BoxingOptions").Child(plan.Object.BoxingOptionId).OnceSingleAsync<BoxingOption>()).ToList();
+
+				var boxingOptionsResult = await Task.WhenAll(boxingOptions);
+	
+				var rentalOptions = rentalPlansTask.Result.Select(plan => _firebaseClient.Child("RentalOptions").Child(plan.Object.RentalOptionId).OnceSingleAsync<RentalOption>()).ToList();
+					
+				var rentalOptionsResult = await Task.WhenAll(rentalOptions);
+
+				var trainerWithOptions = new
+				{
+					trainer.Name,
+					trainer.Bio,
+					trainer.IsTrainerGym,
+					trainer.IsTrainerBoxing,
+					trainer.TrainerId,
+					trainer.UserId,
+					BoxingOptions=boxingOptionsResult,
+					Rentaloptions=rentalOptionsResult,
+				};
+
+				list.Add(trainerWithOptions);
+			}
+
+			return Ok(list);
 		}
 
 		// GET: api/trainer/GetTrainerById/{id}
