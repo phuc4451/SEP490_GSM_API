@@ -17,7 +17,6 @@ using ClosedXML.Excel;
 
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize(Policy = "AdminOnly")]
 
 public class UsersController : ControllerBase
 {
@@ -294,7 +293,7 @@ public class UsersController : ControllerBase
 	}
 
 	// GET: api/users/GetUserByEmail/{email}
-	//[Authorize(Roles = "admin")]
+	[Authorize(Roles = "admin")]
 	[HttpGet("GetUserByEmail/{email}")]
 	public async Task<ActionResult<object>> GetUserByEmail(string email)
 	{
