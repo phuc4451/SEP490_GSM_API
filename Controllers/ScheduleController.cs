@@ -324,13 +324,31 @@ namespace Alpha_API.Controllers
             // Fetch all users (customers)
             var usersTask = _firebaseClient.Child("users").OnceAsync<User>();
 
+            // Fetch TrainerRentalRegistrations and BoxingRegistrations
+            var trainerRentalRegistrationsTask = _firebaseClient.Child("TrainerRentalRegistrations").OnceAsync<TrainerRentalRegistration>();
+            var boxingRegistrationsTask = _firebaseClient.Child("BoxingRegistrations").OnceAsync<BoxingRegistration>();
+
+            // Fetch TrainerRentalPlans and BoxingMembershipPlans
+            var trainerRentalPlansTask = _firebaseClient.Child("TrainerRentalPlans").OnceAsync<TrainerRentalPlan>();
+            var boxingMembershipPlansTask = _firebaseClient.Child("BoxingMembershipPlans").OnceAsync<BoxingMembershipPlan>();
+
+            // Fetch RentalOptions and BoxingOptions
+            var rentalOptionsTask = _firebaseClient.Child("RentalOptions").OnceAsync<RentalOption>();
+            var boxingOptionsTask = _firebaseClient.Child("BoxingOptions").OnceAsync<BoxingOption>();
+
             // Wait for all queries to complete
-            await Task.WhenAll(trainersTask, schedulesTask, slotsTask, usersTask);
+            await Task.WhenAll(trainersTask, schedulesTask, slotsTask, usersTask, trainerRentalRegistrationsTask, boxingRegistrationsTask, trainerRentalPlansTask, boxingMembershipPlansTask, rentalOptionsTask, boxingOptionsTask);
 
             var trainers = trainersTask.Result;
             var schedules = schedulesTask.Result;
             var slots = slotsTask.Result;
             var users = usersTask.Result;
+            var trainerRentalRegistrations = trainerRentalRegistrationsTask.Result;
+            var boxingRegistrations = boxingRegistrationsTask.Result;
+            var trainerRentalPlans = trainerRentalPlansTask.Result;
+            var boxingMembershipPlans = boxingMembershipPlansTask.Result;
+            var rentalOptions = rentalOptionsTask.Result;
+            var boxingOptions = boxingOptionsTask.Result;
 
             // Group schedules by trainer
             var groupedSchedules = trainers
@@ -345,7 +363,7 @@ namespace Alpha_API.Controllers
                     })
                 .ToList();
 
-            // Now build the result by slot, including customers
+            // Now build the result by slot, including customers and rental/boxing options
             var result = new List<object>();
 
             foreach (var trainerGroup in groupedSchedules)
@@ -385,14 +403,66 @@ namespace Alpha_API.Controllers
                             })
                             .ToList();
 
-                        // Add the slot details along with customers to the result
+                        // Lookup Rental or Boxing Registration to get the planId
+                        var planId = string.Empty;
+                        var rentalOptionId = string.Empty;
+                        var boxingOptionId = string.Empty;
+
+                        // Check if it's a TrainerRentalRegistration
+                        var trainerRentalRegistration = trainerRentalRegistrations
+                            .FirstOrDefault(tr => tr.Object.ScheduleId == slot.Object.ScheduleId);
+
+                        if (trainerRentalRegistration != null)
+                        {
+                            planId = trainerRentalRegistration.Object.PlanId;
+                            var rentalPlan = trainerRentalPlans
+                                .FirstOrDefault(rp => rp.Key == planId);
+
+                            if (rentalPlan != null)
+                            {
+                                rentalOptionId = rentalPlan.Object.RentalOptionId;
+                            }
+                        }
+                        else
+                        {
+                            // Check if it's a BoxingRegistration
+                            var boxingRegistration = boxingRegistrations
+                                .FirstOrDefault(br => br.Object.ScheduleId == slot.Object.ScheduleId);
+
+                            if (boxingRegistration != null)
+                            {
+                                planId = boxingRegistration.Object.BoxingMembershipPlanId;
+                                var boxingPlan = boxingMembershipPlans
+                                    .FirstOrDefault(bp => bp.Key == planId);
+
+                                if (boxingPlan != null)
+                                {
+                                    boxingOptionId = boxingPlan.Object.BoxingOptionId;
+                                }
+                            }
+                        }
+
+                        // Lookup descriptions from RentalOptions or BoxingOptions
+                        var rentalOptionDescription = rentalOptions
+                            .Where(ro => ro.Key == rentalOptionId) // Assuming RentalOptionId is part of RentalPlans
+                            .Select(ro => ro.Object.Description)
+                            .FirstOrDefault();
+
+                        var boxingOptionDescription = boxingOptions
+                            .Where(bo => bo.Key == boxingOptionId) // Assuming BoxingOptionId is part of BoxingPlans
+                            .Select(bo => bo.Object.Description)
+                            .FirstOrDefault();
+
+                        // Add the slot details along with customers and options to the result
                         trainerSlots.Add(new
                         {
                             Date = date.ToString("yyyy-MM-dd"),
                             TimeSlot = timeSlot,
                             Customers = customerDetails.Any()
                                 ? customerDetails.Cast<object>().ToList()  // Convert customerDetails to List<object>
-                                : new List<object> { new { Message = "No customers" } }
+                                : new List<object> { new { Message = "No customers" } },
+                            RentalOption = rentalOptionDescription ?? "No rental option",
+                            BoxingOption = boxingOptionDescription ?? "No boxing option"
                         });
                     }
 
@@ -403,7 +473,9 @@ namespace Alpha_API.Controllers
                         {
                             Date = date.ToString("yyyy-MM-dd"),
                             TimeSlot = "No scheduled time slots",
-                            Customers = new List<string> { "No customers" }
+                            Customers = new List<string> { "No customers" },
+                            RentalOption = "No rental option",
+                            BoxingOption = "No boxing option"
                         });
                     }
                 }
@@ -430,8 +502,6 @@ namespace Alpha_API.Controllers
             // Return the result
             return result;
         }
-
-
 
     }
 }
