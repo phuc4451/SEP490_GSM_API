@@ -14,7 +14,7 @@ using Alpha_API.Models;
 
 namespace Alpha_API.Services
 {
-    public class QrCodeService
+	public class QrCodeService
 	{
 		private readonly IHttpClientFactory _httpClientFactory;
 		private readonly PaymentMethodService _paymentMethodService;
@@ -37,7 +37,7 @@ namespace Alpha_API.Services
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 		}
 
-		public async Task<List<object>> GenerateQrCodeAsync(RegisterPackageRequest request)
+		public async Task<List<object>> GenerateQrCodeAsync(RegisterPackageRequest request, string customerId)
 		{
 			if (request == null)
 			{
@@ -52,32 +52,32 @@ namespace Alpha_API.Services
 
 			if (!string.IsNullOrEmpty(request.GymMembershipId))
 			{
-				var qrData = await ProcessRequestAsync(request, client, _registerService.RegisterGym);
+				var qrData = await ProcessRequestAsync(request, customerId, client, _registerService.RegisterGym);
 				if (qrData != null) qrList.Add(qrData);
 			}
 			else if (!string.IsNullOrEmpty(request.TrainerRentalPlanId))
 			{
-				var qrData = await ProcessRequestAsync(request, client, _registerService.RegisterTrainerRental);
+				var qrData = await ProcessRequestAsync(request, customerId, client, _registerService.RegisterTrainerRental);
 				if (qrData != null) qrList.Add(qrData);
 			}
 			else if (!string.IsNullOrEmpty(request.BoxingMembershipPlanId))
 			{
-				var qrData = await ProcessRequestAsync(request, client, _registerService.RegisterBoxing);
+				var qrData = await ProcessRequestAsync(request, customerId, client, _registerService.RegisterBoxing);
 				if (qrData != null) qrList.Add(qrData);
 			}
 
 			return qrList;
 		}
 
-		private async Task<object> ProcessRequestAsync(RegisterPackageRequest request, HttpClient client, Func<RegisterPackageRequest, bool, Task<RegisterResult>> registerFunc)
+		private async Task<object> ProcessRequestAsync(RegisterPackageRequest request, string customerId, HttpClient client, Func<RegisterPackageRequest, bool, string, Task<RegisterResult>> registerFunc)
 		{
 			bool qrPayment = request.QRPayment;
-            if (!qrPayment)
-            {
+			if (!qrPayment)
+			{
 				throw new InvalidOperationException("This request doesn't use qr payment.");
 			}
 
-			var registerResult = await registerFunc(request, qrPayment);
+			var registerResult = await registerFunc(request, qrPayment, customerId);
 
 			#region MBBank
 			//var jsonData = new

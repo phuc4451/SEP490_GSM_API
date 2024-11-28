@@ -119,6 +119,16 @@ namespace Alpha_API.Controllers
 		//[Authorize(Roles = "admin,staff,customer")] 
 		public async Task<ActionResult<TrainerRentalRegistration>> CreateRegistration(RegisterPackageRequest request)
 		{
+			// Retrieve the uid claim
+			var userIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
+
+			if (userIdClaim == null)
+			{
+				return Unauthorized("User not authenticated.");
+			}
+
+			var userId = userIdClaim.Value; // This is the Firebase UID
+
 			if (request == null)
 			{
 				return BadRequest("Request is null");
@@ -135,12 +145,12 @@ namespace Alpha_API.Controllers
 			{
 				if (request.QRPayment)
 				{
-					var qrList = await _qrCodeService.GenerateQrCodeAsync(request);
+					var qrList = await _qrCodeService.GenerateQrCodeAsync(request, userId);
 					return Ok(qrList);
 				}
 				else if (!request.QRPayment)
 				{
-					await _registerService.RegisterTrainerRental(request, request.QRPayment);
+					await _registerService.RegisterTrainerRental(request, request.QRPayment, userId);
 					return Ok();
 				}
 				else { return BadRequest("QR Payment is required but was not provided."); }

@@ -34,7 +34,7 @@ namespace Alpha_API.Controllers
 			_registerService = registerService;
 			_firebaseClientProvider = firebaseClientProvider;
 			_qrCodeService = qrCodeService;
-			_gymMembershipCheckService=gymMembershipCheckService;
+			_gymMembershipCheckService = gymMembershipCheckService;
 		}
 
 		// GET: api/GymRegistration
@@ -172,6 +172,16 @@ namespace Alpha_API.Controllers
 		//[Authorize(Roles = "admin,staff,customer")] //customer can only pay qr =>call qrcontroller
 		public async Task<ActionResult<GymRegistration>> CreateRegistration(RegisterPackageRequest request)
 		{
+			// Retrieve the uid claim
+			var userIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
+
+			if (userIdClaim == null)
+			{
+				return Unauthorized("User not authenticated.");
+			}
+
+			var userId = userIdClaim.Value; // This is the Firebase UID
+
 			if (request == null)
 			{
 				return BadRequest("Request is null");
@@ -191,12 +201,12 @@ namespace Alpha_API.Controllers
 			{
 				if (request.QRPayment)
 				{
-					var qrList = await _qrCodeService.GenerateQrCodeAsync(request);
+					var qrList = await _qrCodeService.GenerateQrCodeAsync(request, userId);
 					return Ok(qrList);
 				}
 				else if (!request.QRPayment)
 				{
-					await _registerService.RegisterGym(request, request.QRPayment);
+					await _registerService.RegisterGym(request, request.QRPayment, userId);
 					return Ok();
 				}
 				else { return BadRequest("QR Payment is required but was not provided."); }

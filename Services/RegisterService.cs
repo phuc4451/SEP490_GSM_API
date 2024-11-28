@@ -32,7 +32,7 @@ namespace Alpha_API.Services
 		private readonly IScheduleService _scheduleService;
 		private readonly Dictionary<string, System.Timers.Timer> _customerTimers = new();
 		private readonly Dictionary<string, (string PaymentId, string RegistrationType, string RegistrationId, string ScheduleId)> _pendingRegistrations = new();
-		private readonly double paymentWaitingTime = 10000;
+		private readonly double paymentWaitingTime = 300000;
 
 		public RegisterService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider,
 			PaymentMethodService paymentMethodService, EmailService emailService, RoleService roleService,
@@ -47,7 +47,7 @@ namespace Alpha_API.Services
 			_scheduleService = scheduleService;
 			_gymMembershipCheckService = gymMembershipCheckService;
 		}
-		public async Task<RegisterResult> RegisterGym(RegisterPackageRequest request, bool qrPayment)
+		public async Task<RegisterResult> RegisterGym(RegisterPackageRequest request, bool qrPayment, string customerId)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
@@ -116,13 +116,23 @@ namespace Alpha_API.Services
 				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 
+			int timeToAdd = 0;
+			int sessionToAdd = 0;
+
+			//if (membership.Result.DurationMonths.HasValue && membership.Result.DurationMonths != 0)
+			//{
+			//	timeToAdd = membership.Result.DurationMonths.Value;
+			//}
+			//else if()
+
 			GymRegistration gymRegistration = new GymRegistration()
 			{
 				UserId = userId,
 				GymMembershipId = request.GymMembershipId,
 				StartDate = DateTime.Now,
 				EndDate = DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0),
-				SessionLeft = membership.Result.SessionCount ?? (DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0) - DateTime.Now).Days,
+				//SessionLeft = membership.Result.SessionCount ?? (DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0) - DateTime.Now).Days,
+				SessionLeft = membership.Result.SessionCount ?? 999,
 				IsActive = false,
 				PaymentId = info,
 			};
@@ -155,7 +165,7 @@ namespace Alpha_API.Services
 
 			await Task.WhenAll(paymentTask, regTask);
 
-			StartDeletionTimer("no", info, "Gym", regisId, "");
+			StartDeletionTimer(customerId, info, "Gym", regisId, "");
 
 			return new RegisterResult
 			{
@@ -167,7 +177,7 @@ namespace Alpha_API.Services
 		}
 
 		public async Task<RegisterResult> RegisterTrainerRental(RegisterPackageRequest request,
-			bool qrPayment)
+			bool qrPayment, string customerId)
 		{
 			if (string.IsNullOrEmpty(request.SelectedTimeSlot))
 			{
@@ -435,7 +445,7 @@ namespace Alpha_API.Services
 
 			await Task.WhenAll(paymentTask, regTask);
 
-			StartDeletionTimer("no", info, "TrainerRental", regisId, scheduleId);
+			StartDeletionTimer(customerId, info, "TrainerRental", regisId, scheduleId);
 
 			return new RegisterResult
 			{
@@ -448,7 +458,7 @@ namespace Alpha_API.Services
 			//return (plan, option, registration, payment, info);
 		}
 		public async Task<RegisterResult> RegisterBoxing(RegisterPackageRequest request,
-			bool qrPayment)
+			bool qrPayment, string customerId)
 		{
 			if (string.IsNullOrEmpty(request.SelectedTimeSlot))
 			{
@@ -645,7 +655,7 @@ namespace Alpha_API.Services
 
 			await Task.WhenAll(paymentTask, regTask);
 
-			StartDeletionTimer("no", info, "Boxing", regisId, scheduleId);
+			StartDeletionTimer(customerId, info, "Boxing", regisId, scheduleId);
 
 			return new RegisterResult
 			{
@@ -695,17 +705,20 @@ namespace Alpha_API.Services
 				{
 					// Prepare deletion tasks
 					var tasks = new List<Task>
-			{
-				_firebaseClient.Child("Payments").Child(paymentId).DeleteAsync()
-			};
+					{
+						_firebaseClient.Child("Payments").Child(paymentId).DeleteAsync()
+					};
 
 					tasks.Add(_firebaseClient.Child($"{registrationType}Registrations").Child(registrationId).DeleteAsync());
-					tasks.Add(_firebaseClient.Child("Schedules").Child(scheduleId).DeleteAsync());
+					if (!string.IsNullOrEmpty(scheduleId))
+					{
+						tasks.Add(_firebaseClient.Child("Schedules").Child(scheduleId).DeleteAsync());
 
-					// Handle slot deletions
-					var slots = await _firebaseClient.Child("Slots")
-						.OrderBy("scheduleId").EqualTo(scheduleId).OnceAsync<Slot>();
-					tasks.AddRange(slots.Select(slot => _firebaseClient.Child("Slots").Child(slot.Key).DeleteAsync()));
+						// Handle slot deletions
+						var slots = await _firebaseClient.Child("Slots")
+							.OrderBy("scheduleId").EqualTo(scheduleId).OnceAsync<Slot>();
+						tasks.AddRange(slots.Select(slot => _firebaseClient.Child("Slots").Child(slot.Key).DeleteAsync()));
+					}
 
 					// Execute all deletions
 					await Task.WhenAll(tasks);
