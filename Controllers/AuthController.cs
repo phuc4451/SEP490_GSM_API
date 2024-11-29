@@ -382,9 +382,31 @@ namespace Alpha_API.Controllers
 			return Ok(roles);
 		}
 
-	}
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
+        {
+            if (string.IsNullOrEmpty(forgotPasswordDto.Email))
+            {
+                return BadRequest("Email is required.");
+            }
 
-	public class FirebaseSignInResponse
+            var success = await _emailService.SendPasswordResetEmail(forgotPasswordDto.Email);
+
+            if (success)
+            {
+                return Ok("Password reset email sent successfully.");
+            }
+            else
+            {
+                return StatusCode(500, "Failed to send reset email.");
+            }
+        }
+
+
+
+    }
+
+    public class FirebaseSignInResponse
 	{
 		[JsonProperty("idToken")]
 		public string IdToken { get; set; }
