@@ -27,6 +27,8 @@ const ManageCustomer = () => {
   const [customerToDelete, setCustomerToDelete] = useState(null); // for deletion
   const [previewImage, setPreviewImage] = useState(null); // To store preview image
   const fileInputRef = useRef(null);
+  const [successMessage, setSuccessMessage] = useState("");
+
 
   const [formData, setFormData] = useState({
     name: "",
@@ -51,7 +53,7 @@ const ManageCustomer = () => {
     const fetchCustomers = async () => {
       const token = localStorage.getItem("token");
       try {
-        const response = await axios.get("http://localhost:5000/api/users/getCustomers", {
+        const response = await axios.get("http://localhost:5000/api/Users/GetCustomerAccounts", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setCustomerData(response.data);
@@ -120,6 +122,7 @@ const ManageCustomer = () => {
       email: customer.email,
       phone: customer.phone,
       address: customer.address,
+      userId: customer.userId,
     });
     setCurrentCustomer(customer);
     customerModalRef.current.style.display = "block";
@@ -177,18 +180,18 @@ const ManageCustomer = () => {
     return Object.keys(newErrors).length === 0; // Return true if no errors
   };
 
-  // Hàm để mở modal thông báo
-  const showSuccessModal = () => {
-    successModalRef.current.style.display = "block"; // Hiển thị modal
-    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+  const showSuccessModal = (message) => {
+    setSuccessMessage(message); // Cập nhật thông báo
+    successModalRef.current.style.display = "block";
+    document.querySelector(".modal-overlay").style.display = "block";
   };
 
   // Hàm để đóng modal thông báo
   const closeSuccessModal = () => {
     successModalRef.current.style.display = "none"; // Ẩn modal
     document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
+    window.location.reload();
   };
-
   const openDeleteModal = (customer) => {
     setCustomerToDelete(customer); // Set customer to be deleted
     deleteModalRef.current.style.display = "block"; // Show delete modal
@@ -204,7 +207,7 @@ const ManageCustomer = () => {
     e.preventDefault();
     if (validateForm()) {
       const token = localStorage.getItem("token");
-
+  
       // Format date to the required format
       const dob = new Date(formData.dob);
       const dobData = {
@@ -212,7 +215,7 @@ const ManageCustomer = () => {
         month: dob.getMonth() + 1,
         year: dob.getFullYear(),
       };
-
+  
       // Create a basic customer data object
       const customerData = {
         userId: currentCustomer ? currentCustomer.userId : "string",
@@ -226,19 +229,20 @@ const ManageCustomer = () => {
         userAvatar: "string",
         idCard: "string",
       };
-
-      // Include password only for adding a new customer
+  
+      // Include gymMembershipId only for adding a new customer
       if (!currentCustomer) {
-        customerData.password = formData.password;
+        customerData.gymMembershipId = "string"; // Include gymMembershipId for new customers
+        customerData.password = formData.password; // Include password for new customers
       }
-
+  
       try {
         if (currentCustomer) {
           // Update customer
-          await axios.put(`http://localhost:5000/api/Users/updatecustomer/${currentCustomer.userId}`, customerData, {
+          await axios.patch(`http://localhost:5000/api/Users/updateCustomer/${currentCustomer.userId}`, customerData, {
             headers: { Authorization: `Bearer ${token}` },
           });
-
+  
           // Update customer data in the list
           setCustomerDataList((prevData) => prevData.map((customer) => (customer.userId === currentCustomer.userId ? { ...customer, ...customerData } : customer)));
         } else {
@@ -246,10 +250,10 @@ const ManageCustomer = () => {
           const response = await axios.post("http://localhost:5000/api/Users/addcustomer", customerData, {
             headers: { Authorization: `Bearer ${token}` },
           });
-
+  
           setCustomerDataList([...customerDataList, response.data]);
         }
-
+  
         // Reset form and close modal
         setFormData({
           email: "",
@@ -260,13 +264,14 @@ const ManageCustomer = () => {
           address: "",
           phone: "",
         });
-        showSuccessModal();
         closeModal();
+        showSuccessModal("Người dùng được lưu thành công");
       } catch (error) {
         console.error("Error saving customer:", error);
       }
     }
   };
+  
 
   const deleteCustomer = async () => {
     if (customerToDelete) {
@@ -276,11 +281,10 @@ const ManageCustomer = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // Xóa khách hàng từ danh sách
         setCustomerData(customerData.filter((cus) => cus.id !== customerToDelete.id));
-
-        // Ẩn modal và reset khách hàng cần xóa
+        closeModal();
         closeDeleteModal();
+        showSuccessModal("Xóa người dùng thành công!");
       } catch (error) {
         console.error("Error deleting customer:", error);
       }
@@ -538,10 +542,11 @@ const ManageCustomer = () => {
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-default" onClick={closeModal}>
+                <button type="button" className="btn btn-default" onClick={closeModal} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
                   Hủy
                 </button>
-                <button type="submit" className="btn btn-success">
+
+                <button type="submit" className="btn btn-success" >
                   Lưu
                 </button>
               </div>
@@ -558,10 +563,10 @@ const ManageCustomer = () => {
           <div className="modal-content">
             <form id="deleteEmployeeForm" onSubmit={handleDeleteEmployee}>
               <div className="modal-header">
-                <h4 className="modal-title">Xóa người dùng</h4>
-                <button type="button" className="close" onClick={closeDeleteModal}>
-                  &times;
-                </button>
+                <h4 className="modal-title text-center mx-auto">Xóa người dùng</h4>
+                <a type="button" className="close" onClick={closeDeleteModal}>
+                <CloseIcon />
+                </a>
               </div>
               <div className="modal-body">
                 <p>Bạn có chắc chắn muốn xóa {customerToDelete?.name}?</p>
@@ -587,13 +592,15 @@ const ManageCustomer = () => {
         <div className="modal-dialog modal-dialog-notify">
           <div className="modal-content">
             <div className="modal-header">
-              <h4 className="modal-title">Thông báo</h4>
-              <button type="button" className="close" onClick={closeSuccessModal}>
-                &times;
-              </button>
+              <h4 className="modal-title text-center mx-auto">Thông báo</h4>
+              <a type="button" className="close" onClick={closeSuccessModal}>
+              <CloseIcon />
+
+              </a>
             </div>
             <div className="modal-body">
-              <p>Người dùng được lưu thành công!</p>
+            <p>{successMessage}</p>
+
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeSuccessModal}>

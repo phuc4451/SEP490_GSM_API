@@ -90,6 +90,18 @@ body {
   background-color: transparent !important;
 }
 
+.navbar-nav .nav-item,
+.navbar-nav .nav-link {
+  text-transform: uppercase;
+}
+
+.navbar-nav .nav-item.dropdown .dropdown-content a {
+  text-transform: uppercase;  /* Viết hoa tất cả mục trong dropdown */
+}
+.navbar-nav .nav-item.dropdown .nav-link.user-action {
+  text-transform: none; /* Giữ nguyên chữ cái trong liên kết dropdown của người dùng */
+}
+
 /* Khi di chuột qua nav-item */
 .navbar-nav .nav-item:hover {
   background-color: #c61706;

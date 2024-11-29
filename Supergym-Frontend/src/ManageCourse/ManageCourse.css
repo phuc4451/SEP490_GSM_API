@@ -44,6 +44,7 @@ features
     /* letter-spacing: 0.1px; */
     font-weight: 600;
     transition: all 0.3s;
+    min-height: 220px;
   }
   
   .feature-item .left-icon img {
@@ -63,6 +64,7 @@ features
     font-size: 19px;
     font-weight: 600;
     text-transform: uppercase;
+    min-height: 50px;
   }
   
   .feature-item .right-content a.btn-fix {
@@ -114,6 +116,8 @@ features
   .feature-item .right-content a.delete-button {
     color: #ed563b;
   }
+
+  
   
   /* ============================================== */
   /* MODEL FORM */

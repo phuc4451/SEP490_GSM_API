@@ -142,10 +142,10 @@ hgroup {
 
 html,
 body {
-  font-family: "Poppins", sans-serif;
+  font-family: 'Roboto', Arial, sans-serif;
   font-weight: 400;
   background-color: #fff;
-  font-size: 16px;
+  font-size: 13px;
   -ms-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -183,7 +183,7 @@ global styles
 html,
 body {
   background: #fff;
-  font-family: "Times New Roman", Times, serif;
+  font-family: 'Roboto', Arial, sans-serif;
 }
 
 ::selection {
@@ -252,7 +252,7 @@ body {
 
 .main-button a {
   display: inline-block;
-  font-size: 15px;
+  font-size: 12px;
   padding: 12px 20px;
   background-color: #ed563b;
   color: #fff;
@@ -338,7 +338,7 @@ HEADER
 .header-area .main-nav .logo {
   line-height: 80px;
   color: #fff;
-  font-size: 32px;
+  font-size:22px;
   font-weight: 800;
   text-transform: uppercase;
   float: left;
@@ -735,7 +735,7 @@ banner
 .main-banner .caption h2 {
   margin-top: 30px;
   margin-bottom: 25px;
-  font-size: 65px;
+  font-size: 60px;
   text-transform: uppercase;
   font-weight: 800;
   color: #fff;
@@ -975,8 +975,8 @@ schedule
   width: 100%;
 }
 
-.schedule-table table {
-  min-width: 1220px;
+.filtering table {
+  min-width: 1200px;
 }
 
 .schedule-table td {
@@ -1198,7 +1198,7 @@ footer {
   background-color: #101522; /* Màu nền tối cho footer */
   padding: 60px 0;
   color: #fff; /* Màu chữ trắng */
-  font-family: "Poppins", sans-serif;
+  font-family: 'Roboto', Arial, sans-serif;
 }
 
 .footer-widget {

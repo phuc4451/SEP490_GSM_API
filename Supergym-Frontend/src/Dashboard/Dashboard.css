@@ -56,11 +56,22 @@
 
 /* CHART================================================================ */
 
+/* Cập nhật cho khoảng cách giữa các chart */
 .small-chart {
-  width: 1500px;
+  width: 100%; /* Giữ cho biểu đồ tự động chiếm hết chiều rộng của cột */
   height: 300px;
   margin: 0 auto;
 }
+
+/* Thêm margin giữa các cột chứa chart */
+.chart-section .row {
+  margin-bottom: 30px; /* Cách nhau giữa các hàng */
+}
+
+.chart-section .col-md-6 {
+  margin-bottom: 20px; /* Cách nhau giữa các biểu đồ */
+}
+
 
 .chart-title {
   text-align: center;

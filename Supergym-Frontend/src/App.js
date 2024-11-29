@@ -6,11 +6,15 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import ManageManager from './ManageManager/ManageManager';
 import ManageCustomer from './ManageCustomer/ManageCustomer';
+import ManageTrainer from './ManageTrainer/ManageTrainer';
 import ManageEquipment from './ManageEquipment/ManageEquipment';
 import ManageCourse from './ManageCourse/ManageCourse';
-import ManageSale from './ManageSale/ManageSale';
+import ManageTrainerCourse from './ManageTrainerCourse/ManageTrainerCourse';
+import ManageBoxingCourse from './ManageBoxingCourse/ManageBoxingCourse';
+// import ManageSale from './ManageSale/ManageSale';
 import ManageFeedback from './ManageFeedback/ManageFeedback';
 import ManageSchedule from './ManageSchedule/ManageSchedule';
+import BookTrainerForm from './BookTrainerForm/BookTrainerForm';
 import Home from './home/home';
 
 const App = () => {
@@ -24,11 +28,15 @@ const App = () => {
         <Route path="/header" element={<Header />} />
         <Route path="/managManager" element={<ManageManager />} />
         <Route path="/manageCustomer" element={<ManageCustomer />} />
+        <Route path="/manageTrainer" element={<ManageTrainer />} />
         <Route path="/manageEquipment" element={<ManageEquipment />} />
         <Route path="/manageCourse" element={<ManageCourse />} />
-        <Route path="/manageSale" element={<ManageSale />} />
+        <Route path="/manageTrainerCourse" element={<ManageTrainerCourse />} />
+        <Route path="/manageBoxingCourse" element={<ManageBoxingCourse />} />
+        {/* <Route path="/manageSale" element={<ManageSale />} /> */}
         <Route path="/manageFeedback" element={<ManageFeedback />} />
         <Route path="/ManageSchedule" element={<ManageSchedule />} />
+        <Route path="/BookTrainerForm" element={<BookTrainerForm />} />
       </Routes>
     </Router>
   );

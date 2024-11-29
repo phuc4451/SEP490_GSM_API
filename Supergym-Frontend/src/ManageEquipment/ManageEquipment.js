@@ -76,37 +76,7 @@ const ManageEquipment = () => {
     equipmentMaterial: "",
   };
 
-  // const handleInputChange = (e) => {
-  //   const { name, value } = e.target;
-
-  //   // Convert equipmentCode to uppercase
-  //   const newValue = name === "equipmentCode" ? value.toUpperCase() : value;
-
-  //   if (name === "equipmentQuantity" && currentEquipment) {
-  //     // Ensure that entered quantity is less than current quantity
-  //     const currentQuantity = currentEquipment.equipmentQuantity;
-  //     if (parseInt(newValue, 10) > currentQuantity) {
-  //       setErrors((prevErrors) => ({
-  //         ...prevErrors,
-  //         equipmentQuantity: `Số lượng phải nhỏ hơn ${currentQuantity}.`,
-  //       }));
-  //       return;
-  //     } else {
-  //       setErrors((prevErrors) => ({
-  //         ...prevErrors,
-  //         equipmentQuantity: "",
-  //       }));
-  //     }
-  //   }
-
-  //   setFormData({
-  //     ...formData,
-  //     [name]: newValue,
-  //   });
-
-  //   // Validate the field as it changes
-  //   validateField(name, newValue);
-  // };
+  
 
   const formatNumberWithCommas = (value) => {
     return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");

@@ -3,14 +3,14 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Header from "../Header/Header";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./ManageCourse.css";
+import "./ManageTrainerCourse.css";
 import courseImg from "../assets/images/features-first-icon.png";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import CloseIcon from "@mui/icons-material/Close";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-const ManageCourse = () => {
+const ManageTrainerCourse = () => {
   const fileInputRef = useRef(null);
 
   const [successMessage, setSuccessMessage] = useState("");
@@ -19,28 +19,29 @@ const ManageCourse = () => {
   const [previewImage, setPreviewImage] = useState(null); // To store preview image
   const [errors, setErrors] = useState({});
   const [customerData, setCustomerData] = useState([]);
-  const errorModalRef = useRef(null);
+  const [rentalOptions, setRentalOptions] = useState([]); // Renamed to reflect rental options data
   const [errorMessage, setErrorMessage] = useState("");
-
+  const errorModalRef = useRef(null);
 
   const [courses, setCourses] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    durationMonths: "",
-    sessionCount: "",
-    price: "",
+    description: "",
+    sessionCountMin: "",
+    sessionCountMax: "",
+    memberCount: "",
+    pricePerPersonPerSession: "",
+    pricePerPersonPerMonth: "",
   });
 
   const openAddCustomerModal = () => {
     setFormData({
-      name: "",
-      gender: "male",
-      dob: "",
-      email: "",
-      phone: "",
-      address: "",
-      userAvatar: null, // Đặt lại ảnh đã chọn
+      description: "",
+      sessionCountMin: "",
+      sessionCountMax: "",
+      memberCount: "",
+      pricePerPersonPerSession: "",
+      pricePerPersonPerMonth: "",
     });
     setPreviewImage(null); // Đặt lại ảnh xem trước
     if (fileInputRef.current) {
@@ -54,15 +55,17 @@ const ManageCourse = () => {
 
   const openEditCustomerModal = (course) => {
     setFormData({
-      name: course.name,
-      durationMonths: course.durationMonths,
-      sessionCount: course.sessionCount,
-      price: course.price,
+      description: course.description || "", // Add default values in case of missing data
+      sessionCountMin: course.sessionCountMin || "",
+      sessionCountMax: course.sessionCountMax || "",
+      memberCount: course.memberCount || "",
+      pricePerPersonPerSession: course.pricePerPersonPerSession || "",
+      pricePerPersonPerMonth: course.pricePerPersonPerMonth || "",
     });
-    setCurrentCustomer(course); // Lưu thông tin gói tập để biết được ID của gói cần chỉnh sửa
-    customerModalRef.current.style.display = "block"; // Hiển thị modal
-    customerModalRef.current.classList.add("active");
-    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+    setCurrentCustomer(course); // Set current customer for editing
+    customerModalRef.current.style.display = "block"; // Show modal
+    customerModalRef.current.classList.add("active"); // Add active class for styling
+    document.querySelector(".modal-overlay").style.display = "block"; // Show overlay
   };
 
   const closeModal = () => {
@@ -72,27 +75,13 @@ const ManageCourse = () => {
     setCurrentCustomer(null); // Đặt lại khách hàng hiện tại
     setPreviewImage(null); // Đặt lại ảnh xem trước
     setFormData({
-      name: "",
-      durationMonths: "",
-      sessionCount: "",
-      price: "",
+      description: "",
+      sessionCountMin: "",
+      sessionCountMax: "",
+      memberCount: "",
+      pricePerPersonPerSession: "",
+      pricePerPersonPerMonth: "",
     });
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({
-        ...formData,
-        userAvatar: file,
-      });
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   const deleteCustomer = async () => {
@@ -124,18 +113,21 @@ const ManageCourse = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:5000/api/GymMembership", {
-          headers: { Authorization: `Bearer ${token}` },
+        const token = localStorage.getItem("token"); // Get token from localStorage
+        const response = await axios.get("http://localhost:5000/api/RentalOption", {
+          // Correct API URL
+          headers: {
+            Authorization: `Bearer ${token}`, // Ensure Authorization header is correctly formatted
+          },
         });
-        setCourses(response.data);
+        setCourses(response.data); // Update state with the fetched data
       } catch (error) {
-        console.error("Error fetching course data:", error);
+        console.error("Error fetching course data:", error); // Handle error if the fetch fails
       }
     };
 
     fetchCourses();
-  }, []);
+  }, []); // Empty dependency array ensures this only runs once on component mount
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -149,27 +141,29 @@ const ManageCourse = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.post("http://localhost:5000/api/GymMembership", formData, {
+      const response = await axios.post("http://localhost:5000/api/RentalOption", formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCourses((prevCourses) => [...prevCourses, response.data]);
+      setShowForm(false);
       setFormData({
-        name: "",
-        durationMonths: "",
-        sessionCount: "",
-        price: "",
+        description: "string",
+        sessionCountMin: 0,
+        sessionCountMax: 0,
+        memberCount: 0,
+        pricePerPersonPerSession: 0,
+        pricePerPersonPerMonth: 0,
       });
-      closeModal();
-      showSuccessModal("Gói Gym được lưu thành công");
     } catch (error) {
       if (error.response && error.response.status === 409) {
-        showErrorModal("Gói Gym đã tồn tại, vui lòng thêm gói Gym khác!");
+        showErrorModal("Gói Trainer đã tồn tại, vui lòng thêm gói Trainer khác!");
       } else {
-        showErrorModal("Lỗi khi tạo gói Gym");
+        showErrorModal("Lỗi khi tạo gói Trainer");
         console.error("Error saving equipment:", error);
       }
     }
   };
+
   const showErrorModal = (errMessage) => {
     setErrorMessage(errMessage);
     errorModalRef.current.style.display = "block";
@@ -217,7 +211,7 @@ const ManageCourse = () => {
                 <h2>Danh sách các gói tập</h2>
                 <button onClick={openAddCustomerModal} className="btn btn-success">
                   <AddCircleOutlineIcon />
-                  <span>Thêm gói Gym</span>
+                  <span>Thêm gói Trainer</span>
                 </button>
               </div>
             </div>
@@ -233,11 +227,18 @@ const ManageCourse = () => {
                     </div>
                     <div className="right-content">
                       <div className="course-action">
-                        <h4>{course.name}</h4>
-                        <p>Thời gian: {course.durationMonths} tháng</p>
-                        <p>Số buổi: {course.sessionCount}</p>
+                        <h4>{course.description}</h4>
+
+                        <div className="row">
+                          <div className="col-6">
+                            <p>Số buổi tối thiểu: {course.sessionCountMin}</p>
+                            <p>Số buổi tối đa: {course.sessionCountMax}</p>
+                            <p>Thành viên trong gói: {course.memberCount}</p>
+                          </div>
+                        </div>
+
                         <a href="#" onClick={() => openEditCustomerModal(course)} className="btn-fix detail-button">
-                          Chi tiết 
+                          Chi tiết
                         </a>
                         <a href="#" className="btn-fix edit-button">
                           Sửa
@@ -252,7 +253,8 @@ const ManageCourse = () => {
                           Áp dụng giảm giá
                           <LocalOfferIcon />
                         </button>
-                        <p className="price">Giá: {course.price} VND</p>
+                        {course.pricePerPersonPerSession > 0 && <p>Giá 1 người/buổi: {course.pricePerPersonPerSession} VND</p>}
+                        {course.pricePerPersonPerMonth > 0 && <p>Giá 1 người/tháng: {course.pricePerPersonPerMonth} VND</p>}
                       </div>
                     </div>
                   </li>
@@ -313,59 +315,73 @@ const ManageCourse = () => {
           <div className="modal-content">
             <form id="employeeForm" onSubmit={handleSubmit}>
               <div className="modal-header">
-                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Chi tiết gói tập gym" : "Thêm gói Gym"}</h4>
+                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Chi tiết gói tập Trainer" : "Thêm gói Trainer"}</h4>
                 <a type="button" className="close" onClick={closeModal}>
                   <CloseIcon />
                 </a>
               </div>
               <div className="modal-body">
-                {/* First row of input fields */}
+                {/* Input Fields */}
                 <div className="row">
                   <div className="form-group col">
                     <label>
                       Tên gói tập <span className="icon-input">(*)</span>
                     </label>
-                    <input type="text" className="form-control" name="name" value={formData.name} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
+                    <input
+                      type="text"
+                      className="form-control"
+                      name="description" // binding với 'description' trong formData
+                      value={formData.description} // binding với formData
+                      onChange={handleInputChange} // Hàm thay đổi
+                      required
+                    />
                   </div>
 
                   <div className="form-group col">
                     <label>
-                      Thời gian <span className="icon-input">(*)</span>
+                      Số buổi tối thiểu <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="durationMonths" value={formData.durationMonths} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
+                    <input type="number" className="form-control" name="sessionCountMin" value={formData.sessionCountMin} onChange={handleInputChange} required />
                   </div>
                 </div>
 
                 <div className="row">
                   <div className="form-group col">
                     <label>
-                      Giá <span className="icon-input">(*)</span>
+                      Số buổi tối đa <span className="icon-input">(*)</span>
                     </label>
-                    <input type="text" className="form-control" name="price" value={formData.price} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
+                    <input type="number" className="form-control" name="sessionCountMax" value={formData.sessionCountMax} onChange={handleInputChange} required />
                   </div>
 
                   <div className="form-group col">
                     <label>
-                      Số buổi <span className="icon-input">(*)</span>
+                      Thành viên trong gói <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="sessionCount" value={formData.sessionCount} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
+                    <input type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required />
                   </div>
                 </div>
 
-                <div className="row"></div>
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Giá 1 người/buổi <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="number" className="form-control" name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} required />
+                  </div>
 
-                {/* Conditionally render the password input only if adding a new customer */}
+                  <div className="form-group col">
+                    <label>
+                      Giá 1 người/tháng <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="number" className="form-control" name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} required />
+                  </div>
+                </div>
               </div>
 
               <div className="modal-footer">
                 <button type="button" className="btn btn-default" onClick={closeModal} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
                   Hủy
                 </button>
-
                 <button type="submit" className="btn btn-success">
                   Lưu
                 </button>
@@ -374,6 +390,7 @@ const ManageCourse = () => {
           </div>
         </div>
       </div>
+
       {/* Modal Overlay */}
       <div className="modal-overlay"></div>
 
@@ -455,4 +472,4 @@ const ManageCourse = () => {
   );
 };
 
-export default ManageCourse;
+export default ManageTrainerCourse;

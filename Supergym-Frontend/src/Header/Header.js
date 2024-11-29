@@ -79,7 +79,7 @@ const Header = () => {
               <div className="dropdown-content">
                 <a href="/managManager">Quản lý nhân sự</a>
                 <a href="/manageCustomer" >Quản lý khách hàng</a>
-                <a href="/manageCustomer" >Quản lý PT</a>
+                <a href="/manageTrainer" >Quản lý PT</a>
               </div>
             </div>
 
@@ -89,8 +89,10 @@ const Header = () => {
                 Quản lý gói
               </a>
               <div className="dropdown-content">
-                <a href="/manageCourse">Quản lý gói tập</a>
-                <a href="/manageSale" >Quản lý gói giảm giá</a>
+                <a href="/manageCourse">Quản lý gói tập Gym</a>
+                <a href="/manageTrainerCourse">Quản lý gói Trainer</a>
+                <a href="/manageBoxingCourse">Quản lý gói Boxing</a>
+                {/* <a href="/manageSale" >Quản lý gói giảm giá</a> */}
               </div>
             </div>
             <a href="/manageFeedback" className="nav-item nav-link active">Quản lý phản hồi</a>
@@ -98,14 +100,14 @@ const Header = () => {
           </div>
 
           <div className="navbar-nav ms-auto">
-            <a href="#" className="nav-item nav-link header-icon notifications">
+            {/* <a href="#" className="nav-item nav-link header-icon notifications">
               <NotificationsIcon />
               <span className="badge">1</span>
             </a>
             <a href="#" className="nav-item nav-link header-icon messages">
               <MailIcon />
               <span className="badge">10</span>
-            </a>
+            </a> */}
 
             {/* User Dropdown */}
             <div className="nav-item dropdown">
