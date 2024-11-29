@@ -116,7 +116,7 @@ namespace Alpha_API.Controllers
 
 		// POST: api/TrainerRentalRegistration
 		[HttpPost]
-		//[Authorize(Roles = "admin,staff,customer")] 
+		[Authorize(Roles = "admin,staff,customer")] 
 		public async Task<ActionResult<TrainerRentalRegistration>> CreateRegistration(RegisterPackageRequest request)
 		{
 			// Retrieve the uid claim

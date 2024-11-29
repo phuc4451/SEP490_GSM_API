@@ -169,7 +169,7 @@ namespace Alpha_API.Controllers
 
 		// POST: api/GymRegistration
 		[HttpPost]
-		//[Authorize(Roles = "admin,staff,customer")] //customer can only pay qr =>call qrcontroller
+		[Authorize(Roles = "admin,staff,customer")] //customer can only pay qr =>call qrcontroller
 		public async Task<ActionResult<GymRegistration>> CreateRegistration(RegisterPackageRequest request)
 		{
 			// Retrieve the uid claim

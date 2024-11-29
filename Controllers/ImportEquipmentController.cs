@@ -12,7 +12,7 @@ namespace Alpha_API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize(Policy = "AdminOnly")]
+
     [Authorize(Roles = "admin")]
     public class ImportEquipmentController : ControllerBase
     {

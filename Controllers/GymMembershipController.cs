@@ -31,7 +31,7 @@ namespace GymManagementAPI.Controllers
 
 		// GET: api/GymMembership
 		[HttpGet]
-		//[Authorize(Roles = "admin,staff,customer")]
+		[Authorize(Roles = "admin,staff,customer")]
 		public async Task<ActionResult<IEnumerable<GymMembership>>> GetGymMemberships()
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();

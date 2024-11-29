@@ -2,6 +2,7 @@ using Alpha_API.Models;
 using Alpha_API.Services;
 using Alpha_API.Utils;
 using Alpha_API.ViewModel;
+using DocumentFormat.OpenXml.Spreadsheet;
 using Firebase.Database;
 using Firebase.Database.Query;
 using FirebaseAdmin.Auth;
@@ -31,7 +32,7 @@ namespace Alpha_API.Controllers
 		private readonly string _firebaseApiKey;
 		private static readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new ConcurrentDictionary<string, SemaphoreSlim>();
 
-		public AuthController(IConfiguration configuration, EmailService emailService,FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient, FirebaseAuth firebaseAuth)
+		public AuthController(IConfiguration configuration, EmailService emailService, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient, FirebaseAuth firebaseAuth)
 		{
 			_configuration = configuration;
 			_firebaseAuthUrl = configuration["Firebase:AuthUrl"];
@@ -226,7 +227,7 @@ namespace Alpha_API.Controllers
 						var roleName = await GetRoleNameFromFirebase(roleId);
 						var token = GenerateJwtToken(existingUser.Email, roleName, uid);
 
-						return Ok(new { JWTtoken = token, FirebaseToken = signInResponse.IdToken });
+						return Ok(new { jwTtoken = token, firebaseToken = signInResponse.IdToken });
 					}
 					else
 					{
@@ -252,6 +253,64 @@ namespace Alpha_API.Controllers
 			{
 				return StatusCode(500, new { message = "Exception occurred during sign-in", details = ex.Message });
 			}
+		}
+
+		[HttpPost("loginWithFirebaseToken")]
+		public async Task<IActionResult> LoginWithFirebaseToken([FromBody] string firebaseToken)
+		{
+			// Verify Firebase ID token
+			FirebaseToken decodedToken;
+			try
+			{
+				decodedToken = await _firebaseAuth.VerifyIdTokenAsync(firebaseToken);
+			}
+			catch (Exception ex)
+			{
+				return Unauthorized("Invalid Firebase ID token");
+			}
+
+			// After signing in and receiving the ID token:
+			HttpContext.Session.SetString("FirebaseIdToken", firebaseToken);
+
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+			// Extract user info
+			string uid = decodedToken.Uid;
+
+			var firebaseUser = await _firebaseClient
+				.Child("users")
+				.Child(uid)
+				.OnceSingleAsync<Dictionary<string, object>>();
+
+			// Now you can access fields dynamically
+			if (firebaseUser.ContainsKey("roleId"))
+			{
+				var roleId = firebaseUser["roleId"].ToString();
+
+				//var existingUser = await _firebaseAuth.GetUserAsync(uid);
+
+				var email = decodedToken.Claims["email"]?.ToString();
+
+				var verified = (bool)decodedToken.Claims["email_verified"];
+
+				if (verified)
+				{
+					// Email is verified, proceed with login
+					var roleName = await GetRoleNameFromFirebase(roleId);
+					var jwtToken = GenerateJwtToken(email, roleName, uid);
+
+					return Ok(new { jwTtoken = jwtToken });
+				}
+				else
+				{
+					// Email is not verified
+					return BadRequest("Please verify your email before logging in.");
+				}
+			}
+
+			return StatusCode(400, new { message = "No role found" });
+
+			
 		}
 
 		private string GenerateJwtToken(string email, string role, string uid)

@@ -20,7 +20,7 @@ namespace Alpha_API.Controllers
         }
 
         [HttpGet("{userId}")]
-        //[Authorize(Roles = "admin,staff,customer")]
+        [Authorize(Roles = "admin,staff,customer")]
         public async Task<ActionResult<IEnumerable<object>>> GetPaymentHistory(string userId)
         {
             var paymentHistory = new List<object>();

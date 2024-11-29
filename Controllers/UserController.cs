@@ -17,7 +17,6 @@ using ClosedXML.Excel;
 
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize(Policy = "AdminOnly")]
 
 public class UsersController : ControllerBase
 {
@@ -124,17 +123,28 @@ public class UsersController : ControllerBase
 	public async Task<ActionResult<IEnumerable<User>>> GetCustomers()
 	{
 		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+		var roles = await _roleService.GetAllRoles();
+
+		var customerRoleId = roles.FirstOrDefault(role => role.RoleName == "customer")?.RoleId;
+
 		var users = await _firebaseClient
 			.Child("users")
+			.OrderBy("roleId")
+			.EqualTo(customerRoleId)
 			.OnceAsync<User>();
 
-		var userList = new List<User>();
-		foreach (var user in users)
-		{
-			var roleName = await _roleService.GetRoleName(user.Object.RoleId);
-			if (roleName == "customer")
-				userList.Add(user.Object);
-		}
+		var userList = users
+			.Select(user => user.Object)
+			.ToList();
+
+		//var userList = new List<User>();
+		//foreach (var user in users)
+		//{
+		//	var roleName = await _roleService.GetRoleName(user.Object.RoleId);
+		//	if (roleName == "customer")
+		//		userList.Add(user.Object);
+		//}
 
 		return Ok(userList);
 	}
@@ -294,7 +304,7 @@ public class UsersController : ControllerBase
 	}
 
 	// GET: api/users/GetUserByEmail/{email}
-	//[Authorize(Roles = "admin")]
+	[Authorize(Roles = "admin")]
 	[HttpGet("GetUserByEmail/{email}")]
 	public async Task<ActionResult<object>> GetUserByEmail(string email)
 	{

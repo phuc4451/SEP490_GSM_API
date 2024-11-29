@@ -8,7 +8,7 @@ using System.Data;
 using System.Text;
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize(Policy = "AdminOnly")]
+
 [Authorize(Roles = "admin")]
 public class EquipmentController : ControllerBase
 {
