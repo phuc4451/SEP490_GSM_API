@@ -64,17 +64,38 @@ public class UsersController : ControllerBase
 	public async Task<ActionResult<IEnumerable<User>>> GetStaffs()
 	{
 		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+		var roles = await _roleService.GetAllRoles();
+
+		var staffRoleId = roles.FirstOrDefault(role => role.RoleName == "staff")?.RoleId;
+
 		var users = await _firebaseClient
 			.Child("users")
+			.OrderBy("roleId")
+			.EqualTo(staffRoleId)
 			.OnceAsync<User>();
 
-		var userList = new List<User>();
-		foreach (var user in users)
-		{
-			var roleName = await _roleService.GetRoleName(user.Object.RoleId);
-			if (roleName == "staff")
-				userList.Add(user.Object);
-		}
+		var userList = users
+			.Select(user => user.Object)
+			.ToList();
+
+
+
+		//var userList = (await Task.WhenAll(users.Select(async user =>
+		//	new { User = user.Object, RoleName = await _roleService.GetRoleName(user.Object.RoleId) })))
+		//	.Where(result => result.RoleName == "staff")
+		//	.Select(result => result.User)
+		//	.ToList();
+
+
+		//var userList = new List<User>();
+		//foreach (var user in users)
+		//{
+		//	var roleName = await _roleService.GetRoleName(user.Object.RoleId);
+
+		//	if (roleName == "staff")
+		//		userList.Add(user.Object);
+		//}
 
 		return Ok(userList);
 	}
@@ -756,5 +777,77 @@ public class UsersController : ControllerBase
 			.DeleteAsync();
 
 		return NoContent(); // 204 No Content
+	}
+
+	// GET: api/users/GetAllMemberships
+	[HttpGet("GetAllMemberships")]
+	public async Task<ActionResult<Object>> GetAllMemberships()
+	{
+		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+		// Fetch BoxingRegistrations and GymRegistrations concurrently
+		var boxingTask = _firebaseClient.Child("BoxingRegistrations").OnceAsync<BoxingRegistration>();
+		var gymTask = _firebaseClient.Child("GymRegistrations").OnceAsync<GymRegistration>();
+
+
+		await Task.WhenAll(boxingTask, gymTask);
+
+		var boxingRegistrations = boxingTask.Result;
+		var gymRegistrations = gymTask.Result;
+
+		// Add RegistrationId to each record
+		foreach (var r in boxingRegistrations)
+		{
+			r.Object.RegistrationId = r.Key;
+		}
+
+		foreach (var r in gymRegistrations)
+		{
+			r.Object.RegistrationId = r.Key;
+		}
+
+
+		// Create lookup maps for registrations by user
+		var gymRegistrationLookup = gymRegistrations
+			.GroupBy(x => x.Object.UserId)
+			.ToDictionary(g => g.Key, g => g.Select(x => x.Object).ToList());
+
+		var boxingRegistrationLookup = boxingRegistrations
+			.SelectMany(r => r.Object.UserIds.Split(",").Select(userId => new { UserId = userId, Registration = r.Object }))
+			.GroupBy(x => x.UserId)
+			.ToDictionary(g => g.Key, g => g.Select(x => x.Registration).ToList());
+
+		// Combine user IDs from both sources
+		var allUserIds = gymRegistrationLookup.Keys
+			.Concat(boxingRegistrationLookup.Keys)
+			.Distinct()
+			.ToList();
+
+		// Fetch all user details in bulk
+		var userTasks = allUserIds.Select(userId =>
+			_firebaseClient.Child("users").Child(userId).OnceSingleAsync<User>()
+		);
+		var users = await Task.WhenAll(userTasks);
+
+		// Map users by UserId for quick lookup
+		var userMap = users.ToDictionary(user => user.UserId, user => user);
+
+		// Build the final result
+		var result = allUserIds.Select(userId =>
+		{
+			var user = userMap.GetValueOrDefault(userId);
+			var userGymRegistrations = gymRegistrationLookup.GetValueOrDefault(userId, new List<GymRegistration>());
+			var userBoxingRegistrations = boxingRegistrationLookup.GetValueOrDefault(userId, new List<BoxingRegistration>());
+
+			return new
+			{
+				User = user,
+				GymRegistrations = userGymRegistrations,
+				BoxingRegistrations = userBoxingRegistrations
+			};
+		}).ToList();
+
+		return result;
+
 	}
 }
