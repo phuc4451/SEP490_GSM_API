@@ -125,14 +125,6 @@ namespace Alpha_API.Services
 				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			}
 
-			int timeToAdd = 0;
-			int sessionToAdd = 0;
-
-			//if (membership.Result.DurationMonths.HasValue && membership.Result.DurationMonths != 0)
-			//{
-			//	timeToAdd = membership.Result.DurationMonths.Value;
-			//}
-			//else if()
 
 			GymRegistration gymRegistration = new GymRegistration()
 			{
@@ -188,6 +180,7 @@ namespace Alpha_API.Services
 		public async Task<RegisterResult> RegisterTrainerRental(RegisterPackageRequest request,
 			bool qrPayment, string customerId)
 		{
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 			if (string.IsNullOrEmpty(request.SelectedTimeSlot))
 			{
 				throw new ArgumentException("The selected time slot is null");
@@ -310,12 +303,32 @@ namespace Alpha_API.Services
 				throw new UnauthorizedAccessException("One or more users do not have the required 'customer' role.");
 			}
 
+			// Build comma-separated userIds for storage
+			var userIdsString = string.Join(",", userIds);
+
+			RegisterScheduleRequest scheduleRequest = new RegisterScheduleRequest()
+			{
+				BoxingMembershipPlanId = request.BoxingMembershipPlanId,
+				TrainerRentalPlanId = request.TrainerRentalPlanId,
+				Duration = request.Duration,
+				Emails = request.Emails,
+				IsMonWedFri = request.IsMonWedFri,
+				SelectedTimeSlotId = request.SelectedTimeSlot,
+			};
+			var scheduleTask = _scheduleService.CreateSchedule(scheduleRequest, userIdsString);
+
 			// Query for active registrations
-			var activeRentalRegistrations = await _firebaseClient
+			var activeRentalRegistrationsTask = _firebaseClient
 				.Child("TrainerRentalRegistrations")
 				.OrderBy("isActive")
 				.EqualTo(true)
 				.OnceAsync<TrainerRentalRegistration>();
+
+			await Task.WhenAll(scheduleTask, activeRentalRegistrationsTask);
+
+			var scheduleId = scheduleTask.Result;
+
+			var activeRentalRegistrations = activeRentalRegistrationsTask.Result;
 
 			var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembership(userId));
 
@@ -354,20 +367,6 @@ namespace Alpha_API.Services
 					throw new InvalidOperationException("One or more users already have active Trainer Rental Registrations.");
 				}
 			}
-
-			// Build comma-separated userIds for storage
-			var userIdsString = string.Join(",", userIds);
-
-			RegisterScheduleRequest scheduleRequest = new RegisterScheduleRequest()
-			{
-				BoxingMembershipPlanId = request.BoxingMembershipPlanId,
-				TrainerRentalPlanId = request.TrainerRentalPlanId,
-				Duration = request.Duration,
-				Emails = request.Emails,
-				IsMonWedFri = request.IsMonWedFri,
-				SelectedTimeSlotId = request.SelectedTimeSlot,
-			};
-			var scheduleId = await _scheduleService.CreateSchedule(scheduleRequest);
 
 			int monthToAdd = 0;
 			int sessionToAdd = 0;
@@ -475,6 +474,7 @@ namespace Alpha_API.Services
 		public async Task<RegisterResult> RegisterBoxing(RegisterPackageRequest request,
 			bool qrPayment, string customerId)
 		{
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 			if (string.IsNullOrEmpty(request.SelectedTimeSlot))
 			{
 				throw new ArgumentException("The selected time slot is null");
@@ -576,12 +576,32 @@ namespace Alpha_API.Services
 				throw new UnauthorizedAccessException("One or more users do not have the required 'customer' role.");
 			}
 
+			// Build comma-separated userIds for storage
+			var userIdsString = string.Join(",", userIds);
+
+			RegisterScheduleRequest scheduleRequest = new RegisterScheduleRequest()
+			{
+				BoxingMembershipPlanId = request.BoxingMembershipPlanId,
+				TrainerRentalPlanId = request.TrainerRentalPlanId,
+				Duration = request.Duration,
+				Emails = request.Emails,
+				IsMonWedFri = request.IsMonWedFri,
+				SelectedTimeSlotId = request.SelectedTimeSlot,
+			};
+			var scheduleTask = _scheduleService.CreateSchedule(scheduleRequest, userIdsString);
+
 			// Query for active registrations
-			var activeRegistrations = await _firebaseClient
+			var activeRegistrationsTask = _firebaseClient
 				.Child("BoxingRegistrations")
 				.OrderBy("isActive")
 				.EqualTo(true)
 				.OnceAsync<BoxingRegistration>();
+
+			await Task.WhenAll(activeRegistrationsTask, scheduleTask);
+
+			var scheduleId = scheduleTask.Result;
+
+			var activeRegistrations = activeRegistrationsTask.Result;
 
 			if (activeRegistrations.Count != 0)
 			{
@@ -597,20 +617,6 @@ namespace Alpha_API.Services
 					throw new InvalidOperationException("One or more users already have active Boxing Registrations.");
 				}
 			}
-
-			// Build comma-separated userIds for storage
-			var userIdsString = string.Join(",", userIds);
-
-			RegisterScheduleRequest scheduleRequest = new RegisterScheduleRequest()
-			{
-				BoxingMembershipPlanId = request.BoxingMembershipPlanId,
-				TrainerRentalPlanId = request.TrainerRentalPlanId,
-				Duration = request.Duration,
-				Emails = request.Emails,
-				IsMonWedFri = request.IsMonWedFri,
-				SelectedTimeSlotId = request.SelectedTimeSlot,
-			};
-			var scheduleId = await _scheduleService.CreateSchedule(scheduleRequest);
 
 			// Prepare the request data
 			string info = "";

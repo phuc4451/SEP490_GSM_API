@@ -16,6 +16,7 @@ namespace Alpha_API.Services
 
 		public async Task<bool> CheckGymMembership(string userId)
 		{
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 			var existingGymRegistrations = await _firebaseClient
 				.Child("GymRegistrations")
 				.OrderBy("userId")

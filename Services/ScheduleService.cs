@@ -13,28 +13,24 @@ namespace Alpha_API.Services
 {
 	public interface IScheduleService
 	{
-		Task<string> CreateSchedule(RegisterScheduleRequest request);
+		Task<string> CreateSchedule(RegisterScheduleRequest request, string userIdsString);
 		Task<bool> CheckTrainerAvailability(string trainerId, List<Slot> slots);
 	}
 
 	public class ScheduleService : IScheduleService
 	{
-		private readonly EmailService _emailService;
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 
-		public ScheduleService(EmailService emailService, FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider)
+		public ScheduleService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider)
 		{
-			_emailService = emailService;
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
 		}
 
-		public async Task<string> CreateSchedule(RegisterScheduleRequest request)
+		public async Task<string> CreateSchedule(RegisterScheduleRequest request, string userIdsString)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
-			string planType = "";
-			string trainerId = "";
 			int numberOfUsers = request.Emails.Count;
 
 			if (numberOfUsers == 0)
@@ -47,47 +43,19 @@ namespace Alpha_API.Services
 				throw new InvalidOperationException("Memberships or plans are null");
 			}
 
-			List<string> userIds = new List<string>();
-			StringBuilder userIdsBuilder = new StringBuilder();
-
-			// Fetch user IDs in parallel
-			var tasks = request.Emails.Select(async email =>
-			{
-				var userId = await _emailService.GetUserIdByEmail(email);
-				return userId;
-			});
-
-			// Wait for all tasks to complete
-			var userIdResults = await Task.WhenAll(tasks);
-
-			// Filter out empty results (if the user was not found)
-			userIds = userIdResults.Where(id => !string.IsNullOrEmpty(id)).ToList();
-
-
-			//foreach (var email in request.Emails)
-			//{
-			//	var userId = await _emailService.GetUserIdByEmail(email);
-			//	userIds.Add(userId);
-			//}
-
-			foreach (var userId in userIds)
-				userIdsBuilder.Append(userId).Append(",");
-			if (userIdsBuilder.Length > 0)
-			{
-				userIdsBuilder.Length--; // This removes the last comma
-			}
-
-			string userIdsString = userIdsBuilder.ToString();
-
 			if (!string.IsNullOrEmpty(request.TrainerRentalPlanId))
 			{
-				planType = "TrainerRental";
 				var plan = await _firebaseClient
 					.Child("TrainerRentalPlans")
 					.Child(request.TrainerRentalPlanId)
 					.OnceSingleAsync<TrainerRentalPlan>();
 
-				trainerId = plan.TrainerId;
+				if (plan == null)
+				{
+					throw new InvalidOperationException($"Can not find this TrainerRentalPlanId: {request.TrainerRentalPlanId}");
+				}
+
+				var trainerId = plan.TrainerId;
 
 				var option = await _firebaseClient
 					.Child("RentalOptions")
@@ -118,14 +86,18 @@ namespace Alpha_API.Services
 			}
 			else if (!string.IsNullOrEmpty(request.BoxingMembershipPlanId))
 			{
-				planType = "Boxing";
 
 				var plan = await _firebaseClient
 					.Child("BoxingMembershipPlans")
 					.Child(request.BoxingMembershipPlanId)
 					.OnceSingleAsync<BoxingMembershipPlan>();
 
-				trainerId = plan.BoxingTrainerId;
+				if (plan == null)
+				{
+					throw new InvalidOperationException($"Can not find this BoxingMembershipPlanId: {request.BoxingMembershipPlanId}");
+				}
+
+				var trainerId = plan.BoxingTrainerId;
 
 				var option = await _firebaseClient
 					.Child("BoxingOptions")
@@ -154,22 +126,14 @@ namespace Alpha_API.Services
 
 			var scheduleId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			var slots = new List<Slot>();
-			int slotCount = 0;
 
-			foreach (var date in slotDates)
+			slots.AddRange(slotDates.Select(date => new Slot
 			{
-				var slot = new Slot
-				{
-					ScheduleId = scheduleId,
-					Date = date,
-					//StartTime = TimeOnly.ParseExact(times[0], "H:mm"),
-					//EndTime = TimeOnly.ParseExact(times[1], "H:mm"),
-					TimeSlotId= request.SelectedTimeSlotId,
-					Attended = false
-				};
-				slots.Add(slot);
-				slotCount++;
-			}
+				ScheduleId = scheduleId,
+				Date = date,
+				TimeSlotId = request.SelectedTimeSlotId,
+				Attended = false
+			}));
 
 			var trainerAvailability = await CheckTrainerAvailability(trainerId, slots);
 			if (!trainerAvailability)
@@ -182,7 +146,7 @@ namespace Alpha_API.Services
 				TrainerId = plan.TrainerId,
 				FirstSlot = slotDates.Min(d => d),
 				LastSlot = slotDates.Max(d => d),
-				SlotCount = slotCount
+				SlotCount = slots.Count,
 			};
 
 			await SaveScheduleAndSlotsToFirebase(scheduleId, slots, schedule);
@@ -203,23 +167,14 @@ namespace Alpha_API.Services
 
 			var scheduleId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			var slots = new List<Slot>();
-			int slotCount = 0;
-			var times = request.SelectedTimeSlotId.Split('-');
 
-			foreach (var date in slotDates)
+			slots.AddRange(slotDates.Select(date => new Slot
 			{
-				var slot = new Slot
-				{
-					ScheduleId = scheduleId,
-					Date = date,
-					//StartTime = TimeOnly.ParseExact(times[0], "H:mm"),
-					//EndTime = TimeOnly.ParseExact(times[1], "H:mm"),
-					TimeSlotId = request.SelectedTimeSlotId,
-					Attended = false
-				};
-				slots.Add(slot);
-				slotCount++;
-			}
+				ScheduleId = scheduleId,
+				Date = date,
+				TimeSlotId = request.SelectedTimeSlotId,
+				Attended = false
+			}));
 
 			var trainerAvailability = await CheckTrainerAvailability(trainerId, slots);
 			if (!trainerAvailability)
@@ -232,7 +187,7 @@ namespace Alpha_API.Services
 				TrainerId = plan.TrainerId,
 				FirstSlot = slotDates.Min(d => d),
 				LastSlot = slotDates.Max(d => d),
-				SlotCount = slotCount
+				SlotCount = slotDates.Count
 			};
 
 			await SaveScheduleAndSlotsToFirebase(scheduleId, slots, schedule);
@@ -248,23 +203,14 @@ namespace Alpha_API.Services
 
 			var scheduleId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 			var slots = new List<Slot>();
-			int slotCount = 0;
-			var times = request.SelectedTimeSlotId.Split('-');
 
-			foreach (var date in slotDates)
+			slots.AddRange(slotDates.Select(date => new Slot
 			{
-				var slot = new Slot
-				{
-					ScheduleId = scheduleId,
-					Date = date,
-					//StartTime = TimeOnly.ParseExact(times[0], "H:mm"),
-					//EndTime = TimeOnly.ParseExact(times[1], "H:mm"),
-					TimeSlotId = request.SelectedTimeSlotId,
-					Attended = false
-				};
-				slots.Add(slot);
-				slotCount++;
-			}
+				ScheduleId = scheduleId,
+				Date = date,
+				TimeSlotId = request.SelectedTimeSlotId,
+				Attended = false
+			}));
 
 			var trainerAvailability = await CheckTrainerAvailability(trainerId, slots);
 			if (!trainerAvailability)
@@ -277,7 +223,7 @@ namespace Alpha_API.Services
 				TrainerId = plan.BoxingTrainerId,
 				FirstSlot = slotDates.Min(d => d),
 				LastSlot = slotDates.Max(d => d),
-				SlotCount = slotCount
+				SlotCount = slots.Count,
 			};
 
 			await SaveScheduleAndSlotsToFirebase(scheduleId, slots, schedule);
@@ -295,16 +241,16 @@ namespace Alpha_API.Services
 
 
 			// Serialize schedule and save it
-			var scheduleJson = JsonSerializer.Serialize(schedule, options);
-			var scheduleTask = _firebaseClient.Child("Schedules").Child(scheduleId).PutAsync(scheduleJson);
+			var jsonString = JsonSerializer.Serialize(schedule, options);
+			var scheduleTask = _firebaseClient.Child("Schedules").Child(scheduleId).PutAsync(jsonString);
 
 			// Create a dictionary to batch insert slots
 			var slotsDictionary = slots.ToDictionary(slot => Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15), slot =>
 				slot);
 
 			// Serialize slots dictionary as a single batch insert
-			var slotsJson = JsonSerializer.Serialize(slotsDictionary, options);
-			var slotsTask = _firebaseClient.Child("Slots").PatchAsync(slotsJson);
+			jsonString = JsonSerializer.Serialize(slotsDictionary, options);
+			var slotsTask = _firebaseClient.Child("Slots").PatchAsync(jsonString);
 
 			// Await both tasks concurrently
 			await Task.WhenAll(scheduleTask, slotsTask);
@@ -312,35 +258,31 @@ namespace Alpha_API.Services
 
 		private List<DateOnly> GenerateSlotDates(DateOnly startDate, DateOnly endDate, bool isMonWedFri, bool isBoxing, int? sessions)
 		{
-			//boxing
+			var dates = new List<DateOnly>();
+
 			if (isBoxing)
 			{
-				var dates = new List<DateOnly>();
+				// Determine the valid days based on isMonWedFri
+				var validDays = isMonWedFri
+					? new[] { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday }
+					: new[] { DayOfWeek.Tuesday, DayOfWeek.Thursday, DayOfWeek.Saturday };
 
-				for (var date = startDate; sessions != 0; date = date.AddDays(1))
+				// Loop through the dates and add valid ones until sessions are exhausted
+				for (var date = startDate; sessions > 0; date = date.AddDays(1))
 				{
-					if (isMonWedFri && (date.DayOfWeek == DayOfWeek.Monday || date.DayOfWeek == DayOfWeek.Wednesday || date.DayOfWeek == DayOfWeek.Friday))
-					{
-						dates.Add(date);
-						sessions--;
-					}
-					else if (!isMonWedFri && (date.DayOfWeek == DayOfWeek.Tuesday || date.DayOfWeek == DayOfWeek.Thursday || date.DayOfWeek == DayOfWeek.Saturday))
+					if (Array.Exists(validDays, day => day == date.DayOfWeek))
 					{
 						dates.Add(date);
 						sessions--;
 					}
 				}
-
-				return dates;
 			}
-			//trainer rental
 			else
 			{
-				if (sessions.HasValue && sessions != 0)
+				// Handle trainer rental
+				if (sessions.HasValue && sessions > 0) // Session-based
 				{
-					var dates = new List<DateOnly>();
-
-					for (var date = startDate; sessions != 0; date = date.AddDays(1))
+					for (var date = startDate; sessions > 0; date = date.AddDays(1))
 					{
 						if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
 						{
@@ -348,12 +290,9 @@ namespace Alpha_API.Services
 							sessions--;
 						}
 					}
-					return dates;
 				}
-				else
+				else // Month-based
 				{
-					var dates = new List<DateOnly>();
-
 					for (var date = startDate; date <= endDate; date = date.AddDays(1))
 					{
 						if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
@@ -361,97 +300,67 @@ namespace Alpha_API.Services
 							dates.Add(date);
 						}
 					}
-					return dates;
 				}
-
 			}
+
+			return dates;
+
 		}
 
 		public async Task<bool> CheckTrainerAvailability(string trainerId, List<Slot> slots)
 		{
-			var endSlotDate = slots.Max(s => s.Date);
 			var startSlotDate = slots.Min(s => s.Date);
+			var endSlotDate = slots.Max(s => s.Date);
 
+			// Group requested slots by date
 			var slotsByDay = slots
 				.GroupBy(s => s.Date)
-				.Where(g => g.Key.DayOfWeek >= DayOfWeek.Monday && g.Key.DayOfWeek <= DayOfWeek.Friday)
 				.ToDictionary(g => g.Key, g => g.ToList());
 
+			// Fetch trainer schedules
 			var trainerSchedules = await _firebaseClient
 				.Child("Schedules")
 				.OrderBy("trainerId")
 				.EqualTo(trainerId)
 				.OnceAsync<Schedule>();
 
-			//List<Slot> trainerSlotsList = new List<Slot>();
-			//foreach (var schedule in trainerSchedules)
-			//{
-			//	var trainerSlots = await _firebaseClient
-			//		.Child("Slots")
-			//		.OrderBy("scheduleId")
-			//		.EqualTo(schedule.Object.ScheduleId)
-			//		.OnceAsync<Slot>();
-
-			//	trainerSlotsList.AddRange(
-			//		trainerSlots.Select(sl => sl.Object)
-			//		.Where(sl => sl.Date <= endSlotDate && sl.Date >= startSlotDate));
-			//}
-
-			// Collect all schedule IDs to batch fetch slots
-			var scheduleIds = trainerSchedules.Select(s => s.Object.ScheduleId).ToList();
+			var scheduleIds = trainerSchedules.Select(s => s.Key).ToList();
 			if (!scheduleIds.Any())
-			{
-				return true; // No existing schedules, trainer is available
-			}
+				return true; // No schedules, trainer is available
 
-			// Batch fetch all slots for the trainer's schedules
-			var trainerSlotsTasks = scheduleIds.Select(scheduleId =>
+			// Fetch all slots for the trainer's schedules in a batch
+			var trainerSlotsResults = await Task.WhenAll(scheduleIds.Select(scheduleId =>
 				_firebaseClient
 					.Child("Slots")
 					.OrderBy("scheduleId")
 					.EqualTo(scheduleId)
-					.OnceAsync<Slot>());
-			var trainerSlotsResults = await Task.WhenAll(trainerSlotsTasks);
+					.OnceAsync<Slot>()));
 
-			// Flatten and filter slots to relevant dates
-			var trainerSlotsList = trainerSlotsResults
+			// Filter and flatten the results to relevant slots
+			var trainerSlotsByDay = trainerSlotsResults
 				.SelectMany(result => result.Select(slot => slot.Object))
-				.Where(sl => sl.Date <= endSlotDate && sl.Date >= startSlotDate)
-				.ToList();
-
-			var trainerSlotsByDay = trainerSlotsList
-				.GroupBy(s => s.Date)
-				.Where(g => g.Key.DayOfWeek >= DayOfWeek.Monday && g.Key.DayOfWeek <= DayOfWeek.Friday)
+				.Where(slot => slot.Date >= startSlotDate && slot.Date <= endSlotDate)
+				.GroupBy(slot => slot.Date)
 				.ToDictionary(g => g.Key, g => g.ToList());
 
-			foreach (var requestedDay in slotsByDay)
+			// Validate requested slots
+			foreach (var (requestedDate, requestedSlots) in slotsByDay)
 			{
-				var requestedDate = requestedDay.Key;
-				var requestedSlots = requestedDay.Value;
-
 				if (trainerSlotsByDay.TryGetValue(requestedDate, out var existingSlots))
 				{
-					int totalSlotsForDay = existingSlots.Count + requestedSlots.Count;
+					// Check if total slots exceed the daily limit
+					if (existingSlots.Count + requestedSlots.Count > 8)
+						return false;
 
-					if (totalSlotsForDay > 8)
-					{
-						return false; // Exceeds allowed slots for the day
-					}
-
-					foreach (var requestedSlot in requestedSlots)
-					{
-						if (existingSlots.Any(existingSlot => SlotsOverlap(existingSlot, requestedSlot)))
-						{
-							return false; // Conflicting slot found
-						}
-					}
+					// Check for overlapping slots
+					if (requestedSlots.Any(requestedSlot =>
+						existingSlots.Any(existingSlot => SlotsOverlap(existingSlot, requestedSlot))))
+						return false;
 				}
-				else
+				else if (requestedSlots.Count > 1)
 				{
-					if (requestedSlots.Count > 1)
-					{
-						return false; // Exceeds allowed slots for the day
-					}
+					// New day but exceeds allowed slots for the day
+					return false;
 				}
 			}
 
@@ -460,7 +369,7 @@ namespace Alpha_API.Services
 
 		private bool SlotsOverlap(Slot existingSlot, Slot requestedSlot)
 		{
-			return existingSlot.TimeSlotId == requestedSlot.TimeSlotId;
+			return requestedSlot.TimeSlotId.Equals(existingSlot.TimeSlotId);
 		}
 	}
 
