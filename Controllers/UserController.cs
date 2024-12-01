@@ -357,7 +357,7 @@ public class UsersController : ControllerBase
 	}
 
 	// POST: api/users/updatestaff/{id}
-	[Authorize(Roles = "admin")]
+	[Authorize(Roles = "admin,staff,customer")]
 	[HttpPatch("updateStaff/{id}")]
 	public async Task<ActionResult> UpdateStaff(string id, [FromBody] User u)
 	{

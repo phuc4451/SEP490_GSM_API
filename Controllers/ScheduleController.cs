@@ -307,31 +307,27 @@ namespace Alpha_API.Controllers
 
             return result;
         }
+
+
         [HttpGet("Slots/All")]
-        public async Task<ActionResult<IEnumerable<Object>>> GetAllTrainersSchedules()
+        public async Task<ActionResult<IEnumerable<Object>>> GetAllTrainersSchedules(DateTime? inputDate)
         {
             _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
             // Fetch all trainers
             var trainersTask = _firebaseClient.Child("Trainers").OnceAsync<Trainer>();
-
             // Fetch all schedules
             var schedulesTask = _firebaseClient.Child("Schedules").OnceAsync<Schedule>();
-
             // Fetch all slots
             var slotsTask = _firebaseClient.Child("Slots").OnceAsync<Slot>();
-
             // Fetch all users (customers)
             var usersTask = _firebaseClient.Child("users").OnceAsync<User>();
-
             // Fetch TrainerRentalRegistrations and BoxingRegistrations
             var trainerRentalRegistrationsTask = _firebaseClient.Child("TrainerRentalRegistrations").OnceAsync<TrainerRentalRegistration>();
             var boxingRegistrationsTask = _firebaseClient.Child("BoxingRegistrations").OnceAsync<BoxingRegistration>();
-
             // Fetch TrainerRentalPlans and BoxingMembershipPlans
             var trainerRentalPlansTask = _firebaseClient.Child("TrainerRentalPlans").OnceAsync<TrainerRentalPlan>();
             var boxingMembershipPlansTask = _firebaseClient.Child("BoxingMembershipPlans").OnceAsync<BoxingMembershipPlan>();
-
             // Fetch RentalOptions and BoxingOptions
             var rentalOptionsTask = _firebaseClient.Child("RentalOptions").OnceAsync<RentalOption>();
             var boxingOptionsTask = _firebaseClient.Child("BoxingOptions").OnceAsync<BoxingOption>();
@@ -371,11 +367,13 @@ namespace Alpha_API.Controllers
                 var trainerName = trainerGroup.TrainerName;
                 var trainerId = trainerGroup.TrainerId;
 
-                // Group by date for the trainer
+                // Group by date for the trainer, filtering by date if provided
                 var groupedByDate = slots
                     .Where(slot => slot.Object.ScheduleId != null && slot.Object.ScheduleId != "" && trainerGroup.Schedules.Any(s => s.Key == slot.Object.ScheduleId))
+                    .Where(slot => !inputDate.HasValue || slot.Object.Date == DateOnly.FromDateTime(inputDate.Value)) // Chuyển inputDate thành DateOnly
                     .GroupBy(slot => slot.Object.Date)
                     .ToList();
+
 
                 var trainerSlots = new List<object>();
 
@@ -502,6 +500,8 @@ namespace Alpha_API.Controllers
             // Return the result
             return result;
         }
+
+
 
     }
 }
