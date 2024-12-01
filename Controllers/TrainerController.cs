@@ -46,7 +46,7 @@ namespace Alpha_API.Controllers
 		// GET: api/trainer/GetAllTrainers
 		[Authorize(Roles = "admin,staff,customer")]
 		[HttpGet("GetAllTrainersWithOptions")]
-		public async Task<ActionResult<List<Object>>> GetAllTrainers()
+		public async Task<ActionResult<List<Object>>> GetAllTrainersWithOptions()
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 			var result = await _trainerService.GetAllTrainersAsync();
@@ -80,6 +80,7 @@ namespace Alpha_API.Controllers
 					trainer.Bio,
 					trainer.IsTrainerGym,
 					trainer.IsTrainerBoxing,
+					trainer.Specialization,
 					trainer.TrainerId,
 					trainer.UserId,
 					BoxingOptions=boxingOptionsResult,
