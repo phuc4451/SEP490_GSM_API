@@ -10,149 +10,149 @@ using ClosedXML.Excel;
 
 namespace Alpha_API.Controllers
 {
-	[Route("api/[controller]")]
-	[ApiController]
-	public class FinanceController : ControllerBase
-	{
-		private readonly FirebaseClient _firebaseClient;
+    [Route("api/[controller]")]
+    [ApiController]
+    public class FinanceController : ControllerBase
+    {
+        private readonly FirebaseClient _firebaseClient;
 
-		public FinanceController()
-		{
-			const string FirebaseBaseUrl = "https://sgm-management-c98cd-default-rtdb.firebaseio.com/";
-			_firebaseClient = new FirebaseClient(FirebaseBaseUrl);
-		}
+        public FinanceController()
+        {
+            const string FirebaseBaseUrl = "https://sgm-management-c98cd-default-rtdb.firebaseio.com/";
+            _firebaseClient = new FirebaseClient(FirebaseBaseUrl);
+        }
 
-		// GET: api/Finance/transactions
-		[HttpGet("transactions")]
-		public async Task<ActionResult<IEnumerable<Transaction>>> GetTransactions()
-		{
-			var transactions = await _firebaseClient
-				.Child("Transactions")
-				.OnceAsync<Transaction>();
+        // GET: api/Finance/transactions
+        [HttpGet("transactions")]
+        public async Task<ActionResult<IEnumerable<Transaction>>> GetTransactions()
+        {
+            var transactions = await _firebaseClient
+                .Child("Transactions")
+                .OnceAsync<Transaction>();
 
-			return transactions.Select(t => t.Object).ToList();
-		}
+            return transactions.Select(t => t.Object).ToList();
+        }
 
-		// GET: api/Finance/statistics
-		[HttpGet("statistics")]
-		public async Task<ActionResult<FinanceStatistics>> GetStatistics(
-			[FromQuery] DateTime startDate,
-			[FromQuery] DateTime endDate)
-		{
-			var transactions = await _firebaseClient
-				.Child("Transactions")
-				.OnceAsync<Transaction>();
+        // GET: api/Finance/statistics
+        [HttpGet("statistics")]
+        public async Task<ActionResult<FinanceStatistics>> GetStatistics(
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate)
+        {
+            var transactions = await _firebaseClient
+                .Child("Transactions")
+                .OnceAsync<Transaction>();
 
-			var filteredTransactions = transactions
-				.Select(t => t.Object)
-				.Where(t => t.TransactionDate >= startDate && t.TransactionDate <= endDate)
-				.ToList();
+            var filteredTransactions = transactions
+                .Select(t => t.Object)
+                .Where(t => t.TransactionDate >= startDate && t.TransactionDate <= endDate)
+                .ToList();
 
-			var totalIncome = filteredTransactions
-				.Where(t => t.TransferType == "in")
-				.Sum(t => t.TransferAmount);
+            var totalIncome = filteredTransactions
+                .Where(t => t.TransferType == "in")
+                .Sum(t => t.TransferAmount);
 
-			var totalExpense = filteredTransactions
-				.Where(t => t.TransferType == "out")
-				.Sum(t => t.TransferAmount);
+            var totalExpense = filteredTransactions
+                .Where(t => t.TransferType == "out")
+                .Sum(t => t.TransferAmount);
 
-			var statistics = new FinanceStatistics
-			{
-				StartDate = startDate,
-				EndDate = endDate,
-				TotalIncome = totalIncome,
-				TotalExpense = totalExpense,
-				IncomeTransactionCount = filteredTransactions.Count(t => t.TransferType == "in"),
-				ExpenseTransactionCount = filteredTransactions.Count(t => t.TransferType == "out"),
-				NetBalance = totalIncome - totalExpense
-			};
+            var statistics = new FinanceStatistics
+            {
+                StartDate = startDate,
+                EndDate = endDate,
+                TotalIncome = totalIncome,
+                TotalExpense = totalExpense,
+                IncomeTransactionCount = filteredTransactions.Count(t => t.TransferType == "in"),
+                ExpenseTransactionCount = filteredTransactions.Count(t => t.TransferType == "out"),
+                NetBalance = totalIncome - totalExpense
+            };
 
-			return statistics;
-		}
+            return statistics;
+        }
 
-		// GET: api/Finance/daily-statistics
-		[HttpGet("daily-statistics")]
-		public async Task<ActionResult<FinanceStatistics>> GetDailyStatistics([FromQuery] DateTime date)
-		{
-			var transactions = await _firebaseClient
-				.Child("Transactions")
-				.OnceAsync<Transaction>();
+        // GET: api/Finance/daily-statistics
+        [HttpGet("daily-statistics")]
+        public async Task<ActionResult<FinanceStatistics>> GetDailyStatistics([FromQuery] DateTime date)
+        {
+            var transactions = await _firebaseClient
+                .Child("Transactions")
+                .OnceAsync<Transaction>();
 
-			var filteredTransactions = transactions
-				.Select(t => t.Object)
-				.Where(t => t.TransactionDate.Date == date.Date)
-				.ToList();
+            var filteredTransactions = transactions
+                .Select(t => t.Object)
+                .Where(t => t.TransactionDate.Date == date.Date)
+                .ToList();
 
-			var totalIncome = filteredTransactions
-				.Where(t => t.TransferType == "in")
-				.Sum(t => t.TransferAmount);
+            var totalIncome = filteredTransactions
+                .Where(t => t.TransferType == "in")
+                .Sum(t => t.TransferAmount);
 
-			var totalExpense = filteredTransactions
-				.Where(t => t.TransferType == "out")
-				.Sum(t => t.TransferAmount);
+            var totalExpense = filteredTransactions
+                .Where(t => t.TransferType == "out")
+                .Sum(t => t.TransferAmount);
 
-			var statistics = new FinanceStatistics
-			{
-				StartDate = date,
-				EndDate = date,
-				TotalIncome = totalIncome,
-				TotalExpense = totalExpense,
-				IncomeTransactionCount = filteredTransactions.Count(t => t.TransferType == "in"),
-				ExpenseTransactionCount = filteredTransactions.Count(t => t.TransferType == "out"),
-				NetBalance = totalIncome - totalExpense
-			};
+            var statistics = new FinanceStatistics
+            {
+                StartDate = date,
+                EndDate = date,
+                TotalIncome = totalIncome,
+                TotalExpense = totalExpense,
+                IncomeTransactionCount = filteredTransactions.Count(t => t.TransferType == "in"),
+                ExpenseTransactionCount = filteredTransactions.Count(t => t.TransferType == "out"),
+                NetBalance = totalIncome - totalExpense
+            };
 
-			return statistics;
-		}
+            return statistics;
+        }
 
-		// Export transactions to Excel
-		[HttpGet("export-transactions")]
-		public async Task<IActionResult> ExportTransactionsToExcel([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
-		{
-			var transactions = await _firebaseClient
-				.Child("Transactions")
-				.OnceAsync<Transaction>();
+        // Export transactions to Excel
+        [HttpGet("export-transactions")]
+        public async Task<IActionResult> ExportTransactionsToExcel([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+        {
+            var transactions = await _firebaseClient
+                .Child("Transactions")
+                .OnceAsync<Transaction>();
 
-			var filteredTransactions = transactions
-				.Select(t => t.Object)
-				.Where(t => t.TransactionDate >= startDate && t.TransactionDate <= endDate)
-				.ToList();
+            var filteredTransactions = transactions
+                .Select(t => t.Object)
+                .Where(t => t.TransactionDate >= startDate && t.TransactionDate <= endDate)
+                .ToList();
 
-			using var workbook = new XLWorkbook();
-			var worksheet = workbook.Worksheets.Add("Transactions");
+            using var workbook = new XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Transactions");
 
-			// Create headers
-			worksheet.Cell(1, 1).Value = "TransactionId";
-			worksheet.Cell(1, 2).Value = "Gateway";
-			worksheet.Cell(1, 3).Value = "TransactionDate";
-			worksheet.Cell(1, 4).Value = "AccountNumber";
-			worksheet.Cell(1, 5).Value = "Code";
-			worksheet.Cell(1, 6).Value = "Content";
-			worksheet.Cell(1, 7).Value = "TransferType";
-			worksheet.Cell(1, 8).Value = "TransferAmount";
+            // Create headers
+            worksheet.Cell(1, 1).Value = "TransactionId";
+            worksheet.Cell(1, 2).Value = "Gateway";
+            worksheet.Cell(1, 3).Value = "TransactionDate";
+            worksheet.Cell(1, 4).Value = "AccountNumber";
+            worksheet.Cell(1, 5).Value = "Code";
+            worksheet.Cell(1, 6).Value = "Content";
+            worksheet.Cell(1, 7).Value = "TransferType";
+            worksheet.Cell(1, 8).Value = "TransferAmount";
 
-			// Populate rows
-			for (int i = 0; i < filteredTransactions.Count; i++)
-			{
-				var transaction = filteredTransactions[i];
-				worksheet.Cell(i + 2, 1).Value = transaction.TransactionId;
-				worksheet.Cell(i + 2, 2).Value = transaction.Gateway;
-				worksheet.Cell(i + 2, 3).Value = transaction.TransactionDate;
-				worksheet.Cell(i + 2, 4).Value = transaction.AccountNumber;
-				worksheet.Cell(i + 2, 5).Value = transaction.Code;
-				worksheet.Cell(i + 2, 6).Value = transaction.Content;
-				worksheet.Cell(i + 2, 7).Value = transaction.TransferType;
-				worksheet.Cell(i + 2, 8).Value = transaction.TransferAmount;
-			}
+            // Populate rows
+            for (int i = 0; i < filteredTransactions.Count; i++)
+            {
+                var transaction = filteredTransactions[i];
+                worksheet.Cell(i + 2, 1).Value = transaction.TransactionId;
+                worksheet.Cell(i + 2, 2).Value = transaction.Gateway;
+                worksheet.Cell(i + 2, 3).Value = transaction.TransactionDate;
+                worksheet.Cell(i + 2, 4).Value = transaction.AccountNumber;
+                worksheet.Cell(i + 2, 5).Value = transaction.Code;
+                worksheet.Cell(i + 2, 6).Value = transaction.Content;
+                worksheet.Cell(i + 2, 7).Value = transaction.TransferType;
+                worksheet.Cell(i + 2, 8).Value = transaction.TransferAmount;
+            }
 
-			// Prepare the file to return as a stream
-			using var stream = new MemoryStream();
-			workbook.SaveAs(stream);
-			stream.Position = 0;
+            // Prepare the file to return as a stream
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            stream.Position = 0;
 
-			var fileName = $"Transactions_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}.xlsx";
-			return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-		}
+            var fileName = $"Transactions_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}.xlsx";
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
 
         //// POST: api/Finance/transaction
         //[HttpPost("transaction")]
@@ -470,13 +470,22 @@ namespace Alpha_API.Controllers
                 Revenue = selectedMonthRevenue
             });
         }
+
         [HttpGet("checkin")]
         public async Task<ActionResult<object>> GetCheckIn([FromQuery] string day)
         {
-            // Lấy ngày hiện tại và xác định tuần hiện tại
+            // Lấy ngày hiện tại
             var today = DateTime.Today;
-            var startOfWeek = today.AddDays(-(int)today.DayOfWeek);  // Chủ nhật của tuần này
-            var endOfWeek = startOfWeek.AddDays(6);  // Thứ bảy của tuần này
+
+            // Tính ngày bắt đầu tuần trước (thứ 2 của tuần trước)
+            var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday - 7);  // Thứ 2 của tuần trước
+
+            // Tính ngày kết thúc tuần hiện tại (chủ nhật của tuần hiện tại)
+            var endOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Sunday);  // Chủ nhật của tuần hiện tại
+
+            // Debug: In ra ngày bắt đầu và kết thúc tuần
+            Console.WriteLine($"Start of Week: {startOfWeek.ToString("yyyy-MM-dd")}");
+            Console.WriteLine($"End of Week: {endOfWeek.ToString("yyyy-MM-dd")}");
 
             // Truy vấn bảng GymRegistrations để lấy danh sách UserId có IsActive = true
             var gymRegistrations = await _firebaseClient
@@ -493,19 +502,22 @@ namespace Alpha_API.Controllers
                 .Child("CheckIns")
                 .OnceAsync<CheckIn>();
 
-            // Lọc các check-in trong tuần hiện tại và có UserId trong danh sách activeUsers
+            // Lọc các check-in trong khoảng thời gian từ startOfWeek đến endOfWeek và có UserId trong danh sách activeUsers
             var filteredCheckIns = checkIns
                 .Where(c => activeUsers.Contains(c.Object.UserId) &&
-                            c.Object.Time?.Date >= startOfWeek && c.Object.Time?.Date <= endOfWeek)
+                            c.Object.Time?.Date >= startOfWeek.Date && c.Object.Time?.Date <= endOfWeek.Date)
                 .Select(c => c.Object)
                 .ToList();
+
+            // Debug: Kiểm tra số lượng CheckIn đã lọc
+            Console.WriteLine($"Filtered CheckIns Count: {filteredCheckIns.Count}");
 
             // Nếu chọn "Tất cả các ngày", trả về số lượt check-in cho tất cả các ngày trong tuần
             if (day == "AllDays")
             {
                 var dailyCheckInCounts = new List<CheckInPerDay>();
 
-                // Tính số lượt check-in cho mỗi ngày trong tuần
+                // Tính số lượt check-in cho mỗi ngày trong tuần (thứ 2 - chủ nhật)
                 foreach (var i in Enumerable.Range(0, 7))
                 {
                     var date = startOfWeek.AddDays(i);
@@ -544,17 +556,20 @@ namespace Alpha_API.Controllers
 
 
 
-        public class RevenuePerMonth
-        {
-            public string Month { get; set; }
-            public decimal Revenue { get; set; }
-        }
-        public class CheckInPerDay
-        {
-            public string Day { get; set; }  // Tên ngày trong tuần (ví dụ: Monday, Tuesday, ...)
-            public int CheckInCount { get; set; }  // Số lượt check-in của ngày đó
-        }
+    }
 
+
+
+    public class RevenuePerMonth
+    {
+        public string Month { get; set; }
+        public decimal Revenue { get; set; }
+    }
+    public class CheckInPerDay
+    {
+        public string Day { get; set; }  // Tên ngày trong tuần (ví dụ: Monday, Tuesday, ...)
+        public int CheckInCount { get; set; }  // Số lượt check-in của ngày đó
     }
 
 }
+
