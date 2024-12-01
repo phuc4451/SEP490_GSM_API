@@ -13,6 +13,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Delete } from "@mui/icons-material";
 
 const ManageMembership = () => {
@@ -161,6 +162,26 @@ const ManageMembership = () => {
     document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
   };
 
+  const openViewDetail = (membership) => {
+    // renamed function
+    const dob = membership.user.dob || {}; // renamed variable
+    const formattedDob = `${dob.year || "----"}-${String(dob.month || "01").padStart(2, "0")}-${String(dob.date || "01").padStart(2, "0")}`;
+
+    setFormData({
+      name: membership.user.name,
+      gender: membership.user.gender.toLowerCase() === "nam" ? "male" : "female",
+      dob: formattedDob,
+      email: membership.user.email,
+      phone: membership.user.phone,
+      address: membership.user.address,
+      userId: membership.user.userId,
+    });
+    setCurrentMembership(membership); // renamed variable
+    membershipModalRef.current.style.display = "block"; // renamed modal ref
+    membershipModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+  };
+
   const closeModal = () => {
     membershipModalRef.current.style.display = "none"; // renamed modal ref
     membershipModalRef.current.classList.remove("active");
@@ -262,29 +283,27 @@ const ManageMembership = () => {
       qrPayment: qrPaymentInput,
       duration: 0, // Use the value of gymDuration
       selectedTimeSlot: "",
-      isMonWedFri:  true, // Only true for Gym
+      isMonWedFri: true, // Only true for Gym
     };
 
-    
     // Send the request based on the trainer type
     try {
       const token = localStorage.getItem("token");
 
       // If it's a Gym trainer
-        const response = await fetch("http://localhost:5000/api/GymRegistration", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json", // Specify content type as JSON
-          },
-          body: JSON.stringify(gymData), // Send gym data for gym trainer
-        });
+      const response = await fetch("http://localhost:5000/api/GymRegistration", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json", // Specify content type as JSON
+        },
+        body: JSON.stringify(gymData), // Send gym data for gym trainer
+      });
 
-        const responsejson = await response.json();
-        if (responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
-          setQrDataUrl(responsejson[0].qrDataUrl); // Set QR data URL in state
-        }
-      
+      const responsejson = await response.json();
+      if (responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
+        setQrDataUrl(responsejson[0].qrDataUrl); // Set QR data URL in state
+      }
 
       closeModal(); // Close the modal after success
       showQr(); // Show QR if applicable
@@ -317,7 +336,6 @@ const ManageMembership = () => {
     e.preventDefault();
     deleteMembership(); // renamed function
   };
-
 
   return (
     <>
@@ -354,8 +372,6 @@ const ManageMembership = () => {
             <option value="male">Nam</option>
             <option value="female">Nữ</option>
           </select>
-
-
         </div>
       </div>
 
@@ -384,7 +400,7 @@ const ManageMembership = () => {
                 <th>Email</th>
                 <th>Số điện thoại</th>
                 <th>Địa chỉ</th>
-                <th className="action-el">Hành động</th>
+                {/* <th className="action-el">Hành động</th> */}
               </tr>
             </thead>
             <tbody>
@@ -399,17 +415,20 @@ const ManageMembership = () => {
                   <td>{membership.user.email}</td>
                   <td>{membership.user.phone}</td>
                   <td>{membership.user.address}</td>
-                  <td>
-                    <a href="#" onClick={() => openEditMembershipModal(membership)} className="edit">
+                  {/* <td> */}
+                    {/* <a href="#" onClick={() => openEditMembershipModal(membership)} className="edit">
                       <EditIcon />
                     </a>
                     <a href="#" onClick={() => openDeleteModal(membership)} className="delete">
                       <DeleteIcon />
-                    </a>
+                    </a> */}
                     {/* <a href="#" onClick={() => openAddMembershipModal(membership)} className="add">
                       <AddCircleOutlineIcon />
                     </a> */}
-                  </td>
+                    {/* <a href="#" onClick={() => openViewDetail(membership)} className="view">
+                      <VisibilityIcon  />
+                    </a> */}
+                  {/* </td> */}
                 </tr>
               ))}
             </tbody>
@@ -461,11 +480,10 @@ const ManageMembership = () => {
                     <input type="email" className="form-control" name="email" value={formData.email} onChange={handleInputChange} required />
                     {errors.email && <div className="error-message">{errors.email}</div>}
                   </div>
-
                 </div>
 
                 <div className="row">
-                <div className="form-group col">
+                  <div className="form-group col">
                     <label>Gói đăng kí</label>
                     <select className="form-control form-select" name="option" value={selectedOption} onChange={handlePackageChange} required>
                       <option value="">Chọn gói</option>
@@ -479,7 +497,6 @@ const ManageMembership = () => {
                 </div>
 
                 <div className="row">
-
                   <div className="form-group col">
                     <label>Chọn kiểu thanh toán</label>
                     <div className="radio-group">

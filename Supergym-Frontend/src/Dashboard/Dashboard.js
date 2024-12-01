@@ -271,8 +271,9 @@ const Home = () => {
                   <h4>Doanh thu trong tháng</h4>
                   <p>{`${revenueData.revenueThisMonth.toLocaleString()} VND`}</p>
                   <span className={`stat-percentage ${revenueData.growthPercentage > 0 ? "text-success" : "text-danger"}`}>
-                    {revenueData.growthPercentage > 0 ? "↑" : "↓"} {Math.abs(revenueData.growthPercentage)}%
-                  </span>
+  {revenueData.growthPercentage > 0 ? "↑" : "↓"} {Math.abs(revenueData.growthPercentage).toFixed(2)}%
+</span>
+
                 </div>
               </div>
             </div>
@@ -307,7 +308,7 @@ const Home = () => {
                   <h4>Lượt khách đăng ký</h4>
                   <p>{registrationData.registrationsThisMonth} Lượt</p>
                   <span className={`stat-percentage ${registrationData.growthPercentage > 0 ? "text-success" : "text-danger"}`}>
-                    {registrationData.growthPercentage > 0 ? "↑" : "↓"} {Math.abs(registrationData.growthPercentage)}%
+                    {registrationData.growthPercentage > 0 ? "↑" : "↓"} {Math.abs(registrationData.growthPercentage).toFixed(2)}%
                   </span>
                 </div>
               </div>

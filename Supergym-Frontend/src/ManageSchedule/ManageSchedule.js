@@ -35,10 +35,15 @@ const ManageSchedule = () => {
 
   const openViewDetailSlot = (trainerName, timeSlot, customers, rentalOption, boxingOption) => {
     const [startTime, endTime] = timeSlot.split("-");
-
-    // Chọn gói hợp lệ để hiển thị
-    const optionToDisplay = rentalOption ? rentalOption : boxingOption ? boxingOption : "No option";
-
+  
+    // If rentalOption is "No rental option", display boxingOption, and vice versa
+    let optionToDisplay = "No option";
+    if (rentalOption && rentalOption !== "No rental option") {
+      optionToDisplay = rentalOption;
+    } else if (boxingOption && boxingOption !== "No boxing option") {
+      optionToDisplay = boxingOption;
+    }
+  
     setFormData({
       ...formData,
       trainerName,
@@ -48,13 +53,14 @@ const ManageSchedule = () => {
       customers: customers.map((customer) => customer.name).join(", "),
       rentalOption, // Add rentalOption to formData
       boxingOption, // Add boxingOption to formData
-      optionToDisplay, // Option to display in the modal
+      optionToDisplay, // Display the correct option
     });
-
+  
     viewDetailSlot.current.style.display = "block";
     viewDetailSlot.current.classList.add("active");
     document.querySelector(".modal-overlay").style.display = "block";
   };
+  
 
 
 
