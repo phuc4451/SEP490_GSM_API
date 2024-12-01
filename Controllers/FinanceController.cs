@@ -478,14 +478,25 @@ namespace Alpha_API.Controllers
             var startOfWeek = today.AddDays(-(int)today.DayOfWeek);  // Chủ nhật của tuần này
             var endOfWeek = startOfWeek.AddDays(6);  // Thứ bảy của tuần này
 
+            // Truy vấn bảng GymRegistrations để lấy danh sách UserId có IsActive = true
+            var gymRegistrations = await _firebaseClient
+                .Child("GymRegistrations")
+                .OnceAsync<GymRegistration>();
+
+            var activeUsers = gymRegistrations
+                .Where(g => g.Object.IsActive)
+                .Select(g => g.Object.UserId)
+                .ToList();
+
             // Truy vấn bảng CheckIns để lấy dữ liệu
             var checkIns = await _firebaseClient
                 .Child("CheckIns")
                 .OnceAsync<CheckIn>();
 
-            // Lọc các check-in trong tuần hiện tại
+            // Lọc các check-in trong tuần hiện tại và có UserId trong danh sách activeUsers
             var filteredCheckIns = checkIns
-                .Where(c => c.Object.Time?.Date >= startOfWeek && c.Object.Time?.Date <= endOfWeek)
+                .Where(c => activeUsers.Contains(c.Object.UserId) &&
+                            c.Object.Time?.Date >= startOfWeek && c.Object.Time?.Date <= endOfWeek)
                 .Select(c => c.Object)
                 .ToList();
 
@@ -498,8 +509,12 @@ namespace Alpha_API.Controllers
                 foreach (var i in Enumerable.Range(0, 7))
                 {
                     var date = startOfWeek.AddDays(i);
+
+                    // Lọc các check-in của ngày đó, nhóm theo UserId để chỉ tính một lần cho mỗi User
                     var checkInCount = filteredCheckIns
-                        .Count(c => c.Time?.Date == date);
+                        .Where(c => c.Time?.Date == date)
+                        .GroupBy(c => c.UserId)  // Nhóm theo UserId
+                        .Count();  // Đếm số nhóm (mỗi nhóm là một lượt check-in cho mỗi User)
 
                     dailyCheckInCounts.Add(new CheckInPerDay
                     {
@@ -513,8 +528,12 @@ namespace Alpha_API.Controllers
 
             // Nếu chọn ngày cụ thể (ví dụ: "Monday", "Tuesday", ...)
             var selectedDay = DateTime.ParseExact(day, "dddd", null);
+
+            // Lọc các check-in của ngày đó, nhóm theo UserId để chỉ tính một lần cho mỗi User
             var selectedDayCheckInCount = filteredCheckIns
-                .Count(c => c.Time?.Date == selectedDay.Date);
+                .Where(c => c.Time?.Date == selectedDay.Date)
+                .GroupBy(c => c.UserId)  // Nhóm theo UserId
+                .Count();  // Đếm số nhóm (mỗi nhóm là một lượt check-in cho mỗi User)
 
             return Ok(new
             {
@@ -522,6 +541,7 @@ namespace Alpha_API.Controllers
                 CheckInCount = selectedDayCheckInCount
             });
         }
+
 
 
         public class RevenuePerMonth
