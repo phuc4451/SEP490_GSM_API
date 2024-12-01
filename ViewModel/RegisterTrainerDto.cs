@@ -4,17 +4,14 @@ namespace Alpha_API.ViewModel
 {
 	public class RegisterTrainerDto
 	{
-		public string UserId { get; set; }
 		public string Email { get; set; }
 		public bool IsBoxer { get; set; }
 		public bool IsGymer { get; set; }
-		public string Password { get; set; }
 		public string Name { get; set; }
 		public string Gender { get; set; }
 		public CustomDateTime Dob { get; set; }
 		public string Address { get; set; }
 		public string Phone { get; set; }
-		public string RoleId { get; set; }
 		public string UserAvatar { get; set; }
 		public string IdCard { get; set; }
 	}

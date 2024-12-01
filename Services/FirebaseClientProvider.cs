@@ -19,12 +19,20 @@ namespace Alpha_API.Services
 			// Only initialize FirebaseClient when it's actually requested
 			if (_firebaseClient == null)
 			{
-				var idToken = _httpContextAccessor.HttpContext?.Session.GetString("FirebaseIdToken");
+				//foreach (var header in _httpContextAccessor.HttpContext.Request.Headers)
+				//{
+				//	Console.WriteLine($"{header.Key}: {header.Value}");
+				//}
 
-				_firebaseClient = !string.IsNullOrEmpty(idToken)
+				// Retrieve Firebase token from custom header
+				var firebaseToken = _httpContextAccessor.HttpContext?.Request.Headers["Firebase-Token"].FirstOrDefault();
+
+				//var idToken = _httpContextAccessor.HttpContext?.Session.GetString("FirebaseIdToken");
+
+				_firebaseClient = !string.IsNullOrEmpty(firebaseToken)
 					? new FirebaseClient(_firebaseBaseUrl, new FirebaseOptions
 					{
-						AuthTokenAsyncFactory = () => Task.FromResult(idToken)
+						AuthTokenAsyncFactory = () => Task.FromResult(firebaseToken)
 					})
 					: new FirebaseClient(_firebaseBaseUrl); // No token if session is null
 			}

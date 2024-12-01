@@ -56,7 +56,7 @@ namespace Alpha_API.Utils
 				return false;
 			}
 		}
-        private void SendEmailNotification(string email, string message)
+        public void SendEmailMessage(string email, string message, string subject)
         {
             try
             {
@@ -64,7 +64,7 @@ namespace Alpha_API.Utils
                 MailMessage mail = new MailMessage();
                 mail.From = new MailAddress(_fromEmail);
                 mail.To.Add(email);
-                mail.Subject = "Password Reset Request";
+                mail.Subject = subject;
                 mail.Body = message;
 
                 using (SmtpClient smtpServer = new SmtpClient(_smtpServer))
@@ -127,8 +127,8 @@ namespace Alpha_API.Utils
                 {
                     // Nếu yêu cầu thành công, gửi email thông báo cho người dùng kiểm tra hộp thư
                     string notificationMessage = "Chúng tôi đã gửi một email yêu cầu reset mật khẩu đến địa chỉ email của bạn. Vui lòng kiểm tra hộp thư của bạn để thực hiện thay đổi mật khẩu.";
-
-                    SendEmailNotification(email, notificationMessage);
+                    string subject = "Password Reset Request";
+                    SendEmailMessage(email, notificationMessage, subject);
                     return true;
                 }
 

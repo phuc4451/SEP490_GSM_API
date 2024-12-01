@@ -40,6 +40,9 @@ namespace WebAPI
 			builder.Services.AddSingleton<RoleService>();
 			builder.Services.AddScoped<RegisterService>();
 			builder.Services.AddScoped<TrainerService>();
+			builder.Services.AddScoped<SalaryService>();
+			builder.Services.AddScoped<StaffService>();
+			builder.Services.AddScoped<ShiftService>();
 			builder.Services.AddScoped<GymMembershipCheckService>();
 			builder.Services.AddScoped<QrCodeService>();
 			builder.Services.AddSingleton<PaymentMethodService>();
@@ -132,7 +135,7 @@ namespace WebAPI
 			{
 				c.SwaggerDoc("v1", new OpenApiInfo { Title = "GymAPI_OData", Version = "v1" });
 			});
-
+			builder.Services.AddHttpContextAccessor();
 
 			var app = builder.Build();
 
@@ -149,11 +152,11 @@ namespace WebAPI
 			}
 
 			app.UseHttpsRedirection();
+			app.UseSession();
 			app.UseRouting();
 			app.UseCors("CORSPolicy");
 			app.UseAuthentication();
 			app.UseAuthorization();
-			app.UseSession();
 			app.MapControllers();
 			app.UseODataBatching();
 

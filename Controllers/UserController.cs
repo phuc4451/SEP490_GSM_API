@@ -485,6 +485,27 @@ public class UsersController : ControllerBase
 
 		try
 		{
+			string password = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 8);
+			// Create a Firebase Auth user
+			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
+			{
+				Email = staff.Email,
+				Password = password,
+				DisplayName = staff.Name,
+				EmailVerified = false,
+				Disabled = false
+			});
+
+			if (createUserResponse == null)
+			{
+				return BadRequest("User registration failed.");
+			}
+
+			var userId = createUserResponse.Uid;
+
+			// Generate email verification link
+			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(staff.Email);
+
 			var roles = await _roleService.GetAllRoles();
 			string roleStaffId = roles.FirstOrDefault(role => role.RoleName == "staff")?.RoleId;
 
@@ -504,6 +525,12 @@ public class UsersController : ControllerBase
 				Dob = staff.Dob
 			};
 
+			Staff newStaff = new Staff()
+			{
+				FullName = staff.Name,
+				Position = staff.Position,
+				UserId = userId,
+			};
 			var options = new JsonSerializerOptions
 			{
 				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -512,11 +539,27 @@ public class UsersController : ControllerBase
 
 			var jsonString = JsonSerializer.Serialize(u, options);
 
+			// Send the verification email using a third-party email service
+			var emailSent = _emailService.SendVerificationEmail(staff.Email, verificationLink);
+			_emailService.SendEmailMessage(staff.Email, password, "Here is your password");
 
-			await _firebaseClient
+			if (!emailSent)
+			{
+				return BadRequest("Failed to send email verification.");
+			}
+
+			var userTask = _firebaseClient
 				.Child("users")
 				.Child(id)
 				.PutAsync(jsonString);
+
+			jsonString = JsonSerializer.Serialize(newStaff, options);
+
+			var staffTask = _firebaseClient
+				.Child("Staffs")
+				.PostAsync(jsonString);
+
+			await Task.WhenAll(userTask, staffTask);
 
 			return Ok("Staff added sucessfully. Please verify email.");
 		}
@@ -539,7 +582,7 @@ public class UsersController : ControllerBase
 	[HttpPost("addTrainer")]
 	public async Task<ActionResult> AddTrainer([FromBody] RegisterTrainerDto trainer)
 	{
-		if (trainer == null || string.IsNullOrEmpty(trainer.IdCard) || string.IsNullOrEmpty(trainer.Email) || string.IsNullOrEmpty(trainer.Password))
+		if (trainer == null || string.IsNullOrEmpty(trainer.IdCard) || string.IsNullOrEmpty(trainer.Email) || string.IsNullOrEmpty(trainer.Name))
 		{
 			return BadRequest("Missing required fields");
 		}
@@ -547,11 +590,12 @@ public class UsersController : ControllerBase
 
 		try
 		{
+			string password = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 8);
 			// Create a Firebase Auth user
 			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
 			{
 				Email = trainer.Email,
-				Password = trainer.Password,
+				Password = password,
 				DisplayName = trainer.Name,
 				EmailVerified = false,
 				Disabled = false
@@ -593,18 +637,19 @@ public class UsersController : ControllerBase
 
 			// Send the verification email using a third-party email service
 			var emailSent = _emailService.SendVerificationEmail(trainer.Email, verificationLink);
+			_emailService.SendEmailMessage(trainer.Email, password, "Here is your password");
 			if (!emailSent)
 			{
 				return BadRequest("Failed to send email verification.");
 			}
 
-			await _firebaseClient
+			var userTask = _firebaseClient
 				.Child("users")
 				.Child(userId)
 				.PutAsync(jsonString);
 
 
-			Trainer addTrainer = new Trainer()
+			Trainer newTrainer = new Trainer()
 			{
 				Name = trainer.Name,
 				UserId = userId,
@@ -612,9 +657,12 @@ public class UsersController : ControllerBase
 				IsTrainerGym = trainer.IsGymer,
 			};
 
-			var trainerName = await _trainerService.AddTrainerAsync(addTrainer);
 
-			return Ok($"Trainer {trainerName} created. Please verify your email.");
+			var trainerNameTask = _trainerService.AddTrainerAsync(newTrainer);
+
+			await Task.WhenAll(userTask, trainerNameTask);
+
+			return Ok($"Trainer {trainerNameTask.Result} created. Please verify your email.");
 		}
 		catch (FirebaseAuthException ex)
 		{
@@ -640,7 +688,7 @@ public class UsersController : ControllerBase
 			return BadRequest();
 		}
 
-		if (string.IsNullOrEmpty(customer.Phone) || string.IsNullOrEmpty(customer.Name) || string.IsNullOrEmpty(customer.UserAvatar))
+		if (string.IsNullOrEmpty(customer.Phone) || string.IsNullOrEmpty(customer.Name))
 		{
 			return BadRequest("Missing phone and name");
 		}
@@ -649,10 +697,29 @@ public class UsersController : ControllerBase
 
 		try
 		{
+			string password = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 8);
+			// Create a Firebase Auth user
+			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
+			{
+				Email = customer.Email,
+				Password = password,
+				DisplayName = customer.Name,
+				EmailVerified = false,
+				Disabled = false
+			});
+
+			if (createUserResponse == null)
+			{
+				return BadRequest("User registration failed.");
+			}
+
+			var userId = createUserResponse.Uid;
+
+			// Generate email verification link
+			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(customer.Email);
 			var roles = await _roleService.GetAllRoles();
 			string roleCustomerId = roles.FirstOrDefault(role => role.RoleName == "customer")?.RoleId;
 
-			string id = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 
 			User u = new User()
 			{
@@ -660,13 +727,21 @@ public class UsersController : ControllerBase
 				Email = customer.Email,
 				RoleId = roleCustomerId, // Customer role
 				Phone = customer.Phone,
-				UserId = id,
+				UserId = userId,
 				Gender = customer.Gender,
 				Address = customer.Address,
 				UserAvatar = customer.UserAvatar,
 				IdCard = customer.IdCard,
 				Dob = customer.Dob
 			};
+
+			// Send the verification email using a third-party email service
+			var emailSent = _emailService.SendVerificationEmail(customer.Email, verificationLink);
+			_emailService.SendEmailMessage(customer.Email, password, "Here is your password");
+			if (!emailSent)
+			{
+				return BadRequest("Failed to send email verification.");
+			}
 
 			var options = new JsonSerializerOptions
 			{
@@ -678,7 +753,7 @@ public class UsersController : ControllerBase
 
 			await _firebaseClient
 				.Child("users")
-				.Child(id)
+				.Child(userId)
 				.PutAsync(jsonString);
 
 			return Ok("Customer added sucessfully. Please verify email.");
