@@ -25,6 +25,7 @@ namespace Alpha_API.Services
 	{
 		private readonly PaymentMethodService _paymentMethodService;
 		private FirebaseClient _firebaseClient;
+		private readonly FirebaseAuth _firebaseAuth;
 		private readonly EmailService _emailService;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private readonly RoleService _roleService;
@@ -36,7 +37,7 @@ namespace Alpha_API.Services
 
 		public RegisterService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider,
 			PaymentMethodService paymentMethodService, EmailService emailService, RoleService roleService,
-			IScheduleService scheduleService, GymMembershipCheckService gymMembershipCheckService)
+			IScheduleService scheduleService, GymMembershipCheckService gymMembershipCheckService, FirebaseAuth firebaseAuth)
 		{
 
 			_firebaseClient = firebaseClient;
@@ -46,17 +47,25 @@ namespace Alpha_API.Services
 			_roleService = roleService;
 			_scheduleService = scheduleService;
 			_gymMembershipCheckService = gymMembershipCheckService;
+			_firebaseAuth = firebaseAuth;
 		}
 		public async Task<RegisterResult> RegisterGym(RegisterPackageRequest request, bool qrPayment, string customerId)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
-			var userId = await _emailService.GetUserIdByEmail(request.Emails.FirstOrDefault());
+			var user = await _firebaseAuth.GetUserByEmailAsync(request.Emails.FirstOrDefault());
 
-			if (userId == null)
+			if (user == null)
 			{
 				throw new InvalidOperationException($"No user found with the email {request.Emails.FirstOrDefault()}. The user must be registered.");
 			}
+
+			if (!user.EmailVerified)
+			{
+				throw new InvalidOperationException($"Email {request.Emails.FirstOrDefault()} is not verified.");
+			}
+
+			var userId = user.Uid;
 			var roleName = _roleService.GetRoleOfUser(userId);
 
 			var membership = _firebaseClient
@@ -275,9 +284,15 @@ namespace Alpha_API.Services
 			#endregion
 
 			// Fetch all userIds for emails
-			var userIdTasks = request.Emails.Select(email => _emailService.GetUserIdByEmail(email));
-			var userIdResults = await Task.WhenAll(userIdTasks);
-			var userIds = userIdResults.Where(id => !string.IsNullOrEmpty(id)).ToList();
+			var userTasks = request.Emails.Select(email => _firebaseAuth.GetUserByEmailAsync(email));
+			var userResults = await Task.WhenAll(userTasks);
+			var allVerified = userResults.All(a => a.EmailVerified);
+
+			if (!allVerified)
+			{
+				throw new InvalidOperationException("Some emails are not verified.");
+			}
+			var userIds = userResults.Select(a => a.Uid).Where(id => !string.IsNullOrEmpty(id)).ToList();
 
 			// Ensure all users exist
 			if (userIds.Count != request.Emails.Count)
@@ -535,9 +550,15 @@ namespace Alpha_API.Services
 			#endregion
 
 			// Fetch all userIds for emails
-			var userIdTasks = request.Emails.Select(email => _emailService.GetUserIdByEmail(email));
-			var userIdResults = await Task.WhenAll(userIdTasks);
-			var userIds = userIdResults.Where(id => !string.IsNullOrEmpty(id)).ToList();
+			var userTasks = request.Emails.Select(email => _firebaseAuth.GetUserByEmailAsync(email));
+			var userResults = await Task.WhenAll(userTasks);
+			var allVerified = userResults.All(a => a.EmailVerified);
+
+			if (!allVerified)
+			{
+				throw new InvalidOperationException("Some emails are not verified.");
+			}
+			var userIds = userResults.Select(a => a.Uid).Where(id => !string.IsNullOrEmpty(id)).ToList();
 
 			// Ensure all users exist
 			if (userIds.Count != request.Emails.Count)

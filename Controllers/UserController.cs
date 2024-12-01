@@ -79,6 +79,14 @@ public class UsersController : ControllerBase
 			.Select(user => user.Object)
 			.ToList();
 
+		var userVerificationTasks = userList.Select(async u =>
+		{
+			var user = await _firebaseAuth.GetUserByEmailAsync(u.Email);
+			return user.EmailVerified ? u : null;
+		});
+
+		var emailVerificationResults = await Task.WhenAll(userVerificationTasks);
+		var verifiedUsers = emailVerificationResults.Where(verified => verified != null).ToList();
 
 
 		//var userList = (await Task.WhenAll(users.Select(async user =>
@@ -97,7 +105,7 @@ public class UsersController : ControllerBase
 		//		userList.Add(user.Object);
 		//}
 
-		return Ok(userList);
+		return Ok(verifiedUsers);
 	}
 
 	// GET: api/users/GetTrainers
@@ -106,36 +114,63 @@ public class UsersController : ControllerBase
 	public async Task<ActionResult<IEnumerable<User>>> GetTrainers()
 	{
 		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+		var roles = await _roleService.GetAllRoles();
+
+		var staffRoleId = roles.FirstOrDefault(role => role.RoleName == "pt")?.RoleId;
+
 		var users = await _firebaseClient
 			.Child("users")
+			.OrderBy("roleId")
+			.EqualTo(staffRoleId)
 			.OnceAsync<User>();
 
-		var trainers = await _firebaseClient
-			.Child("Trainers")
-			.OnceAsync<Trainer>();
+		var userList = users
+			.Select(user => user.Object)
+			.ToList();
 
-		var userList = new List<User>();
-		foreach (var user in users)
+		var userVerificationTasks = userList.Select(async u =>
 		{
-			var roleName = await _roleService.GetRoleName(user.Object.RoleId);
-			if (roleName == "pt")
-			{
-				foreach (var trainer in trainers)
-				{
-					if (trainer.Object.UserId == user.Object.UserId)
-					{
-						var pt = new
-						{
-							trainerId = trainer.Object.TrainerId,
+			var user = await _firebaseAuth.GetUserByEmailAsync(u.Email);
+			return user.EmailVerified ? u : null;
+		});
 
-						};
-						userList.Add(user.Object);
-					}
+		var emailVerificationResults = await Task.WhenAll(userVerificationTasks);
+		var verifiedUsers = emailVerificationResults.Where(verified => verified != null).ToList();
 
-				}
-			}
-		}
-		return Ok(userList);
+		return Ok(verifiedUsers);
+
+		//_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+		//var users = await _firebaseClient
+		//	.Child("users")
+		//	.OnceAsync<User>();
+
+		//var trainers = await _firebaseClient
+		//	.Child("Trainers")
+		//	.OnceAsync<Trainer>();
+
+		//var userList = new List<User>();
+		//foreach (var user in users)
+		//{
+		//	var roleName = await _roleService.GetRoleName(user.Object.RoleId);
+		//	if (roleName == "pt")
+		//	{
+		//		foreach (var trainer in trainers)
+		//		{
+		//			if (trainer.Object.UserId == user.Object.UserId)
+		//			{
+		//				var pt = new
+		//				{
+		//					trainerId = trainer.Object.TrainerId,
+
+		//				};
+		//				userList.Add(user.Object);
+		//			}
+
+		//		}
+		//	}
+		//}
+		//return Ok(userList);
 	}
 
 	// GET: api/users/GetCustomers
@@ -159,6 +194,15 @@ public class UsersController : ControllerBase
 			.Select(user => user.Object)
 			.ToList();
 
+		var userVerificationTasks = userList.Select(async u =>
+		{
+			var user = await _firebaseAuth.GetUserByEmailAsync(u.Email);
+			return user.EmailVerified ? u : null;
+		});
+
+		var emailVerificationResults = await Task.WhenAll(userVerificationTasks);
+		var verifiedUsers = emailVerificationResults.Where(verified => verified != null).ToList();
+
 		//var userList = new List<User>();
 		//foreach (var user in users)
 		//{
@@ -167,7 +211,7 @@ public class UsersController : ControllerBase
 		//		userList.Add(user.Object);
 		//}
 
-		return Ok(userList);
+		return Ok(verifiedUsers);
 	}
 
 	// GET: api/users/ExportStaffsToExcel
@@ -550,7 +594,7 @@ public class UsersController : ControllerBase
 
 			var userTask = _firebaseClient
 				.Child("users")
-				.Child(id)
+				.Child(userId)
 				.PutAsync(jsonString);
 
 			jsonString = JsonSerializer.Serialize(newStaff, options);
@@ -925,4 +969,5 @@ public class UsersController : ControllerBase
 		return result;
 
 	}
+
 }
