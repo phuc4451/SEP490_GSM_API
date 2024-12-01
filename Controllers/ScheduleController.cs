@@ -127,7 +127,7 @@ namespace Alpha_API.Controllers
 
             var trainerId = trainer.Key;
 
-            // Fetch only schedules related to the trainer
+            // Fetch schedules related to the trainer
             var schedules = await _firebaseClient
                 .Child("Schedules")
                 .OrderBy("trainerId")
@@ -137,15 +137,15 @@ namespace Alpha_API.Controllers
             if (!schedules.Any())
                 return NotFound("No schedules found for this trainer.");
 
-            // Build a dictionary for schedules
-            var scheduleDict = schedules.ToDictionary(s => s.Key, s => s.Object);
-
             // Extract schedule IDs
-            var scheduleIds = scheduleDict.Keys.ToList();
+            var scheduleIds = schedules.Select(s => s.Key).ToList();
 
-            // Fetch all slots (consider limiting by date range if possible)
-            var allSlots = await _firebaseClient.Child("Slots").OnceAsync<Slot>();
-            var slots = allSlots.Where(s => scheduleIds.Contains(s.Object.ScheduleId)).ToList();
+            // Fetch all relevant slots in one call
+            var slots = (await _firebaseClient
+                .Child("Slots")
+                .OnceAsync<Slot>())
+                .Where(s => scheduleIds.Contains(s.Object.ScheduleId))
+                .ToList();
 
             if (!slots.Any())
                 return NotFound("No slots found for this trainer's schedules.");
@@ -156,16 +156,14 @@ namespace Alpha_API.Controllers
                 .Distinct()
                 .ToList();
 
-            // Fetch only the necessary users
-            var userTasks = userIds.Select(id =>
+            // Fetch all necessary users in bulk
+            var userDict = (await Task.WhenAll(userIds.Select(id =>
                 _firebaseClient.Child("users").Child(id).OnceSingleAsync<User>()
-            );
+            )))
+            .Where(user => user != null)
+            .ToDictionary(u => u.UserId);
 
-            var users = await Task.WhenAll(userTasks);
-            var userDict = userIds.Zip(users, (id, user) => new { id, user })
-                                  .ToDictionary(x => x.id, x => x.user);
-
-            // Build a dictionary for time slots
+            // Fetch all time slots in bulk
             var timeSlotIds = slots.Select(s => s.Object.TimeSlotId).Distinct();
             var timeSlotDict = timeSlotIds.ToDictionary(
                 id => id,
@@ -173,47 +171,43 @@ namespace Alpha_API.Controllers
             );
 
             // Group schedules by date and time slot
-            var groupedSchedules = new Dictionary<string, Dictionary<string, List<string>>>();
+            var groupedSchedules = slots
+                .GroupBy(slot => slot.Object.Date.ToString("yyyy-MM-dd"))
+                .ToDictionary(
+                    dateGroup => dateGroup.Key,
+                    dateGroup => dateGroup
+                        .GroupBy(slot => timeSlotDict.GetValueOrDefault(slot.Object.TimeSlotId)?.ToString() ?? "Unknown")
+                        .ToDictionary(
+                            timeSlotGroup => timeSlotGroup.Key,
+                            timeSlotGroup => timeSlotGroup
+                                .SelectMany(slot => schedules
+                                    .FirstOrDefault(s => s.Key == slot.Object.ScheduleId)?
+                                    .Object.UserIds?
+                                    .Split(',')
+                                    .Where(userId => userDict.ContainsKey(userId))
+                                    .Select(userId => userDict[userId].Name) ?? Array.Empty<string>()
+                                )
+                                .ToList()
+                        )
+                );
 
-            foreach (var slot in slots)
-            {
-                var scheduleId = slot.Object.ScheduleId;
-
-                if (scheduleDict.TryGetValue(scheduleId, out var schedule))
-                {
-                    var timeSlot = timeSlotDict[slot.Object.TimeSlotId];
-                    var date = slot.Object.Date.ToString("yyyy-MM-dd");
-
-                    if (!groupedSchedules.ContainsKey(date))
-                        groupedSchedules[date] = new Dictionary<string, List<string>>();
-
-                    if (!groupedSchedules[date].ContainsKey(timeSlot))
-                        groupedSchedules[date][timeSlot] = new List<string>();
-
-                    // Add customer names to the group
-                    var scheduleUserIds = schedule.UserIds?.Split(',') ?? Array.Empty<string>();
-                    foreach (var customerId in scheduleUserIds)
+            // Flatten the result into a list of objects
+            var result = groupedSchedules
+                .SelectMany(dateGroup => dateGroup.Value
+                    .Select(timeSlotGroup => new
                     {
-                        if (userDict.TryGetValue(customerId, out var customer))
-                            groupedSchedules[date][timeSlot].Add(customer.Name);
-                    }
-                }
-            }
-
-            // Prepare the result
-            var result = groupedSchedules.SelectMany(dateGroup =>
-                dateGroup.Value.Select(timeSlotGroup => new
-                {
-                    date = dateGroup.Key,
-                    timeSlot = timeSlotGroup.Key,
-                    customers = timeSlotGroup.Value
-                })).ToList();
+                        date = dateGroup.Key,
+                        timeSlot = timeSlotGroup.Key,
+                        customers = timeSlotGroup.Value
+                    }))
+                .ToList();
 
             if (!result.Any())
-                return NotFound("No schedules found for this trainer.");
+                return NotFound("No customers found for this trainer's schedules.");
 
             return result;
         }
+
 
         // GET: api/Schedule/Trainer/{userId}
         [HttpGet("Trainer/{userId}")]
