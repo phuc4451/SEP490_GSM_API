@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import CloseIcon from "@mui/icons-material/Close";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "./BookTrainerForm.css";
 import Header from "../Header/Header.js";
 
 const ManageSchedule = () => {
@@ -11,6 +12,7 @@ const ManageSchedule = () => {
   const [trainerToAddCourse, setTrainerToAddCourse] = useState(null); // for deletion
   const [successMessage, setSuccessMessage] = useState("");
   const successModalRef = useRef(null);
+  const showQrPicture = useRef(null);
   const [formData, setFormData] = useState({
     isTrainerGym: true,
     isTrainerBoxing: true,
@@ -24,6 +26,8 @@ const ManageSchedule = () => {
   const [checkDetailPack, setCheckDetailPack] = useState(null);
   const [showSessionCount, setShowSessionCount] = useState(null); // Track if the session count input should be shown
   const [memberCount, setMemberCount] = useState(1);
+  const [qrDataUrl, setQrDataUrl] = useState(""); // State to store the QR code data URL
+  const [showQR, setShowQR] = useState(true);
 
   useEffect(() => {
     openBookTrainerModal(); // Gọi hàm mở modal khi trang load
@@ -49,11 +53,18 @@ const ManageSchedule = () => {
     const { name, value } = e.target;
 
     // Update form data
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-
+    if (name === "boxingOption") {
+      // Update the isMonWedFri state based on the selected radio button value
+      setFormData({
+        ...formData,
+        isMonWedFri: value === "true", // Sets isMonWedFri to true or false based on the radio selection
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
     // When radio button is selected, fetch corresponding packages
     if (name === "trainerType") {
       setTrainerType(value); // Update trainerType state
@@ -135,6 +146,7 @@ const ManageSchedule = () => {
             maxSessions: trainer.maxSessions,
             memberCount: trainer.memberCount,
             trainerRentalPlanId: trainer.trainerRentalPlanId,
+            boxingMembershipPlanId: trainer.boxingMembershipPlanId,
           }))
         );
       } else {
@@ -156,17 +168,20 @@ const ManageSchedule = () => {
     fetchTrainersByPackage(selectedPackageId);
   };
 
-  // useEffect để theo dõi sự thay đổi của checkIsMonthly
+  // // useEffect để theo dõi sự thay đổi của checkIsMonthly
   useEffect(() => {
-    if (checkDetailPack && checkDetailPack.isMonthlyPackage !== undefined) {
-      // Kiểm tra nếu `checkDetailPack` đã được cập nhật và có giá trị `isMonthlyPackage`
-      if (checkDetailPack.isMonthlyPackage) {
-        setShowSessionCount(false); // Ẩn trường nhập liệu nếu là gói Monthly
-      } else {
-        setShowSessionCount(true); // Hiển thị trường nhập liệu nếu không phải gói Monthly
-      }
+    // Check if the trainerType is Gym or Boxing to control the display of the session count field
+    if (trainerType === "TrainerRental") {
+      setShowSessionCount(true); // Show session count input for Gym
+    } else if (trainerType === "Boxing") {
+      setShowSessionCount(false); // Hide session count input for Boxing
+      setFormData((prevData) => ({
+        ...prevData,
+        sessionCount: 1, // Automatically set sessionCount to 1 for Boxing
+      }));
     }
-  }, [checkDetailPack]);
+  }, [trainerType]); // This effect depends on the trainerType
+  
 
   useEffect(() => {
     if (checkDetailPack && checkDetailPack.memberCount) {
@@ -176,7 +191,7 @@ const ManageSchedule = () => {
   }, [checkDetailPack]); // Chạy khi checkDetailPack thay đổi
 
   const renderEmailInputs = () => {
-    if (checkDetailPack && checkDetailPack.memberCount) {
+    if (selectedOption && checkDetailPack && checkDetailPack.memberCount) {
       return Array.from({ length: checkDetailPack.memberCount }).map((_, index) => (
         <div key={index} className="row">
           <div className="form-group col">
@@ -190,17 +205,6 @@ const ManageSchedule = () => {
   };
 
   const closeModal = () => {
-    // Reset tất cả các trạng thái về giá trị mặc định
-    setTrainerType(""); // Reset loại huấn luyện viên
-    setSelectedOption(""); // Reset gói đã chọn
-    setTrainers([]); // Xóa danh sách huấn luyện viên
-    setTrainerToAddCourse(null); // Reset huấn luyện viên đã chọn
-    setShowSessionCount(null); // Reset hiển thị số buổi
-    setMemberCount(1); // Reset số lượng người tập về 1
-    setFormData({
-      isTrainerGym: true,
-      isTrainerBoxing: true,
-    }); // Reset formData nếu cần
     setCheckDetailPack(null); // Reset thông tin gói
     setSuccessMessage(""); // Xóa thông báo thành công
     BookTrainer.current.style.display = "none";
@@ -219,11 +223,42 @@ const ManageSchedule = () => {
   const closeSuccessModal = () => {
     successModalRef.current.style.display = "none"; // Ẩn modal
     document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
-    window.location.reload();
+    // window.location.reload();
+  };
+
+  const showQr = () => {
+    showQrPicture.current.style.display = "block";
+    document.querySelector(".modal-overlay").style.display = "block";
+  };
+
+  // Hàm để đóng modal thông báo
+  const closeQr = () => {
+    showQrPicture.current.style.display = "none"; // Ẩn modal
+    document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
+    window.close();
   };
 
   const openBookTrainerModal = () => {
-    setSelectedOption(""); // Reset lựa chọn khi mở modal
+    setTrainerType(""); // Reset trainer type
+    setSelectedOption(""); // Reset selected package option
+    setTrainerToAddCourse(null); // Clear selected trainer
+    setFormData({
+      isTrainerGym: true,
+      isTrainerBoxing: true,
+      timeSlot: "", // Ensure time slot is reset
+      sessionCount: "", // Ensure session count is reset
+      trainerRentalPlanId: "", // Ensure trainer plan ID is reset
+      boxingMembershipPlanId: "", // Ensure trainer plan ID is reset
+    }); // Reset formData to initial state
+    setSelectedPackages([]); // Reset the available packages
+    setTrainers([]); // Reset the trainers list
+    setTimeSlots([]); // Clear the available time slots
+    setShowBoxingOptions(false); // Hide boxing options by default
+    setShowSessionCount(false); // Hide session count input by default
+    setCheckDetailPack(null); // Reset package detail
+    setSuccessMessage(""); // Clear success message
+
+    // Show modal and overlay
     BookTrainer.current.style.display = "block";
     BookTrainer.current.classList.add("active");
     document.querySelector(".modal-overlay").style.display = "block";
@@ -231,71 +266,91 @@ const ManageSchedule = () => {
 
   const handleBookTrainer = async (e) => {
     e.preventDefault();
-  
-    // Collect form data based on trainer type (Gym or Boxing)
+
+    // Collect form data Gym
     const emailInputs = Array.from(document.querySelectorAll('input[type="email"]')).map((input) => input.value);
     const selectedTimeSlot = formData.timeSlot; // Assuming timeSlot is captured in formData
-    const trainerRentalPlanId = formData.trainerRentalPlanId;  // Make sure this value is set
+    const trainerRentalPlanId = formData.trainerRentalPlanId; // Make sure this value is set
     const duration = formData.sessionCount; // sessionCount for Gym
     const qrPayment = formData.qrPayment;
-    let gymMembershipId = formData.gymMembershipId;
-    let boxingMembershipPlanId = formData.boxingMembershipPlanId;
-    let trainerId = formData.trainerId; // The selected trainer's ID
-  
-    // Prepare data to send in the request body
-    const data = {
+    const gymDuration = duration ? duration : null;
+
+    // Prepare data for Gym
+    const gymData = {
       emails: emailInputs, // Emails from input fields
-      boxingMembershipPlanId: trainerType === "Boxing" ? boxingMembershipPlanId : null,
-      gymMembershipId: trainerType === "Gym" ? gymMembershipId : null,
-      trainerRentalPlanId: trainerRentalPlanId,  // Ensure this is included
-      qrPayment: qrPayment,
-      duration: duration,
+      boxingMembershipPlanId: null,
+      gymMembershipId: null,
+      trainerRentalPlanId: trainerRentalPlanId, // Ensure this is included
+      qrPayment: true,
+      duration: gymDuration, // Use the value of gymDuration
       selectedTimeSlot: selectedTimeSlot,
-      isMonWedFri: true, // Assuming this is a fixed option for now
+      isMonWedFri: trainerType === "TrainerRental" ? true : false, // Only true for Gym
     };
-  
+
+    // Collect form data BOXING
+    const BOXINGemailInputs = Array.from(document.querySelectorAll('input[type="email"]')).map((input) => input.value);
+    const BOXINGselectedTimeSlot = formData.timeSlot; // Assuming timeSlot is captured in formData
+    const BOXINGboxingMembershipPlanId = formData.boxingMembershipPlanId; // Make sure this value is set
+    const BOXINGduration = formData.sessionCount; // sessionCount for Gym
+    const BOXINGqrPayment = formData.qrPayment;
+    const BOXINGisMonWedFri = formData.isMonWedFri;
+
+    // Prepare data for Boxing
+    const boxingData = {
+      emails: BOXINGemailInputs, // Emails from input fields
+      boxingMembershipPlanId: BOXINGboxingMembershipPlanId,
+      gymMembershipId: null,
+      trainerRentalPlanId: null, // Ensure this is included
+      qrPayment: true,
+      duration: 1,
+      selectedTimeSlot: BOXINGselectedTimeSlot,
+      isMonWedFri: BOXINGisMonWedFri, // Set true or false based on the radio selection
+    };
+
+    // Send the request based on the trainer type
     try {
-        
-      // Get token from local storage
       const token = localStorage.getItem("token");
-  
-      // Send the POST request
-      var response = await axios.post("http://localhost:5000/api/trainerRentalRegistration", data, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-  
-      // Extract the response body directly as an object
-      const responseData = response.data; // This should be an object, not an array
-  
-      // Check if the response contains the necessary properties (qrDataUrl and trainerRentalPlan)
-      if (responseData && responseData.qrDataUrl && responseData.details && responseData.details.trainerRentalPlan) {
-        const qrDataUrl = responseData.qrDataUrl;
-        const trainerRentalPlan = responseData.details.trainerRentalPlan;
-  
-        // Log the QR data URL and trainer rental plan details for debugging
-        console.log("QR Data URL:", qrDataUrl);
-        console.log("Trainer Rental Plan Details:", trainerRentalPlan);
-  
-        // Show success message
-        showSuccessModal("Đăng ký huấn luyện viên thành công!");
-  
-        // Optionally, display QR code or rental plan details (you can use qrDataUrl in an <img> element or in a modal)
-  
-        closeModal(); // Close the modal after success
-      } else {
-        // Handle case where response doesn't contain expected structure
-        showSuccessModal("Có lỗi khi đăng ký huấn luyện viên. Dữ liệu trả về không hợp lệ.");
+
+      // If it's a Gym trainer
+      if (trainerType === "TrainerRental") {
+        const response = await fetch("http://localhost:5000/api/trainerRentalRegistration", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json", // Specify content type as JSON
+          },
+          body: JSON.stringify(gymData), // Send gym data for gym trainer
+        });
+
+        const responsejson = await response.json();
+        if (responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
+          setQrDataUrl(responsejson[0].qrDataUrl); // Set QR data URL in state
+        }
       }
+      // If it's a Boxing trainer
+      else if (trainerType === "Boxing") {
+        const response = await fetch("http://localhost:5000/api/BoxingRegistration", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json", // Specify content type as JSON
+          },
+          body: JSON.stringify(boxingData), // Send boxing data for boxing trainer
+        });
+
+        const responsejson = await response.json();
+        if (responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
+          setQrDataUrl(responsejson[0].qrDataUrl); // Set QR data URL in state
+        }
+      }
+
+      closeModal(); // Close the modal after success
+      showQr(); // Show QR if applicable
     } catch (error) {
-      // Handle errors from the API call
       console.error("Error during trainer registration:", error);
       showSuccessModal("Có lỗi khi đăng ký huấn luyện viên. Vui lòng thử lại.");
     }
   };
-  
-  
-  
-  
 
   return (
     <>
@@ -358,23 +413,32 @@ const ManageSchedule = () => {
                   <div className="form-group col">
                     <label>Chọn Huấn luyện viên</label>
                     <select
-  className="form-control"
-  name="trainer"
-  value={trainerToAddCourse ? trainerToAddCourse.trainerId : ""}
-  onChange={(e) => {
-    const selectedTrainer = trainers.find(
-      (trainer) => trainer.trainerId === e.target.value
-    );
-    setTrainerToAddCourse(selectedTrainer);
-    // Update formData to include the trainerRentalPlanId
-    setFormData((prevData) => ({
-      ...prevData,
-      trainerRentalPlanId: selectedTrainer ? selectedTrainer.trainerRentalPlanId : ""
-    }));
-  }}
-  required
->
+                      className="form-control"
+                      name="trainer"
+                      value={trainerToAddCourse ? trainerToAddCourse.trainerId : ""}
+                      onChange={(e) => {
+                        const selectedTrainer = trainers.find((trainer) => trainer.trainerId === e.target.value);
+                        setTrainerToAddCourse(selectedTrainer);
 
+                        // Check if selected trainer is a boxing trainer and update based on trainerType
+                        if (selectedTrainer && trainerType === "Boxing") {
+                          // If it's a boxing trainer, set the trainerId and clear trainerRentalPlanId
+                          setFormData((prevData) => ({
+                            ...prevData,
+                            boxingMembershipPlanId: selectedTrainer ? selectedTrainer.boxingMembershipPlanId : "",
+                            trainerRentalPlanId: null, // Clear trainerRentalPlanId for boxing trainers
+                          }));
+                        } else if (selectedTrainer && trainerType === "TrainerRental") {
+                          // If it's a gym trainer, set the trainerRentalPlanId and clear trainerId
+                          setFormData((prevData) => ({
+                            ...prevData,
+                            trainerRentalPlanId: selectedTrainer ? selectedTrainer.trainerRentalPlanId : "",
+                            boxingMembershipPlanId: null, // Clear trainerId for gym trainers
+                          }));
+                        }
+                      }}
+                      required
+                    >
                       <option value="">Chọn Huấn luyện viên</option>
                       {trainers.map((trainer, index) => (
                         <option key={index} value={trainer.trainerId}>
@@ -390,13 +454,13 @@ const ManageSchedule = () => {
                     {showBoxingOptions && (
                       <>
                         <div className="form-check form-check-inline">
-                          <input type="radio" id="option2" name="boxingOption" value="2" onChange={handleInputChange} className="form-check-input" />
+                          <input type="radio" id="option2" name="boxingOption" value="true" onChange={handleInputChange} className="form-check-input" />
                           <label className="form-check-label" htmlFor="option2">
                             Thứ 2, thứ 4, thứ 6
                           </label>
                         </div>
                         <div className="form-check form-check-inline">
-                          <input type="radio" id="option3" name="boxingOption" value="3" onChange={handleInputChange} className="form-check-input" />
+                          <input type="radio" id="option3" name="boxingOption" value="false" onChange={handleInputChange} className="form-check-input" />
                           <label className="form-check-label" htmlFor="option3">
                             Thứ 3, thứ 5, thứ 7
                           </label>
@@ -405,11 +469,12 @@ const ManageSchedule = () => {
                     )}
                   </div>
                 </div>
+
                 <div className="row">
                   <div className="form-group col">
                     <label>Chọn khung giờ</label>
                     <select className="form-control form-select" name="timeSlot" onChange={handleInputChange} required>
-                      <option value="">Chọn khung giờ</option>
+                      <option value={selectedOption}>Chọn khung giờ</option>
                       {timeSlots.map((slot) => (
                         <option key={slot.timeSlotId} value={slot.timeSlotId}>
                           {slot.time}
@@ -423,7 +488,7 @@ const ManageSchedule = () => {
                   <div className="form-group col">
                     {showSessionCount && (
                       <>
-                        <label>Chọn số buổi tập</label>
+                        <label>Chọn số lượng</label>
                         <input
                           className="form-control"
                           type="number"
@@ -455,7 +520,6 @@ const ManageSchedule = () => {
 
       <div className="modal-overlay"></div>
 
-
       {/* Success Modal */}
       <div ref={successModalRef} className="modal">
         <div className="modal-dialog modal-dialog-notify">
@@ -471,6 +535,35 @@ const ManageSchedule = () => {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeSuccessModal}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* QR Modal */}
+      <div ref={showQrPicture} className="modal">
+        <div className="modal-dialog modal-dialog-notify">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Thông báo</h4>
+              <a type="button" className="close" onClick={closeQr}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body">
+              {/* Check if qrDataUrl exists and render the QR code */}
+              {qrDataUrl ? (
+                <div className="qr-code-container">
+                  <img src={qrDataUrl} alt="QR Code" className="qr-code-image" />
+                </div>
+              ) : (
+                <p>Không có mã QR để hiển thị.</p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" onClick={closeQr}>
                 OK
               </button>
             </div>

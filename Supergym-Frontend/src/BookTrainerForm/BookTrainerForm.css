@@ -1,0 +1,14 @@
+.qr-code-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .qr-code-image {
+    width: 600px; /* Set the desired width */
+    height: 600px; /* Set the desired height */
+    max-width: 100%; /* Ensure it does not overflow */
+    max-height: 100%;
+    object-fit: contain; /* Maintain the aspect ratio */
+  }
+  

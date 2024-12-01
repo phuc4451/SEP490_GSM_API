@@ -6,6 +6,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import ManageManager from './ManageManager/ManageManager';
 import ManageCustomer from './ManageCustomer/ManageCustomer';
+import ManageMembership from './ManageMembership/ManageMembership';
 import ManageTrainer from './ManageTrainer/ManageTrainer';
 import ManageEquipment from './ManageEquipment/ManageEquipment';
 import ManageCourse from './ManageCourse/ManageCourse';
@@ -28,6 +29,7 @@ const App = () => {
         <Route path="/header" element={<Header />} />
         <Route path="/managManager" element={<ManageManager />} />
         <Route path="/manageCustomer" element={<ManageCustomer />} />
+        <Route path="/manageMembership" element={<ManageMembership />} />
         <Route path="/manageTrainer" element={<ManageTrainer />} />
         <Route path="/manageEquipment" element={<ManageEquipment />} />
         <Route path="/manageCourse" element={<ManageCourse />} />
