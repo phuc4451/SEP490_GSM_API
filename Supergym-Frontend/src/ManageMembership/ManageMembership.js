@@ -4,7 +4,7 @@ import Header from "../Header/Header";
 import Preloader from "../Preloader/Preloader";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../assets/css/common.css";
-import "./ManageCustomer.css";
+import "./ManageMembership.css";
 
 import SearchIcon from "@mui/icons-material/Search";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
@@ -15,20 +15,25 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import { Delete } from "@mui/icons-material";
 
-const ManageCustomer = () => {
-  const [customerDataList, setCustomerDataList] = useState([]);
+const ManageMembership = () => {
+  const [membershipDataList, setMembershipDataList] = useState([]); // renamed variable
+  const [selectedOption, setSelectedOption] = useState(""); // State cho gói đã chọn
+  const [selectedPackages, setSelectedPackages] = useState([]); // Dữ liệu các gói
+  const [qrDataUrl, setQrDataUrl] = useState(""); // State to store the QR code data URL
+  const showQrPicture = useRef(null);
+
   //PRELOAD
-  const [customerData, setCustomerData] = useState([]);
+  const [membershipData, setMembershipData] = useState([]); // renamed variable
+  const [packageData, setpackageData] = useState([]); // renamed variable
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isTimeoutFinished, setIsTimeoutFinished] = useState(false);
   //END PRELOAD
 
-  const [currentCustomer, setCurrentCustomer] = useState(null); // for editing customer
-  const [customerToDelete, setCustomerToDelete] = useState(null); // for deletion
+  const [currentMembership, setCurrentMembership] = useState(null); // renamed variable
+  const [membershipToDelete, setMembershipToDelete] = useState(null); // renamed variable
   const [previewImage, setPreviewImage] = useState(null); // To store preview image
   const fileInputRef = useRef(null);
   const [successMessage, setSuccessMessage] = useState("");
-
 
   const [formData, setFormData] = useState({
     name: "",
@@ -36,34 +41,54 @@ const ManageCustomer = () => {
     dob: "",
     email: "",
     phone: "",
-    // userEnabled: "active",
-    // role: "staff",
+    qrPayment: "true",
     userAvatar: null,
   });
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4; // Maximum 2 employees per page
 
-  const customerModalRef = useRef(null);
+  const membershipModalRef = useRef(null); // renamed ref
   const successModalRef = useRef(null);
   const deleteModalRef = useRef(null);
 
   //FETCH DATA AND PRELOAD
   useEffect(() => {
-    const fetchCustomers = async () => {
+    const fetchMemberships = async () => {
+      // renamed function
       const token = localStorage.getItem("token");
       try {
-        const response = await axios.get("http://localhost:5000/api/Users/GetCustomerAccounts", {
+        const response = await axios.get("http://localhost:5000/api/Users/GetAllMemberships", {
+          // updated API endpoint
           headers: { Authorization: `Bearer ${token}` },
         });
-        setCustomerData(response.data);
+        setMembershipData(response.data); // updated variable
       } catch (error) {
-        console.error("Error fetching customers:", error);
+        console.error("Error fetching memberships:", error); // renamed error message
       } finally {
         setIsDataLoading(false);
       }
     };
-    fetchCustomers();
+    fetchMemberships(); // renamed function call
+  }, []);
+
+  useEffect(() => {
+    const fetchPackage = async () => {
+      // renamed function
+      const token = localStorage.getItem("token");
+      try {
+        const response = await axios.get("http://localhost:5000/api/GymMembership", {
+          // updated API endpoint
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSelectedPackages(response.data); // updated variable
+      } catch (error) {
+        console.error("Error fetching memberships:", error); // renamed error message
+      } finally {
+        setIsDataLoading(false);
+      }
+    };
+    fetchPackage(); // renamed function call
   }, []);
 
   useEffect(() => {
@@ -75,11 +100,10 @@ const ManageCustomer = () => {
   }, []);
 
   const isLoading = isDataLoading || !isTimeoutFinished;
-  //END FETCH DATA AND PRELOAD
 
   //PAGENATION
-  const totalPages = Math.ceil(customerData.length / itemsPerPage);
-  const currentCustomers = customerData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(membershipData.length / itemsPerPage); // renamed variable
+  const currentMemberships = membershipData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage); // renamed variable
   const formatDate = (dob) => {
     const date = dob?.date ?? "--";
     const month = dob?.month ?? "--";
@@ -91,50 +115,57 @@ const ManageCustomer = () => {
   };
   //END PAGENATION
 
-  const openAddCustomerModal = () => {
-    setFormData({
-      name: "",
-      gender: "male",
-      dob: "",
-      email: "",
-      phone: "",
-      address: "",
-      userAvatar: null, // Đặt lại ảnh đã chọn
-    });
-    setPreviewImage(null); // Đặt lại ảnh xem trước
-    if (fileInputRef.current) {
-      fileInputRef.current.value = null; // Đặt lại giá trị input file
-    }
-    setCurrentCustomer(null); // Đặt lại khách hàng hiện tại để thêm mới
-    customerModalRef.current.style.display = "block"; // Hiển thị modal
-    customerModalRef.current.classList.add("active"); // Thêm class 'active'
+  const handlePackageChange = (e) => {
+    const selectedPackageId = e.target.value;
+    setSelectedOption(selectedPackageId); // Update selected package state
+    setFormData({ ...formData, gymMembershipId: selectedPackageId });
+  };
+
+  const openAddMembershipModal = (membership) => {
+    // renamed function
+    // setFormData({
+    //   name: "",
+    //   gender: "male",
+    //   dob: "",
+    //   email: "",
+    //   phone: "",
+    //   userAvatar: null, // Đặt lại ảnh đã chọn
+
+    //   email: membership.user.email,
+
+    // });
+
+    setCurrentMembership(null); // renamed variable
+    membershipModalRef.current.style.display = "block"; // renamed modal ref
+    membershipModalRef.current.classList.add("active");
     document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
   };
 
-  const openEditCustomerModal = (customer) => {
-    const dob = customer.dob || {};
+  const openEditMembershipModal = (membership) => {
+    // renamed function
+    const dob = membership.user.dob || {}; // renamed variable
     const formattedDob = `${dob.year || "----"}-${String(dob.month || "01").padStart(2, "0")}-${String(dob.date || "01").padStart(2, "0")}`;
 
     setFormData({
-      name: customer.name,
-      gender: customer.gender.toLowerCase() === "nam" ? "male" : "female",
+      name: membership.user.name,
+      gender: membership.user.gender.toLowerCase() === "nam" ? "male" : "female",
       dob: formattedDob,
-      email: customer.email,
-      phone: customer.phone,
-      address: customer.address,
-      userId: customer.userId,
+      email: membership.user.email,
+      phone: membership.user.phone,
+      address: membership.user.address,
+      userId: membership.user.userId,
     });
-    setCurrentCustomer(customer);
-    customerModalRef.current.style.display = "block";
-    customerModalRef.current.classList.add("active");
-    document.querySelector(".modal-overlay").style.display = "block";
+    setCurrentMembership(membership); // renamed variable
+    membershipModalRef.current.style.display = "block"; // renamed modal ref
+    membershipModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
   };
 
   const closeModal = () => {
-    customerModalRef.current.style.display = "none";
-    customerModalRef.current.classList.remove("active");
-    document.querySelector(".modal-overlay").style.display = "none";
-    setCurrentCustomer(null); // Đặt lại khách hàng hiện tại
+    membershipModalRef.current.style.display = "none"; // renamed modal ref
+    membershipModalRef.current.classList.remove("active");
+    document.querySelector(".modal-overlay").style.display = "none"; // Hiển thị overlay
+    setCurrentMembership(null); // renamed variable
     setPreviewImage(null); // Đặt lại ảnh xem trước
     setFormData({
       name: "",
@@ -183,17 +214,28 @@ const ManageCustomer = () => {
   const showSuccessModal = (message) => {
     setSuccessMessage(message); // Cập nhật thông báo
     successModalRef.current.style.display = "block";
+    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+  };
+  const showQr = () => {
+    showQrPicture.current.style.display = "block";
     document.querySelector(".modal-overlay").style.display = "block";
   };
 
   // Hàm để đóng modal thông báo
+  const closeQr = () => {
+    showQrPicture.current.style.display = "none"; // Ẩn modal
+    document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
+    window.close();
+  };
+
   const closeSuccessModal = () => {
     successModalRef.current.style.display = "none"; // Ẩn modal
     document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
     window.location.reload();
   };
-  const openDeleteModal = (customer) => {
-    setCustomerToDelete(customer); // Set customer to be deleted
+  const openDeleteModal = (membership) => {
+    // renamed function
+    setMembershipToDelete(membership); // renamed variable
     deleteModalRef.current.style.display = "block"; // Show delete modal
     document.querySelector(".modal-overlay").style.display = "block"; // Show overlay
   };
@@ -205,121 +247,87 @@ const ManageCustomer = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
+
+    // Collect form data Gym
+    const emailInputs = Array.from(document.querySelectorAll('input[type="email"]')).map((input) => input.value);
+    const packageInput = formData.gymMembershipId;
+    const qrPaymentInput = formData.qrPayment === "true";
+
+    // Prepare data for Gym
+    const gymData = {
+      emails: emailInputs, // Emails from input fields
+      boxingMembershipPlanId: null,
+      gymMembershipId: packageInput,
+      trainerRentalPlanId: null, // Ensure this is included
+      qrPayment: qrPaymentInput,
+      duration: 0, // Use the value of gymDuration
+      selectedTimeSlot: "",
+      isMonWedFri:  true, // Only true for Gym
+    };
+
+    
+    // Send the request based on the trainer type
+    try {
       const token = localStorage.getItem("token");
-  
-      // Format date to the required format
-      const dob = new Date(formData.dob);
-      const dobData = {
-        date: dob.getDate(),
-        month: dob.getMonth() + 1,
-        year: dob.getFullYear(),
-      };
-  
-      // Create a basic customer data object
-      const customerData = {
-        userId: currentCustomer ? currentCustomer.userId : "string",
-        email: formData.email,
-        name: formData.name,
-        gender: formData.gender,
-        dob: dobData,
-        address: formData.address,
-        phone: formData.phone,
-        roleId: "string",
-        userAvatar: formData.userAvatar,
-        idCard: "string",
-      };
-  
-      // Include gymMembershipId only for adding a new customer
-      if (!currentCustomer) {
-        customerData.gymMembershipId = "string"; // Include gymMembershipId for new customers
-        customerData.password = formData.password; // Include password for new customers
-      }
-  
-      try {
-        if (currentCustomer) {
-          // Update customer
-          await axios.patch(`http://localhost:5000/api/Users/updateCustomer/${currentCustomer.userId}`, customerData, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-  
-          // Update customer data in the list
-          setCustomerDataList((prevData) => prevData.map((customer) => (customer.userId === currentCustomer.userId ? { ...customer, ...customerData } : customer)));
-        } else {
-          // Add new customer
-          const response = await axios.post("http://localhost:5000/api/Users/addcustomer", customerData, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-  
-          setCustomerDataList([...customerDataList, response.data]);
-        }
-  
-        // Reset form and close modal
-        setFormData({
-          email: "",
-          password: "",
-          name: "",
-          gender: "",
-          dob: "",
-          address: "",
-          phone: "",
+
+      // If it's a Gym trainer
+        const response = await fetch("http://localhost:5000/api/GymRegistration", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json", // Specify content type as JSON
+          },
+          body: JSON.stringify(gymData), // Send gym data for gym trainer
         });
-        closeModal();
-        showSuccessModal("Người dùng được lưu thành công");
-      } catch (error) {
-        console.error("Error saving customer:", error);
-      }
+
+        const responsejson = await response.json();
+        if (responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
+          setQrDataUrl(responsejson[0].qrDataUrl); // Set QR data URL in state
+        }
+      
+
+      closeModal(); // Close the modal after success
+      showQr(); // Show QR if applicable
+    } catch (error) {
+      console.error("Error during trainer registration:", error);
+      showSuccessModal("Có lỗi khi đăng ký huấn luyện viên. Vui lòng thử lại.");
     }
   };
-  
 
-  const deleteCustomer = async () => {
-    if (customerToDelete) {
+  const deleteMembership = async () => {
+    // renamed function
+    if (membershipToDelete) {
       const token = localStorage.getItem("token");
       try {
-        await axios.delete(`http://localhost:5000/api/users/${customerToDelete.userId}`, {
+        await axios.delete(`http://localhost:5000/api/users/${membershipToDelete.userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        setCustomerData(customerData.filter((cus) => cus.id !== customerToDelete.id));
+        setMembershipData(membershipData.filter((membership) => membership.user.id !== membershipToDelete.id)); // renamed variable
         closeModal();
         closeDeleteModal();
-        showSuccessModal("Xóa người dùng thành công!");
+        showSuccessModal("Xóa người dùng thành công!"); // renamed success message
       } catch (error) {
-        console.error("Error deleting customer:", error);
+        console.error("Error deleting membership:", error); // renamed error message
       }
     }
   };
-  const handleDeleteEmployee = (e) => {
+
+  const handleDeleteMembership = (e) => {
     e.preventDefault();
-    deleteCustomer();
+    deleteMembership(); // renamed function
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Use FileReader to convert image to base64
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({
-          ...formData,
-          userAvatar: reader.result, // Store base64 image
-        });
-      };
-      reader.readAsDataURL(file); // Convert the file to base64
-    }
-  };
-  
 
   return (
     <>
       <Header />
 
-      {isLoading ? <Preloader /> : <div>{/* Nội dung khác của ManageCustomer */}</div>}
+      {isLoading ? <Preloader /> : <div>{/* Nội dung khác của ManageMembership */}</div>}
       {/* <!-- ***** Preloader End ***** --> */}
 
       <div className="user-select">
-        <h1>Quản lý người dùng trong hệ thống super gym</h1>
+        <h1>Quản lý người dùng đăng kí gói trong hệ thống super gym</h1>
 
         <div className="select-search-container">
           <div className="search-container">
@@ -346,6 +354,8 @@ const ManageCustomer = () => {
             <option value="male">Nam</option>
             <option value="female">Nữ</option>
           </select>
+
+
         </div>
       </div>
 
@@ -354,12 +364,12 @@ const ManageCustomer = () => {
           <div className="table-title">
             <div className="row">
               <div className="col-sm-6">
-                <h2>Quản lí khách hàng</h2>
+                <h2>Quản lí thành viên</h2>
               </div>
               <div className="col-sm-6">
-                <button onClick={openAddCustomerModal} className="btn btn-success">
+                <button onClick={openAddMembershipModal} className="btn btn-success">
                   <AddCircleOutlineIcon />
-                  <span>Thêm mới khách hàng</span>
+                  <span>Thêm mới thành viên</span>
                 </button>
               </div>
             </div>
@@ -374,33 +384,31 @@ const ManageCustomer = () => {
                 <th>Email</th>
                 <th>Số điện thoại</th>
                 <th>Địa chỉ</th>
-                {/* <th className="status-center">Trạng thái</th> */}
-                {/* <th className="role-el">Vai trò</th> */}
                 <th className="action-el">Hành động</th>
               </tr>
             </thead>
             <tbody>
-              {currentCustomers.map((customer, index) => (
+              {currentMemberships.map((membership, index) => (
                 <tr key={index}>
                   <td>
-                    <img src={`data:image/jpeg;base64,${customer.userAvatar}`} className="customer-avatar" />
-                    {customer.name}
+                    <img src={`data:image/jpeg;base64,${membership.user.userAvatar}`} className="customer-avatar" />
+                    {membership.user.name}
                   </td>
-                  {/* <td>{customer.gender}</td> */}
-                  <td>{customer.gender === "Male" ? "Nam" : "Nữ"}</td>
-                  <td>{formatDate(customer.dob)}</td>
-                  <td>{customer.email}</td>
-                  <td>{customer.phone}</td>
-                  <td>{customer.address}</td>
-                  {/* <td className={customer.status === "Hoạt động" ? "status-el-active" : "status-el-inactive"}>{customer.status}</td> */}
-                  {/* <td>{customer.role}</td> */}
+                  <td>{membership.user.gender === "Male" ? "Nam" : "Nữ"}</td>
+                  <td>{formatDate(membership.user.dob)}</td>
+                  <td>{membership.user.email}</td>
+                  <td>{membership.user.phone}</td>
+                  <td>{membership.user.address}</td>
                   <td>
-                    <a href="#" onClick={() => openEditCustomerModal(customer)} className="edit">
+                    <a href="#" onClick={() => openEditMembershipModal(membership)} className="edit">
                       <EditIcon />
                     </a>
-                    <a href="#" onClick={() => openDeleteModal(customer)} className="delete">
+                    <a href="#" onClick={() => openDeleteModal(membership)} className="delete">
                       <DeleteIcon />
                     </a>
+                    {/* <a href="#" onClick={() => openAddMembershipModal(membership)} className="add">
+                      <AddCircleOutlineIcon />
+                    </a> */}
                   </td>
                 </tr>
               ))}
@@ -410,7 +418,7 @@ const ManageCustomer = () => {
           {/* Pagination */}
           <div className="clearfix-el">
             <div className="hint-text">
-              Showing <b>{currentCustomers.length}</b> out of <b>{customerData.length}</b> entries
+              Showing <b>{currentMemberships.length}</b> out of <b>{membershipData.length}</b> entries
             </div>
             <ul className="pagination">
               <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
@@ -435,33 +443,18 @@ const ManageCustomer = () => {
         </div>
       </div>
 
-      {/* customer Modal */}
-      <div ref={customerModalRef} className="modal">
+      {/* Membership Modal */}
+      <div ref={membershipModalRef} className="modal">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
-            <form id="employeeForm" onSubmit={handleSubmit}>
+            <form id="membershipForm" onSubmit={handleSubmit}>
               <div className="modal-header">
-                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Sửa thông tin người dùng" : "Thêm khách hàng"}</h4>
+                <h4 className="modal-title text-center mx-auto">{currentMembership ? "Sửa thông tin thành viên" : "Thêm thành viên"}</h4>
                 <a type="button" className="close" onClick={closeModal}>
                   <CloseIcon />
                 </a>
               </div>
               <div className="modal-body">
-                {/* First row of input fields */}
-                <div className="row">
-                  <div className="form-group col">
-                    <label>Họ tên <span className="icon-input">(*)</span></label>
-                    <input type="text" className="form-control" name="name" value={formData.name} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
-                  </div>
-
-                  <div className="form-group col">
-                    <label>Ngày tham gia</label>
-                    <input type="date" className="form-control" name="dob" value={formData.dob} onChange={handleInputChange} required />
-                    {errors.dob && <div className="error-message">{errors.dob}</div>}
-                  </div>
-                </div>
-
                 <div className="row">
                   <div className="form-group col">
                     <label>Email</label>
@@ -469,72 +462,34 @@ const ManageCustomer = () => {
                     {errors.email && <div className="error-message">{errors.email}</div>}
                   </div>
 
-                  <div className="form-group col">
-                    <label>Số điện thoại <span className="icon-input">(*)</span></label>
-                    <input type="text" className="form-control" name="phone" value={formData.phone} onChange={handleInputChange} required />
-                    {errors.phone && <div className="error-message">{errors.phone}</div>}
-                  </div>
                 </div>
 
-                {/* Conditionally render the password input only if adding a new customer */}
-                {!currentCustomer && (
-                  <div className="row">
-                    <div className="form-group col">
-                      <label>Mật khẩu</label>
-                      <input type="password" className="form-control" name="password" value={formData.password} onChange={handleInputChange} required />
-                    </div>
-                  </div>
-                )}
-
-                {/* <div className="row">
-                  <div className="form-group col">
-                    <label>Địa chỉ</label>
-                    <input type="text" className="form-control " name="address" value={formData.address} onChange={handleInputChange} required />
-                  </div>
-                  <div className="form-group col">
-                    <label>Chọn gói</label>
-                    <select
-                      className="form-control form-select"
-                      name="package"
-                      value={formData.package}
-                      onChange={handleInputChange}
-                    >
-                      <option value="Gói tập 1 tháng">Gói tập 1 tháng</option>
-                      <option value="Gói tập 3 tháng">Gói tập 3 tháng</option>
+                <div className="row">
+                <div className="form-group col">
+                    <label>Gói đăng kí</label>
+                    <select className="form-control form-select" name="option" value={selectedOption} onChange={handlePackageChange} required>
+                      <option value="">Chọn gói</option>
+                      {selectedPackages.map((option, index) => (
+                        <option key={index} value={option.gymMembershipId}>
+                          {option.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
-                </div> */}
-
-                <div className="row">
-                  <div className="form-group col">
-                    <label>Ảnh nhận diện <span className="icon-input">(*)</span></label>
-                    <input
-                      type="file"
-                      className="form-control"
-                      onChange={handleImageChange}
-                      accept="image/*"
-                      ref={fileInputRef} // Thêm ref ở đây
-                    />
-                  </div>
-                  {previewImage && (
-                    <div className="form-group col">
-                      <img src={previewImage} alt="Ảnh xem trước" className="preview-image" />
-                    </div>
-                  )}
                 </div>
 
-                {/* Gender radio buttons */}
                 <div className="row">
+
                   <div className="form-group col">
-                    <label>Giới tính</label>
+                    <label>Chọn kiểu thanh toán</label>
                     <div className="radio-group">
                       <label>
-                        <input type="radio" name="gender" value="male" checked={formData.gender === "male"} onChange={handleInputChange} />
-                        Nam
+                        <input type="radio" name="qrPayment" value="true" checked={formData.qrPayment === "true"} onChange={handleInputChange} />
+                        Chuyển khoản
                       </label>
                       <label>
-                        <input type="radio" name="gender" value="female" checked={formData.gender === "female"} onChange={handleInputChange} />
-                        Nữ
+                        <input type="radio" name="qrPayment" value="false" checked={formData.qrPayment === "false"} onChange={handleInputChange} />
+                        Tiền mặt
                       </label>
                     </div>
                   </div>
@@ -546,7 +501,7 @@ const ManageCustomer = () => {
                   Hủy
                 </button>
 
-                <button type="submit" className="btn btn-success" >
+                <button type="submit" className="btn btn-success">
                   Lưu
                 </button>
               </div>
@@ -561,15 +516,15 @@ const ManageCustomer = () => {
       <div ref={deleteModalRef} className="modal">
         <div className="modal-dialog modal-dialog-notify">
           <div className="modal-content">
-            <form id="deleteEmployeeForm" onSubmit={handleDeleteEmployee}>
+            <form id="deleteMembershipForm" onSubmit={handleDeleteMembership}>
               <div className="modal-header">
-                <h4 className="modal-title text-center mx-auto">Xóa người dùng</h4>
+                <h4 className="modal-title text-center mx-auto">Xóa thành viên</h4>
                 <a type="button" className="close" onClick={closeDeleteModal}>
-                <CloseIcon />
+                  <CloseIcon />
                 </a>
               </div>
               <div className="modal-body">
-                <p>Bạn có chắc chắn muốn xóa {customerToDelete?.name}?</p>
+                <p>Bạn có chắc chắn muốn xóa {membershipToDelete?.name}?</p>
                 <p className="text-warning">
                   <small>Hành động này sẽ không được hoàn tác.</small>
                 </p>
@@ -594,16 +549,43 @@ const ManageCustomer = () => {
             <div className="modal-header">
               <h4 className="modal-title text-center mx-auto">Thông báo</h4>
               <a type="button" className="close" onClick={closeSuccessModal}>
-              <CloseIcon />
-
+                <CloseIcon />
               </a>
             </div>
             <div className="modal-body">
-            <p>{successMessage}</p>
-
+              <p>{successMessage}</p>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeSuccessModal}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* QR Modal */}
+      <div ref={showQrPicture} className="modal">
+        <div className="modal-dialog modal-dialog-notify">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Thông báo</h4>
+              <a type="button" className="close" onClick={closeQr}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body">
+              {/* Check if qrDataUrl exists and render the QR code */}
+              {qrDataUrl ? (
+                <div className="qr-code-container">
+                  <img src={qrDataUrl} alt="QR Code" className="qr-code-image" />
+                </div>
+              ) : (
+                <p>Không có mã QR để hiển thị.</p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" onClick={closeQr}>
                 OK
               </button>
             </div>
@@ -614,4 +596,4 @@ const ManageCustomer = () => {
   );
 };
 
-export default ManageCustomer;
+export default ManageMembership;

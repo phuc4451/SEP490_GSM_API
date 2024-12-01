@@ -36,7 +36,7 @@ const ManageCustomer = () => {
   });
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 2; // Maximum 2 employees per page
+  const itemsPerPage = 4; // Maximum 2 employees per page
 
   const StaffModalRef = useRef(null);
   const successModalRef = useRef(null);
@@ -47,7 +47,7 @@ const ManageCustomer = () => {
     const fetchStaffs = async () => {
       const token = localStorage.getItem("token");
       try {
-        const response = await axios.get("http://localhost:5000/api/Users/staffs", {
+        const response = await axios.get("http://localhost:5000/api/Users/getStaffAccounts", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setStaffData(response.data);
