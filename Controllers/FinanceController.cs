@@ -407,7 +407,133 @@ namespace Alpha_API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("revenue")]
+        public async Task<ActionResult<object>> GetRevenue([FromQuery] string month)
+        {
+            // Lấy năm hiện tại
+            var today = DateTime.Today;
+            DateTime firstDayOfYear = new DateTime(today.Year, 1, 1);
+            DateTime lastDayOfYear = new DateTime(today.Year, 12, 31);
 
+            // Truy vấn bảng Payments để lấy các giao dịch thanh toán đã hoàn tất trong năm hiện tại
+            var payments = await _firebaseClient
+                .Child("Payments")
+                .OnceAsync<Payment>();
+
+            // Lọc các giao dịch thanh toán hoàn tất trong năm hiện tại
+            var filteredPayments = payments
+                .Where(p => p.Object.PaymentStatus == "Completed" && p.Object.PaymentDate >= firstDayOfYear && p.Object.PaymentDate <= lastDayOfYear)
+                .Select(p => p.Object)
+                .ToList();
+
+            // Nếu chọn "Tổng doanh thu", trả về doanh thu cho tất cả các tháng trong năm
+            if (month == "TotalRevenue")
+            {
+                var monthlyRevenue = new List<RevenuePerMonth>();
+
+                // Tạo danh sách các tháng trong năm
+                var months = Enumerable.Range(1, 12).Select(m => new DateTime(today.Year, m, 1)).ToList();
+
+                // Tính doanh thu cho từng tháng
+                monthlyRevenue = months.Select(m =>
+                {
+                    var monthlyRevenueAmount = filteredPayments
+                        .Where(p => p.PaymentDate.Month == m.Month)
+                        .Sum(p => p.Amount);  // Doanh thu tháng này
+
+                    return new RevenuePerMonth
+                    {
+                        Month = m.ToString("MMMM yyyy"),  // Tên tháng (ví dụ: January 2024)
+                        Revenue = monthlyRevenueAmount
+                    };
+                }).ToList();
+
+                // Tính tổng doanh thu trong năm
+                decimal totalRevenue = filteredPayments.Sum(p => p.Amount);
+
+                return Ok(new
+                {
+                    TotalRevenue = totalRevenue,
+                    MonthlyRevenue = monthlyRevenue
+                });
+            }
+
+            // Nếu chọn tháng cụ thể (ví dụ: "January", "February" ...)
+            var selectedMonth = DateTime.ParseExact(month, "MMMM", null);
+            var selectedMonthRevenue = filteredPayments
+                .Where(p => p.PaymentDate.Month == selectedMonth.Month)
+                .Sum(p => p.Amount);
+
+            return Ok(new
+            {
+                Month = selectedMonth.ToString("MMMM yyyy"),  // Tên tháng
+                Revenue = selectedMonthRevenue
+            });
+        }
+        [HttpGet("checkin")]
+        public async Task<ActionResult<object>> GetCheckIn([FromQuery] string day)
+        {
+            // Lấy ngày hiện tại và xác định tuần hiện tại
+            var today = DateTime.Today;
+            var startOfWeek = today.AddDays(-(int)today.DayOfWeek);  // Chủ nhật của tuần này
+            var endOfWeek = startOfWeek.AddDays(6);  // Thứ bảy của tuần này
+
+            // Truy vấn bảng CheckIns để lấy dữ liệu
+            var checkIns = await _firebaseClient
+                .Child("CheckIns")
+                .OnceAsync<CheckIn>();
+
+            // Lọc các check-in trong tuần hiện tại
+            var filteredCheckIns = checkIns
+                .Where(c => c.Object.Time?.Date >= startOfWeek && c.Object.Time?.Date <= endOfWeek)
+                .Select(c => c.Object)
+                .ToList();
+
+            // Nếu chọn "Tất cả các ngày", trả về số lượt check-in cho tất cả các ngày trong tuần
+            if (day == "AllDays")
+            {
+                var dailyCheckInCounts = new List<CheckInPerDay>();
+
+                // Tính số lượt check-in cho mỗi ngày trong tuần
+                foreach (var i in Enumerable.Range(0, 7))
+                {
+                    var date = startOfWeek.AddDays(i);
+                    var checkInCount = filteredCheckIns
+                        .Count(c => c.Time?.Date == date);
+
+                    dailyCheckInCounts.Add(new CheckInPerDay
+                    {
+                        Day = date.ToString("dddd"),  // Tên ngày (ví dụ: Monday, Tuesday, ...)
+                        CheckInCount = checkInCount
+                    });
+                }
+
+                return Ok(dailyCheckInCounts);
+            }
+
+            // Nếu chọn ngày cụ thể (ví dụ: "Monday", "Tuesday", ...)
+            var selectedDay = DateTime.ParseExact(day, "dddd", null);
+            var selectedDayCheckInCount = filteredCheckIns
+                .Count(c => c.Time?.Date == selectedDay.Date);
+
+            return Ok(new
+            {
+                Day = selectedDay.ToString("dddd"),  // Tên ngày
+                CheckInCount = selectedDayCheckInCount
+            });
+        }
+
+
+        public class RevenuePerMonth
+        {
+            public string Month { get; set; }
+            public decimal Revenue { get; set; }
+        }
+        public class CheckInPerDay
+        {
+            public string Day { get; set; }  // Tên ngày trong tuần (ví dụ: Monday, Tuesday, ...)
+            public int CheckInCount { get; set; }  // Số lượt check-in của ngày đó
+        }
 
     }
 
