@@ -167,10 +167,13 @@ namespace Alpha_API.Controllers
         //	return CreatedAtAction(nameof(GetTransactions), new { id = transaction.TransactionId }, transaction);
         //}
         [HttpGet("sold-packages")]
-        public async Task<ActionResult<Dictionary<string, int>>> GetSoldPackages(
-           [FromQuery] DateTime startDate,
-           [FromQuery] DateTime endDate)
+        public async Task<ActionResult<Dictionary<string, int>>> GetSoldPackages([FromQuery] string month)
         {
+            // Lấy năm hiện tại
+            var today = DateTime.Today;
+            DateTime firstDayOfYear = new DateTime(today.Year, 1, 1);
+            DateTime lastDayOfYear = new DateTime(today.Year, 12, 31);
+
             // Truy vấn bảng Payments để tìm những paymentStatus là Completed
             var payments = await _firebaseClient
                 .Child("Payments")
@@ -178,103 +181,60 @@ namespace Alpha_API.Controllers
 
             var completedPayments = payments
                 .Select(p => p.Object)
-                .Where(p => p.PaymentStatus == "Completed" && p.PaymentDate >= startDate && p.PaymentDate <= endDate)
+                .Where(p => p.PaymentStatus == "Completed" && p.PaymentDate >= firstDayOfYear && p.PaymentDate <= lastDayOfYear)
                 .ToList();
 
             // Dictionary để lưu số lượng gói bán được theo tên gói
             var soldPackagesCount = new Dictionary<string, int>();
 
-            // Duyệt qua tất cả các payment đã hoàn thành
-            foreach (var payment in completedPayments)
+            // Tạo danh sách gói cần kiểm tra
+            var boxingRegistrations = _firebaseClient.Child("BoxingRegistrations").OnceAsync<BoxingRegistration>();
+            var trainerRentalRegistrations = _firebaseClient.Child("TrainerRentalRegistrations").OnceAsync<TrainerRentalRegistration>();
+            var gymRegistrations = _firebaseClient.Child("GymRegistrations").OnceAsync<GymRegistration>();
+
+            var boxingMembershipPlans = _firebaseClient.Child("BoxingMembershipPlans").OnceAsync<BoxingMembershipPlan>();
+            var rentalOptions = _firebaseClient.Child("RentalOptions").OnceAsync<RentalOption>();
+            var gymMemberships = _firebaseClient.Child("GymMemberships").OnceAsync<GymMembership>();
+
+            var boxingRegistrationDict = (await boxingRegistrations).ToDictionary(x => x.Key, x => x.Object);
+            var trainerRentalRegistrationDict = (await trainerRentalRegistrations).ToDictionary(x => x.Key, x => x.Object);
+            var gymRegistrationDict = (await gymRegistrations).ToDictionary(x => x.Key, x => x.Object);
+
+            var boxingMembershipPlansDict = (await boxingMembershipPlans).ToDictionary(x => x.Key, x => x.Object);
+            var rentalOptionsDict = (await rentalOptions).ToDictionary(x => x.Key, x => x.Object);
+            var gymMembershipsDict = (await gymMemberships).ToDictionary(x => x.Key, x => x.Object);
+
+            // Tính số lượng gói bán ra
+            IEnumerable<Payment> selectedPayments = month == "AllMonths"
+                ? completedPayments
+                : completedPayments.Where(p => p.PaymentDate.ToString("MMMM") == month);
+
+            foreach (var payment in selectedPayments)
             {
-                // Kiểm tra loại gói đã mua từ các bảng BoxingRegistration, GymRegistrations, TrainerRentalRegistrations
+                string packageName = null;
+
                 if (!string.IsNullOrEmpty(payment.BoxingRegistrationId))
                 {
-                    // Truy vấn BoxingMembershipPlanId từ bảng BoxingRegistration
-                    var boxingRegistration = await _firebaseClient
-                        .Child("BoxingRegistration")
-                        .Child(payment.BoxingRegistrationId)
-                        .OnceSingleAsync<BoxingRegistration>();
-
+                    var boxingRegistration = boxingRegistrationDict.GetValueOrDefault(payment.BoxingRegistrationId);
                     if (boxingRegistration != null)
                     {
-                        // Truy vấn BoxingOptionId từ bảng BoxingMembershipPlans
-                        var boxingMembershipPlan = await _firebaseClient
-                            .Child("BoxingMembershipPlans")
-                            .Child(boxingRegistration.BoxingMembershipPlanId)
-                            .OnceSingleAsync<BoxingMembershipPlan>();
-
+                        var boxingMembershipPlan = boxingMembershipPlansDict.GetValueOrDefault(boxingRegistration.BoxingMembershipPlanId);
                         if (boxingMembershipPlan != null)
                         {
-                            // Truy vấn BoxingOptions và lấy tên gói (description)
-                            var boxingOptions = await _firebaseClient
+                            var boxingOption = await _firebaseClient
                                 .Child("BoxingOptions")
-                                .OnceAsync<BoxingOption>();
+                                .Child(boxingMembershipPlan.BoxingOptionId)
+                                .OnceSingleAsync<BoxingOption>();
 
-                            var boxingOption = boxingOptions
-                                .FirstOrDefault(opt => opt.Object.BoxingOptionId == boxingMembershipPlan.BoxingOptionId);
-
-                            if (boxingOption != null)
-                            {
-                                var packageName = boxingOption.Object.Description; // Sửa ở đây
-
-                                // Thêm hoặc cập nhật số lượng gói bán ra trong dictionary
-                                if (soldPackagesCount.ContainsKey(packageName))
-                                {
-                                    soldPackagesCount[packageName]++;
-                                }
-                                else
-                                {
-                                    soldPackagesCount[packageName] = 1;
-                                }
-                            }
-                        }
-                    }
-                }
-                else if (!string.IsNullOrEmpty(payment.GymRegistrationId))
-                {
-                    // Truy vấn GymMembershipId từ bảng GymRegistrations
-                    var gymRegistration = await _firebaseClient
-                        .Child("GymRegistrations")
-                        .Child(payment.GymRegistrationId)
-                        .OnceSingleAsync<GymRegistration>();
-
-                    if (gymRegistration != null)
-                    {
-                        // Truy vấn GymMembershipId từ bảng GymMemberships
-                        var gymMembership = await _firebaseClient
-                            .Child("GymMemberships")
-                            .Child(gymRegistration.GymMembershipId)
-                            .OnceSingleAsync<GymMembership>();
-
-                        if (gymMembership != null)
-                        {
-                            // Lấy tên gói (name) từ GymMemberships
-                            var packageName = gymMembership.Name;
-
-                            // Thêm hoặc cập nhật số lượng gói bán ra trong dictionary
-                            if (soldPackagesCount.ContainsKey(packageName))
-                            {
-                                soldPackagesCount[packageName]++;
-                            }
-                            else
-                            {
-                                soldPackagesCount[packageName] = 1;
-                            }
+                            packageName = boxingOption?.Description;
                         }
                     }
                 }
                 else if (!string.IsNullOrEmpty(payment.TrainerRentalRegistrationId))
                 {
-                    // Truy vấn PlanId từ bảng TrainerRentalRegistrations
-                    var trainerRentalRegistration = await _firebaseClient
-                        .Child("TrainerRentalRegistrations")
-                        .Child(payment.TrainerRentalRegistrationId)
-                        .OnceSingleAsync<TrainerRentalRegistration>();
-
+                    var trainerRentalRegistration = trainerRentalRegistrationDict.GetValueOrDefault(payment.TrainerRentalRegistrationId);
                     if (trainerRentalRegistration != null)
                     {
-                        // Truy vấn RentalOptionId từ bảng TrainerRentalPlans
                         var trainerRentalPlan = await _firebaseClient
                             .Child("TrainerRentalPlans")
                             .Child(trainerRentalRegistration.PlanId)
@@ -282,35 +242,39 @@ namespace Alpha_API.Controllers
 
                         if (trainerRentalPlan != null)
                         {
-                            // Truy vấn RentalOptions và lấy description
-                            var rentalOptions = await _firebaseClient
-                                .Child("RentalOptions")
-                                .OnceAsync<RentalOption>();
-
-                            var rentalOption = rentalOptions
-                                .FirstOrDefault(opt => opt.Object.RentalOptionId == trainerRentalPlan.RentalOptionId);
-
-                            if (rentalOption != null)
-                            {
-                                var packageName = rentalOption.Object.Description; // Sửa ở đây
-
-                                // Thêm hoặc cập nhật số lượng gói bán ra trong dictionary
-                                if (soldPackagesCount.ContainsKey(packageName))
-                                {
-                                    soldPackagesCount[packageName]++;
-                                }
-                                else
-                                {
-                                    soldPackagesCount[packageName] = 1;
-                                }
-                            }
+                            var rentalOption = rentalOptionsDict.GetValueOrDefault(trainerRentalPlan.RentalOptionId);
+                            packageName = rentalOption?.Description;
                         }
+                    }
+                }
+                else if (!string.IsNullOrEmpty(payment.GymRegistrationId))
+                {
+                    var gymRegistration = gymRegistrationDict.GetValueOrDefault(payment.GymRegistrationId);
+                    if (gymRegistration != null)
+                    {
+                        var gymMembership = gymMembershipsDict.GetValueOrDefault(gymRegistration.GymMembershipId);
+                        packageName = gymMembership?.Name;
+                    }
+                }
+
+                // Cập nhật số lượng gói bán được
+                if (!string.IsNullOrEmpty(packageName))
+                {
+                    if (soldPackagesCount.ContainsKey(packageName))
+                    {
+                        soldPackagesCount[packageName]++;
+                    }
+                    else
+                    {
+                        soldPackagesCount[packageName] = 1;
                     }
                 }
             }
 
             return Ok(soldPackagesCount);
         }
+
+
 
         [HttpGet("registration-growth")]
         public async Task<ActionResult<object>> GetRegistrationGrowth()
