@@ -64,8 +64,8 @@ namespace Alpha_API.Controllers
 			return userSchedules.Select(s => s.Object).ToList();
 		}
 
-        [HttpGet("Slot/Customer/{userId}")]
-        public async Task<ActionResult<IEnumerable<Object>>> GetCustomerSchedulesByDate(string userId)
+        [HttpGet("Slot/Customer/{userId}/{year}/{month}")]
+        public async Task<ActionResult<IEnumerable<Object>>> GetCustomerSchedulesByDate(string userId, int year, int month)
         {
             _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
@@ -88,9 +88,26 @@ namespace Alpha_API.Controllers
             if (!userSchedules.Any())
                 return NotFound("No schedules found for this customer.");
 
+            // Lọc theo tháng và năm (dựa trên FirstSlot)
+            var filteredSchedules = userSchedules
+                .Where(sche =>
+                {
+                    // Convert FirstSlot và LastSlot sang DateTime để kiểm tra tháng và năm
+                    var firstSlotDate = sche.Object.FirstSlot.ToDateTime(new TimeOnly(0, 0)); // Chuyển FirstSlot sang DateTime
+                    var lastSlotDate = sche.Object.LastSlot.ToDateTime(new TimeOnly(0, 0));   // Chuyển LastSlot sang DateTime
+
+                    // Kiểm tra nếu FirstSlot hoặc LastSlot thuộc tháng và năm cần lọc
+                    return (firstSlotDate.Year == year && firstSlotDate.Month == month) ||
+                           (lastSlotDate.Year == year && lastSlotDate.Month == month);
+                })
+                .ToList();
+
+            if (!filteredSchedules.Any())
+                return NotFound("No schedules found for the specified month and year.");
+
             // Xây dựng kết quả
             var result = slots
-                .Join(userSchedules, slot => slot.Object.ScheduleId, schedule => schedule.Key, (slot, schedule) => new
+                .Join(filteredSchedules, slot => slot.Object.ScheduleId, schedule => schedule.Key, (slot, schedule) => new
                 {
                     Slot = slot,
                     Schedule = schedule
@@ -102,7 +119,7 @@ namespace Alpha_API.Controllers
                     {
                         trainerName = trainer?.Object.Name,
                         timeSlot = _timeSlotService.GetTimeSlot(item.Slot.Object.TimeSlotId),
-                        date = item.Slot.Object.Date.ToString("yyyy-MM-dd")
+                        date = item.Slot.Object.Date.ToString("yyyy-MM-dd") // Sử dụng ngày đúng từ Slot nếu cần
                     };
                 })
                 .ToList();
@@ -111,8 +128,8 @@ namespace Alpha_API.Controllers
         }
 
 
-        [HttpGet("Slot/Trainer/{userId}")]
-        public async Task<ActionResult<IEnumerable<Object>>> GetTrainerCustomerSchedulesByDate(string userId)
+        [HttpGet("Slot/Trainer/{userId}/{year}/{month}")]
+        public async Task<ActionResult<IEnumerable<Object>>> GetTrainerCustomerSchedulesByMonth(string userId, int year, int month)
         {
             _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
@@ -127,7 +144,7 @@ namespace Alpha_API.Controllers
 
             var trainerId = trainer.Key;
 
-            // Fetch schedules related to the trainer
+            // Fetch schedules related to the trainer for the specific month and year
             var schedules = await _firebaseClient
                 .Child("Schedules")
                 .OrderBy("trainerId")
@@ -137,8 +154,17 @@ namespace Alpha_API.Controllers
             if (!schedules.Any())
                 return NotFound("No schedules found for this trainer.");
 
+            // Filter schedules based on the provided month and year
+            var filteredSchedules = schedules
+                .Where(s =>
+                    s.Object.FirstSlot.Year == year && s.Object.FirstSlot.Month == month)
+                .ToList();
+
+            if (!filteredSchedules.Any())
+                return NotFound("No schedules found for this trainer in the selected month.");
+
             // Extract schedule IDs
-            var scheduleIds = schedules.Select(s => s.Key).ToList();
+            var scheduleIds = filteredSchedules.Select(s => s.Key).ToList();
 
             // Fetch all relevant slots in one call
             var slots = (await _firebaseClient
@@ -151,7 +177,7 @@ namespace Alpha_API.Controllers
                 return NotFound("No slots found for this trainer's schedules.");
 
             // Collect user IDs from schedules
-            var userIds = schedules
+            var userIds = filteredSchedules
                 .SelectMany(s => s.Object.UserIds?.Split(',') ?? Array.Empty<string>())
                 .Distinct()
                 .ToList();
@@ -180,7 +206,7 @@ namespace Alpha_API.Controllers
                         .ToDictionary(
                             timeSlotGroup => timeSlotGroup.Key,
                             timeSlotGroup => timeSlotGroup
-                                .SelectMany(slot => schedules
+                                .SelectMany(slot => filteredSchedules
                                     .FirstOrDefault(s => s.Key == slot.Object.ScheduleId)?
                                     .Object.UserIds?
                                     .Split(',')
@@ -203,10 +229,11 @@ namespace Alpha_API.Controllers
                 .ToList();
 
             if (!result.Any())
-                return NotFound("No customers found for this trainer's schedules.");
+                return NotFound("No customers found for this trainer's schedules in the selected month.");
 
             return result;
         }
+
 
 
         // GET: api/Schedule/Trainer/{userId}
