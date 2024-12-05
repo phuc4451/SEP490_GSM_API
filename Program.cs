@@ -48,7 +48,8 @@ namespace WebAPI
 			builder.Services.AddSingleton<PaymentMethodService>();
 			builder.Services.AddSingleton<TimeSlotService>();
 			builder.Services.AddScoped<IScheduleService, ScheduleService>();
-			builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            builder.Services.AddScoped<ScheduleService>();
+            builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 			builder.Services.AddScoped<FirebaseClientProvider>(provider =>
 				new FirebaseClientProvider(
 					provider.GetRequiredService<IHttpContextAccessor>(),

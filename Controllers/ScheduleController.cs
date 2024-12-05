@@ -29,18 +29,24 @@ namespace Alpha_API.Controllers
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private readonly EmailService _emailService;
 		private readonly TimeSlotService _timeSlotService;
+        private readonly ScheduleService _scheduleService;
 
+        public ScheduleController(
+            FirebaseClient firebaseClient,
+            FirebaseClientProvider firebaseClientProvider,
+            EmailService emailService,
+            TimeSlotService timeSlotService,
+            ScheduleService scheduleService)
+        {
+            _firebaseClient = firebaseClient;
+            _firebaseClientProvider = firebaseClientProvider;
+            _emailService = emailService;
+            _timeSlotService = timeSlotService;
+            _scheduleService = scheduleService;
+        }
 
-		public ScheduleController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, EmailService emailService, TimeSlotService timeSlotService)
-		{
-			_firebaseClient = firebaseClient;
-			_firebaseClientProvider = firebaseClientProvider;
-			_emailService = emailService;
-			_timeSlotService = timeSlotService;
-		}
-
-		// GET: api/Schedule/Customer/{userId}
-		[HttpGet("Customer/{userId}")]
+        // GET: api/Schedule/Customer/{userId}
+        [HttpGet("Customer/{userId}")]
 		public async Task<ActionResult<IEnumerable<Schedule>>> GetCustomerSchedules(string userId)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
@@ -523,6 +529,198 @@ namespace Alpha_API.Controllers
         }
 
 
+        [HttpPost("changeTimeslot")]
+        public async Task<IActionResult> ChangeTimeslot([FromBody] ChangeTimeslotRequest request)
+        {
+            try
+            {
+                // Kiểm tra sự tồn tại của scheduleId trong TrainerRentalRegistration hoặc BoxingRegistration
+                var trainerRentalRegistration = await GetTrainerRentalRegistration(request.userId, request.scheduleId);
+                var boxingRegistration = await GetBoxingRegistration(request.userId, request.scheduleId);
+
+                if (trainerRentalRegistration == null && boxingRegistration == null)
+                {
+                    return BadRequest("Không tìm thấy đăng ký boxing hoặc trainer rental phù hợp.");
+                }
+
+                // Kiểm tra ngày bắt đầu của đăng ký
+                var registrationStartDate = trainerRentalRegistration != null
+                    ? DateOnly.FromDateTime(trainerRentalRegistration.StartDate)
+                    : DateOnly.FromDateTime(boxingRegistration.StartDate);
+
+                var todayDate = DateOnly.FromDateTime(DateTime.Now);
+
+                if (registrationStartDate > todayDate)
+                {
+                    return BadRequest("Không thể thay đổi lịch trước khi đăng ký bắt đầu.");
+                }
+
+                // Lấy tất cả các slot liên quan đến scheduleId
+                var slots = await _firebaseClient
+                    .Child("Slots")
+                    .OrderBy("scheduleId")
+                    .EqualTo(request.scheduleId)
+                    .OnceAsync<Slot>();
+
+                if (slots == null || !slots.Any())
+                {
+                    return BadRequest("Không tìm thấy slot phù hợp cho lịch này.");
+                }
+
+                // Lọc các slot có ngày >= hôm nay và chưa được attended
+                var futureSlots = slots.Where(s =>
+                    s.Object.Date >= todayDate &&
+                    !s.Object.Attended
+                ).ToList();
+
+
+
+                if (!futureSlots.Any())
+                {
+                    return BadRequest("Không có slot nào trong tương lai để thay đổi.");
+                }
+
+                // Kiểm tra sự sẵn sàng của Trainer cho các TimeSlotId mới
+                var newTimeSlot = await _firebaseClient
+                    .Child("TimeSlots")
+                    .Child(request.newSlotId)
+                    .OnceSingleAsync<TimeSlot>();
+
+                if (newTimeSlot == null)
+                {
+                    return BadRequest("TimeSlot mới không hợp lệ.");
+                }
+
+                // Lấy thông tin trainer từ schedule
+                var schedule = await _firebaseClient
+                    .Child("Schedules")
+                    .Child(request.scheduleId)
+                    .OnceSingleAsync<Schedule>();
+
+                if (schedule == null)
+                {
+                    return BadRequest("Schedule không tồn tại.");
+                }
+
+                var trainerId = schedule.TrainerId;
+
+                // Chuẩn bị các slot cần kiểm tra sự sẵn sàng
+                var slotsToCheck = futureSlots.Select(s => new Slot
+                {
+                    Date = s.Object.Date,
+                    TimeSlotId = request.newSlotId
+                }).ToList();
+
+                // Kiểm tra sự sẵn sàng của Trainer
+                bool isTrainerAvailable = await _scheduleService.CheckTrainerAvailability(trainerId, slotsToCheck);
+
+                if (!isTrainerAvailable)
+                {
+                    return BadRequest("Trainer không có sẵn trong các TimeSlot mới cho các ngày được chọn.");
+                }
+
+                // Cập nhật TimeSlotId cho các slot tương lai
+                foreach (var slot in futureSlots)
+                {
+                    slot.Object.TimeSlotId = request.newSlotId;
+
+                    // Cập nhật lại vào Firebase
+                    await _firebaseClient
+                        .Child("Slots")
+                        .Child(slot.Key)
+                        .PutAsync(slot.Object);
+                }
+
+                return Ok(new
+                {
+                    message = "Lịch đã được thay đổi thành công cho các ngày tương lai.",
+                    updatedSlotCount = futureSlots.Count()
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
+
+
+        // Hàm lấy thông tin TrainerRentalRegistration
+        private async Task<TrainerRentalRegistration> GetTrainerRentalRegistration(string userId, string scheduleId)
+        {
+            var result = await _firebaseClient
+                .Child("TrainerRentalRegistrations")
+                .OnceAsync<TrainerRentalRegistration>();
+
+            // Thêm log để kiểm tra dữ liệu trả về từ Firebase
+            Console.WriteLine("Dữ liệu lấy được từ Firebase: ");
+            foreach (var r in result)
+            {
+                Console.WriteLine($"UserIds: {r.Object.UserIds} - ScheduleId: {r.Object.ScheduleId}");
+
+                // Tách userIds thành một mảng và kiểm tra xem userId có trong mảng không
+                var userIdsArray = r.Object.UserIds.Split(',');  // Tách chuỗi userIds thành mảng
+
+                // Kiểm tra xem userId có trong mảng không và scheduleId có trùng không
+                if (userIdsArray.Contains(userId) && r.Object.ScheduleId == scheduleId)
+                {
+                    return r.Object;  // Trả về đối tượng nếu tìm thấy
+                }
+            }
+
+            // Nếu không tìm thấy, trả về null
+            return null;
+        }
+
+
+        // Hàm lấy thông tin BoxingRegistration
+        private async Task<BoxingRegistration> GetBoxingRegistration(string userId, string scheduleId)
+        {
+            var result = await _firebaseClient
+                .Child("BoxingRegistrations")
+                .OnceAsync<BoxingRegistration>();
+
+            // Thêm log để kiểm tra dữ liệu trả về từ Firebase
+            Console.WriteLine("Dữ liệu từ BoxingRegistrations: ");
+            foreach (var r in result)
+            {
+                Console.WriteLine($"UserIds: {r.Object.UserIds} - ScheduleId: {r.Object.ScheduleId}");
+            }
+
+            // Kiểm tra userId trong chuỗi UserIds
+            return result
+                .FirstOrDefault(r => r.Object.UserIds.ToString() == userId && r.Object.ScheduleId == scheduleId)?.Object;
+        }
+
+
+
+
+        // Hàm cập nhật timeslot cho người dùng
+        private async Task<bool> UpdateTimeSlotForUser(string userId, string oldSlotId, string newSlotId, string scheduleId)
+        {
+            // Tìm tất cả các slot liên quan đến người dùng trong bảng "Slots"
+            var slots = await _firebaseClient
+                .Child("Slots")
+                .OrderBy("scheduleId")
+                .EqualTo(scheduleId)
+                .OnceAsync<Slot>();
+
+            var slotToUpdate = slots.FirstOrDefault(s => s.Object.TimeSlotId == oldSlotId);
+            if (slotToUpdate == null)
+                return false; // Không tìm thấy slot cũ
+
+            // Cập nhật slotId mới cho slot
+            slotToUpdate.Object.TimeSlotId = newSlotId;
+
+            // Cập nhật lại vào Firebase
+            await _firebaseClient
+                .Child("Slots")
+                .Child(slotToUpdate.Key)  // Chỉ cần gọi PutAsync mà không cần lưu vào biến
+                .PutAsync(slotToUpdate.Object);
+
+            return true; // Trả về true nếu cập nhật thành công
+        }
 
     }
+
 }
+
