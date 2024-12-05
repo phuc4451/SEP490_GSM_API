@@ -33,7 +33,7 @@ namespace Alpha_API.Services
 		private readonly IScheduleService _scheduleService;
 		private readonly Dictionary<string, System.Timers.Timer> _customerTimers = new();
 		private readonly Dictionary<string, (string PaymentId, string RegistrationType, string RegistrationId, string ScheduleId)> _pendingRegistrations = new();
-		private readonly double paymentWaitingTime = 300000;
+		private readonly double paymentWaitingTime = 100000;
 
 		public RegisterService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider,
 			PaymentMethodService paymentMethodService, EmailService emailService, RoleService roleService,
@@ -177,301 +177,235 @@ namespace Alpha_API.Services
 			//return (membership, registration, payment, info);
 		}
 
-		public async Task<RegisterResult> RegisterTrainerRental(RegisterPackageRequest request,
-			bool qrPayment, string customerId)
-		{
-			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
-			if (string.IsNullOrEmpty(request.SelectedTimeSlot))
-			{
-				throw new ArgumentException("The selected time slot is null");
-			}
+        public async Task<RegisterResult> RegisterTrainerRental(RegisterPackageRequest request,
+    bool qrPayment, string customerId)
+        {
+            _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
-			if (!request.Duration.HasValue || request.Duration == 0)
-			{
-				throw new ArgumentException("Invalid months or sessions");
-			}
+            if (string.IsNullOrEmpty(request.SelectedTimeSlot))
+            {
+                throw new ArgumentException("The selected time slot is null");
+            }
 
-			var plan = await _firebaseClient
-							.Child("TrainerRentalPlans")
-							.Child(request.TrainerRentalPlanId)
-							.OnceSingleAsync<TrainerRentalPlan>();
+            if (!request.Duration.HasValue || request.Duration == 0)
+            {
+                throw new ArgumentException("Invalid months or sessions");
+            }
 
-			if (plan == null)
-			{
-				throw new InvalidOperationException("trainer plan is not valid");
-			}
+            var plan = await _firebaseClient
+                            .Child("TrainerRentalPlans")
+                            .Child(request.TrainerRentalPlanId)
+                            .OnceSingleAsync<TrainerRentalPlan>();
 
-			var option = await _firebaseClient
-							.Child("RentalOptions")
-							.Child(plan.RentalOptionId)
-							.OnceSingleAsync<RentalOption>();
+            if (plan == null)
+            {
+                throw new InvalidOperationException("trainer plan is not valid");
+            }
 
-			decimal price = 0;
-			if (request.Emails.Count == option.MemberCount)
-			{
-				if (option.SessionCountMax == 0 && option.SessionCountMin == 0)
-				{
-					price = (decimal)(option.PricePerPersonPerMonth * request.Duration * request.Emails.Count);
-				}
-				else
-				{
-					if (request.Duration >= option.SessionCountMin && request.Duration <= option.SessionCountMax)
-					{
-						price = (decimal)(option.PricePerPersonPerSession * request.Duration * request.Emails.Count);
-					}
-					else
-					{
-						throw new ArgumentException("Number of sessions is not valid to register this membership");
-					}
-				}
-			}
-			else
-			{
-				throw new ArgumentException("Number of emails is not valid to register this membership");
-			}
+            var option = await _firebaseClient
+                            .Child("RentalOptions")
+                            .Child(plan.RentalOptionId)
+                            .OnceSingleAsync<RentalOption>();
 
-			#region old code to check duplicate register
-			//StringBuilder userIds = new StringBuilder();
+            decimal price = 0;
+            if (request.Emails.Count == option.MemberCount)
+            {
+                if (option.SessionCountMax == 0 && option.SessionCountMin == 0)
+                {
+                    price = (decimal)(option.PricePerPersonPerMonth * request.Duration * request.Emails.Count);
+                }
+                else
+                {
+                    if (request.Duration >= option.SessionCountMin && request.Duration <= option.SessionCountMax)
+                    {
+                        price = (decimal)(option.PricePerPersonPerSession * request.Duration * request.Emails.Count);
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Number of sessions is not valid to register this membership");
+                    }
+                }
+            }
+            else
+            {
+                throw new ArgumentException("Number of emails is not valid to register this membership");
+            }
 
-			//// Get all TrainerRentalRegistrations for this user
-			//var existingRegistrations = await _firebaseClient
-			//	.Child("TrainerRentalRegistrations")
-			//	.OnceAsync<TrainerRentalRegistration>();
+            // Check for duplicate emails
+            var emailDuplicates = request.Emails.GroupBy(e => e)
+                                                 .Where(g => g.Count() > 1)
+                                                 .Select(g => g.Key)
+                                                 .ToList();
 
-			//// Check if there are any registrations that contain the target userId and are still active
-			//bool hasActiveRegistration = false;
+            if (emailDuplicates.Any())
+            {
+                throw new InvalidOperationException("Do not enter duplicate emails");
+            }
 
-			//foreach (var email in request.Emails)
-			//{
-			//	var userId = await _emailService.GetUserIdByEmail(email);
-			//	hasActiveRegistration = existingRegistrations.Any(reg =>
-			//	reg.Object.UserIds != null &&
-			//	reg.Object.UserIds.Split(',').Contains(userId) &&
-			//	(reg.Object.EndDate >= DateTime.Now || reg.Object.SessionLeft > 0)
-			//	);
-			//	if (userId == null)
-			//	{
-			//		throw new InvalidOperationException($"No user found with the email {email}. The user must be registered.");
-			//	}
-			//	var roleName = await _roleService.GetRoleOfUser(userId);
-			//	if (!roleName.Equals("customer"))
-			//	{
-			//		throw new UnauthorizedAccessException("User does not have the required 'customer' role.");
-			//	}
-			//	if (hasActiveRegistration)
-			//	{
-			//		throw new InvalidOperationException("The user already has an active Trainer Rental Registration.");
-			//	}
+            // Fetch all userIds for emails
+            var userTasks = request.Emails.Select(email => _firebaseAuth.GetUserByEmailAsync(email));
+            var userResults = await Task.WhenAll(userTasks);
+            var allVerified = userResults.All(a => a.EmailVerified);
 
-			//	userIds.Append(userId).Append(",");
-			//}
+            if (!allVerified)
+            {
+                throw new InvalidOperationException("Some emails are not verified.");
+            }
 
-			//// Continue with the registration process
+            var userIds = userResults.Select(a => a.Uid).Where(id => !string.IsNullOrEmpty(id)).ToList();
 
-			//if (userIds.Length > 0)
-			//{
-			//	userIds.Length--; // This removes the last comma
-			//}
+            // Ensure all users exist
+            if (userIds.Count != request.Emails.Count)
+            {
+                throw new InvalidOperationException("Some users are not registered.");
+            }
 
-			//string userIdsString = userIds.ToString();
-			#endregion
+            // Fetch roles for all userIds
+            var roleTasks = userIds.Select(userId => _roleService.GetRoleOfUser(userId));
+            var roleResults = await Task.WhenAll(roleTasks);
 
-			// Fetch all userIds for emails
-			var userTasks = request.Emails.Select(email => _firebaseAuth.GetUserByEmailAsync(email));
-			var userResults = await Task.WhenAll(userTasks);
-			var allVerified = userResults.All(a => a.EmailVerified);
+            // Validate roles
+            if (roleResults.Any(role => !role.Equals("customer")))
+            {
+                throw new UnauthorizedAccessException("One or more users do not have the required 'customer' role.");
+            }
 
-			if (!allVerified)
-			{
-				throw new InvalidOperationException("Some emails are not verified.");
-			}
-			var userIds = userResults.Select(a => a.Uid).Where(id => !string.IsNullOrEmpty(id)).ToList();
+            // Build comma-separated userIds for storage
+            var userIdsString = string.Join(",", userIds);
 
-			// Ensure all users exist
-			if (userIds.Count != request.Emails.Count)
-			{
-				throw new InvalidOperationException("Some users are not registered.");
-			}
+            RegisterScheduleRequest scheduleRequest = new RegisterScheduleRequest()
+            {
+                BoxingMembershipPlanId = request.BoxingMembershipPlanId,
+                TrainerRentalPlanId = request.TrainerRentalPlanId,
+                Duration = request.Duration,
+                Emails = request.Emails,
+                IsMonWedFri = request.IsMonWedFri,
+                SelectedTimeSlotId = request.SelectedTimeSlot,
+            };
 
-			// Fetch roles for all userIds
-			var roleTasks = userIds.Select(userId => _roleService.GetRoleOfUser(userId));
-			var roleResults = await Task.WhenAll(roleTasks);
+            var scheduleTask = _scheduleService.CreateSchedule(scheduleRequest, userIdsString);
 
-			// Validate roles
-			if (roleResults.Any(role => !role.Equals("customer")))
-			{
-				throw new UnauthorizedAccessException("One or more users do not have the required 'customer' role.");
-			}
+            // Query for active registrations
+            var activeRentalRegistrationsTask = _firebaseClient
+                .Child("TrainerRentalRegistrations")
+                .OrderBy("isActive")
+                .EqualTo(true)
+                .OnceAsync<TrainerRentalRegistration>();
 
-			// Build comma-separated userIds for storage
-			var userIdsString = string.Join(",", userIds);
+            await Task.WhenAll(scheduleTask, activeRentalRegistrationsTask);
 
-			RegisterScheduleRequest scheduleRequest = new RegisterScheduleRequest()
-			{
-				BoxingMembershipPlanId = request.BoxingMembershipPlanId,
-				TrainerRentalPlanId = request.TrainerRentalPlanId,
-				Duration = request.Duration,
-				Emails = request.Emails,
-				IsMonWedFri = request.IsMonWedFri,
-				SelectedTimeSlotId = request.SelectedTimeSlot,
-			};
-			var scheduleTask = _scheduleService.CreateSchedule(scheduleRequest, userIdsString);
+            var scheduleId = scheduleTask.Result;
+            var activeRentalRegistrations = activeRentalRegistrationsTask.Result;
 
-			// Query for active registrations
-			var activeRentalRegistrationsTask = _firebaseClient
-				.Child("TrainerRentalRegistrations")
-				.OrderBy("isActive")
-				.EqualTo(true)
-				.OnceAsync<TrainerRentalRegistration>();
+            var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembership(userId));
+            var hasMembership = await Task.WhenAll(checkMembershipTask);
 
-			await Task.WhenAll(scheduleTask, activeRentalRegistrationsTask);
+            if (hasMembership.Any(membership => !membership))
+            {
+                throw new InvalidOperationException("User doesn't have an active gym membership");
+            }
 
-			var scheduleId = scheduleTask.Result;
+            if (activeRentalRegistrations.Count != 0)
+            {
+                // Check if any user has active registrations
+                var hasActiveRegistration = activeRentalRegistrations.Any(reg =>
+                    reg.Object.UserIds != null &&
+                    reg.Object.UserIds.Split(',').Any(userId => userIds.Contains(userId)) &&
+                    (reg.Object.EndDate >= DateTime.Now || reg.Object.SessionLeft > 0)
+                );
 
-			var activeRentalRegistrations = activeRentalRegistrationsTask.Result;
+                if (hasActiveRegistration)
+                {
+                    throw new InvalidOperationException("One or more users already have active Trainer Rental Registrations.");
+                }
+            }
 
-			var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembership(userId));
+            int monthToAdd = 0;
+            int sessionToAdd = 0;
 
-			var hasMembership = await Task.WhenAll(checkMembershipTask);
+            if (option.SessionCountMax == 0 && option.SessionCountMin == 0)
+            {
+                monthToAdd = request.Duration.Value;
+            }
+            else
+            {
+                sessionToAdd = request.Duration.Value;
+            }
 
-			if (hasMembership.Any(membership => !membership))
-			{
-				throw new InvalidOperationException("User don't have active gym membership");
-			}
+            // Prepare the request data
+            string info = "";
 
-			//var existingGymRegistrations = userIds.Select(userId => _firebaseClient
-			//	.Child("GymRegistrations")
-			//	.OrderBy("userId")
-			//	.EqualTo(userId)
-			//	.OnceAsync<GymRegistration>());
+            if (qrPayment)
+            {
+                info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+            }
+            else
+            {
+                info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+            }
 
-			//var gymResult = await Task.WhenAll(existingGymRegistrations);
+            var regisId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
 
-			//if (!gymResult.Any(exReg => exReg.Any(ex => ex.Object.IsActive &&
-			//	(ex.Object.EndDate >= DateTime.Now || ex.Object.SessionLeft > 0))))
-			//{
-			//	throw new InvalidOperationException("User don't have active gym membership");
-			//}
+            TrainerRentalRegistration trainerRegistration = new TrainerRentalRegistration()
+            {
+                UserIds = userIdsString,
+                PlanId = request.TrainerRentalPlanId,
+                ScheduleId = scheduleId,
+                StartDate = DateTime.Now,
+                EndDate = DateTime.Now.AddMonths(monthToAdd),
+                SessionLeft = sessionToAdd,
+                IsActive = false,
+                PaymentId = info
+            };
 
-			if (activeRentalRegistrations.Count != 0)
-			{
-				// Check if any user has active registrations
-				var hasActiveRegistration = activeRentalRegistrations.Any(reg =>
-					reg.Object.UserIds != null &&
-					reg.Object.UserIds.Split(',').Any(userId => userIds.Contains(userId)) &&
-					(reg.Object.EndDate >= DateTime.Now || reg.Object.SessionLeft > 0)
-				);
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
 
-				if (hasActiveRegistration)
-				{
-					throw new InvalidOperationException("One or more users already have active Trainer Rental Registrations.");
-				}
-			}
+            var jsonString = JsonSerializer.Serialize(trainerRegistration, options);
 
-			int monthToAdd = 0;
-			int sessionToAdd = 0;
+            var regTask = _firebaseClient
+                            .Child("TrainerRentalRegistrations")
+                            .Child(regisId)
+                            .PutAsync(jsonString);
 
-			if (option.SessionCountMax == 0 && option.SessionCountMin == 0)
-			{
-				monthToAdd = request.Duration.Value;
-			}
-			else
-			{
-				sessionToAdd = request.Duration.Value;
-			}
+            string paymentMethod = qrPayment ? "QR" : "cash";
 
-			// Prepare the request data
-			string info = "";
+            Payment payment = new Payment()
+            {
+                TrainerRentalRegistrationId = regisId,
+                Amount = price,
+                GymRegistrationId = "",
+                BoxingRegistrationId = "",
+                PaymentDate = DateTime.MinValue,
+                PaymentMethod = paymentMethod,
+                PaymentStatus = "Pending",
+                TransactionId = "Pending",
+            };
 
-			if (qrPayment)
-			{
-				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
-			}
-			else
-			{
-				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
-			}
+            jsonString = JsonSerializer.Serialize(payment, options);
 
-			var regisId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+            var paymentTask = _firebaseClient
+                .Child("Payments")
+                .Child(info)
+                .PutAsync(jsonString);
 
-			TrainerRentalRegistration trainerRegistration = new TrainerRentalRegistration()
-			{
-				UserIds = userIdsString,
-				PlanId = request.TrainerRentalPlanId,
-				ScheduleId = scheduleId,
-				StartDate = DateTime.Now,
-				EndDate = DateTime.Now.AddMonths(monthToAdd),
-				SessionLeft = sessionToAdd,
-				IsActive = false,
-				PaymentId = info
-			};
+            await Task.WhenAll(paymentTask, regTask);
 
-			var options = new JsonSerializerOptions
-			{
-				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-			};
+            StartDeletionTimer(customerId, info, "TrainerRental", regisId, scheduleId);
 
-			var jsonString = JsonSerializer.Serialize(trainerRegistration, options);
+            return new RegisterResult
+            {
+                RentalPlan = plan,
+                RentalOption = option,
+                MoneyToPay = payment.Amount,
+                TransactionContent = info
+            };
+        }
 
-			var regTask = _firebaseClient
-							.Child("TrainerRentalRegistrations")
-							.Child(regisId)
-							.PutAsync(jsonString);
-
-			//var methods = await _paymentMethodService.GetAllPaymentMethods();
-			string paymentMethod = qrPayment ? "QR" : "cash";
-			//string qrPaymentMethodId = methods.FirstOrDefault(method => method.MethodName == paymentMethod)?.PaymentMethodId;
-
-			#region old check logic
-			//if (request.Sessions != null && request.Sessions >= option.SessionCountMin && request.Sessions <= option.SessionCountMax && request.Emails.Count == option.MemberCount)
-			//{
-			//	price = (decimal)(option.PricePerPersonPerSession * request.Sessions * request.Emails.Count);
-			//}
-			//else if (request.DurationMonths != null && request.Emails.Count == option.MemberCount)
-			//{
-			//	price = (decimal)(option.PricePerPersonPerMonth * request.DurationMonths * request.Emails.Count);
-			//}
-			//else
-			//{
-			//	throw new ArgumentException("Required fields are missing or invalid");
-			//}
-			#endregion
-
-			Payment payment = new Payment()
-			{
-				TrainerRentalRegistrationId = regisId,
-				Amount = price,
-				GymRegistrationId = "",
-				BoxingRegistrationId = "",
-				PaymentDate = DateTime.MinValue,
-				PaymentMethod = paymentMethod,
-				PaymentStatus = "Pending",
-				TransactionId = "Pending",
-			};
-
-			jsonString = JsonSerializer.Serialize(payment, options);
-
-			var paymentTask = _firebaseClient
-				.Child("Payments")
-				.Child(info)
-				.PutAsync(jsonString);
-
-			await Task.WhenAll(paymentTask, regTask);
-
-			StartDeletionTimer(customerId, info, "TrainerRental", regisId, scheduleId);
-
-			return new RegisterResult
-			{
-				RentalPlan = plan,
-				RentalOption = option,
-				MoneyToPay = payment.Amount,
-				TransactionContent = info
-
-			};
-			//return (plan, option, registration, payment, info);
-		}
-		public async Task<RegisterResult> RegisterBoxing(RegisterPackageRequest request,
+        public async Task<RegisterResult> RegisterBoxing(RegisterPackageRequest request,
 			bool qrPayment, string customerId)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
@@ -504,53 +438,62 @@ namespace Alpha_API.Services
 			{
 				throw new ArgumentException("Number of emails does not match the package");
 			}
+            // Check for duplicate emails
+            var emailDuplicates = request.Emails.GroupBy(e => e)
+                                                 .Where(g => g.Count() > 1)
+                                                 .Select(g => g.Key)
+                                                 .ToList();
 
-			#region old code to check existing registrations
-			//StringBuilder userIds = new StringBuilder();
-			//// Get all TrainerRentalRegistrations for this user
-			//var existingRegistrations = await _firebaseClient
-			//	.Child("BoxingRegistrations")
-			//	.OnceAsync<BoxingRegistration>();
+            if (emailDuplicates.Any())
+            {
+                throw new InvalidOperationException("Do not enter duplicate emails");
+            }
+            #region old code to check existing registrations
+            //StringBuilder userIds = new StringBuilder();
+            //// Get all TrainerRentalRegistrations for this user
+            //var existingRegistrations = await _firebaseClient
+            //	.Child("BoxingRegistrations")
+            //	.OnceAsync<BoxingRegistration>();
 
-			//// Check if there are any registrations that contain the target userId and are still active
-			//bool hasActiveRegistration = false;
+            //// Check if there are any registrations that contain the target userId and are still active
+            //bool hasActiveRegistration = false;
 
-			//foreach (var email in request.Emails)
-			//{
-			//	var userId = await _emailService.GetUserIdByEmail(email);
-			//	hasActiveRegistration = existingRegistrations.Any(reg =>
-			//	reg.Object.UserIds != null &&
-			//	reg.Object.UserIds.Split(',').Contains(userId) &&
-			//	(reg.Object.SessionLeft > 0)
-			//	);
-			//	if (userId == null)
-			//	{
-			//		throw new InvalidOperationException($"No user found with the email {email}. The user must be registered.");
-			//	}
-			//	var roleName = await _roleService.GetRoleOfUser(userId);
-			//	if (!roleName.Equals("customer"))
-			//	{
-			//		throw new UnauthorizedAccessException("User does not have the required 'customer' role.");
-			//	}
-			//	if (hasActiveRegistration)
-			//	{
-			//		throw new InvalidOperationException("The user already has an active Boxing Registration.");
-			//	}
-			//	userIds.Append(userId).Append(",");
-			//}
+            //foreach (var email in request.Emails)
+            //{
+            //	var userId = await _emailService.GetUserIdByEmail(email);
+            //	hasActiveRegistration = existingRegistrations.Any(reg =>
+            //	reg.Object.UserIds != null &&
+            //	reg.Object.UserIds.Split(',').Contains(userId) &&
+            //	(reg.Object.SessionLeft > 0)
+            //	);
+            //	if (userId == null)
+            //	{
+            //		throw new InvalidOperationException($"No user found with the email {email}. The user must be registered.");
+            //	}
+            //	var roleName = await _roleService.GetRoleOfUser(userId);
+            //	if (!roleName.Equals("customer"))
+            //	{
+            //		throw new UnauthorizedAccessException("User does not have the required 'customer' role.");
+            //	}
+            //	if (hasActiveRegistration)
+            //	{
+            //		throw new InvalidOperationException("The user already has an active Boxing Registration.");
+            //	}
+            //	userIds.Append(userId).Append(",");
+            //}
 
-			//// Continue with the registration process
+            //// Continue with the registration process
 
-			//if (userIds.Length > 0)
-			//{
-			//	userIds.Length--; // This removes the last comma
-			//}
+            //if (userIds.Length > 0)
+            //{
+            //	userIds.Length--; // This removes the last comma
+            //}
 
-			//string userIdsString = userIds.ToString();
-			#endregion
+            //string userIdsString = userIds.ToString();
+            #endregion
 
-			// Fetch all userIds for emails
-			var userTasks = request.Emails.Select(email => _firebaseAuth.GetUserByEmailAsync(email));
+            // Fetch all userIds for emails
+            var userTasks = request.Emails.Select(email => _firebaseAuth.GetUserByEmailAsync(email));
 			var userResults = await Task.WhenAll(userTasks);
 			var allVerified = userResults.All(a => a.EmailVerified);
 
