@@ -369,7 +369,7 @@ public class UsersController : ControllerBase
 	}
 
 	// GET: api/users/GetUserByEmail/{email}
-	[Authorize(Roles = "admin")]
+	[Authorize(Roles = "admin,staff,customer")]
 	[HttpGet("GetUserByEmail/{email}")]
 	public async Task<ActionResult<object>> GetUserByEmail(string email)
 	{
@@ -516,113 +516,115 @@ public class UsersController : ControllerBase
 		return NoContent();
 	}
 
-	// POST: api/users/addstaff
-	[Authorize(Roles = "admin")]
-	[HttpPost("addStaff")]
-	public async Task<ActionResult> AddStaff([FromBody] RegisterStaffDto staff)
-	{
-		if (staff == null || string.IsNullOrEmpty(staff.IdCard) || string.IsNullOrEmpty(staff.Phone) || string.IsNullOrEmpty(staff.Name))
-		{
-			return BadRequest("Missing required fields");
-		}
-		_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+    // POST: api/users/addstaff
+    [Authorize(Roles = "admin")]
+    [HttpPost("addStaff")]
+    public async Task<ActionResult> AddStaff([FromBody] RegisterStaffDto staff)
+    {
+        if (staff == null || string.IsNullOrEmpty(staff.IdCard) || string.IsNullOrEmpty(staff.Phone) || string.IsNullOrEmpty(staff.Name))
+        {
+            return BadRequest("Missing required fields");
+        }
+        _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
-		try
-		{
-			string password = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 8);
-			// Create a Firebase Auth user
-			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
-			{
-				Email = staff.Email,
-				Password = password,
-				DisplayName = staff.Name,
-				EmailVerified = false,
-				Disabled = false
-			});
+        try
+        {
+            string password = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 8);
 
-			if (createUserResponse == null)
-			{
-				return BadRequest("User registration failed.");
-			}
+            // Create a Firebase Auth user
+            var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
+            {
+                Email = staff.Email,
+                Password = password,
+                DisplayName = staff.Name,
+                EmailVerified = false,
+                Disabled = false
+            });
 
-			var userId = createUserResponse.Uid;
+            if (createUserResponse == null)
+            {
+                return BadRequest("User registration failed.");
+            }
 
-			// Generate email verification link
-			var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(staff.Email);
+            var userId = createUserResponse.Uid; // UserId của Firebase
 
-			var roles = await _roleService.GetAllRoles();
-			string roleStaffId = roles.FirstOrDefault(role => role.RoleName == "staff")?.RoleId;
+            // Generate email verification link
+            var verificationLink = await _firebaseAuth.GenerateEmailVerificationLinkAsync(staff.Email);
 
-			string id = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+            var roles = await _roleService.GetAllRoles();
+            string roleStaffId = roles.FirstOrDefault(role => role.RoleName == "staff")?.RoleId;
 
-			User u = new User()
-			{
-				Name = staff.Name,
-				Email = staff.Email,
-				RoleId = roleStaffId, // Staff role
-				Phone = staff.Phone,
-				UserId = id,
-				Gender = staff.Gender,
-				Address = staff.Address,
-				UserAvatar = staff.UserAvatar,
-				IdCard = staff.IdCard,
-				Dob = staff.Dob
-			};
+            User u = new User()
+            {
+                Name = staff.Name,
+                Email = staff.Email,
+                RoleId = roleStaffId, // Staff role
+                Phone = staff.Phone,
+                UserId = userId,  // Sử dụng userId từ Firebase
+                Gender = staff.Gender,
+                Address = staff.Address,
+                UserAvatar = staff.UserAvatar,
+                IdCard = staff.IdCard,
+                Dob = staff.Dob
+            };
 
-			Staff newStaff = new Staff()
-			{
-				FullName = staff.Name,
-				Position = staff.Position,
-				UserId = userId,
-			};
-			var options = new JsonSerializerOptions
-			{
-				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-			};
+            Staff newStaff = new Staff()
+            {
+                FullName = staff.Name,
+                Position = staff.Position,
+                UserId = userId,  // Dùng userId từ Firebase để đảm bảo trùng khớp
+            };
 
-			var jsonString = JsonSerializer.Serialize(u, options);
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
 
-			// Send the verification email using a third-party email service
-			var emailSent = _emailService.SendVerificationEmail(staff.Email, verificationLink);
-			_emailService.SendEmailMessage(staff.Email, password, "Here is your password");
+            var jsonString = JsonSerializer.Serialize(u, options);
 
-			if (!emailSent)
-			{
-				return BadRequest("Failed to send email verification.");
-			}
+            // Send the verification email using a third-party email service
+            var emailSent = _emailService.SendVerificationEmail(staff.Email, verificationLink);
+            _emailService.SendEmailMessage(staff.Email, password, "Here is your password");
 
-			var userTask = _firebaseClient
-				.Child("users")
-				.Child(userId)
-				.PutAsync(jsonString);
+            if (!emailSent)
+            {
+                return BadRequest("Failed to send email verification.");
+            }
 
-			jsonString = JsonSerializer.Serialize(newStaff, options);
+            // Lưu user vào Firebase users
+            var userTask = _firebaseClient
+                .Child("users")
+                .Child(userId)  // Dùng userId của Firebase
+                .PutAsync(jsonString);
 
-			var staffTask = _firebaseClient
-				.Child("Staffs")
-				.PostAsync(jsonString);
+            jsonString = JsonSerializer.Serialize(newStaff, options);
 
-			await Task.WhenAll(userTask, staffTask);
+            // Lưu staff vào Firebase Staffs
+            var staffTask = _firebaseClient
+                .Child("Staffs")
+                .PostAsync(jsonString);
 
-			return Ok("Staff added sucessfully. Please verify email.");
-		}
-		catch (FirebaseAuthException ex)
-		{
-			// Check if the error is related to an existing email
-			if (ex.Message.Contains("EMAIL_EXISTS"))
-			{
-				// Return 409 Conflict status with error message
-				return Conflict(new { message = "The email is already registered." });
-			}
+            await Task.WhenAll(userTask, staffTask);
 
-			// For other Firebase errors, return a generic internal server error
-			return StatusCode(500, new { message = "An error occurred during registration." });
-		}
-	}
+            return Ok("Staff added successfully. Please verify email.");
+        }
+        catch (FirebaseAuthException ex)
+        {
+            // Check if the error is related to an existing email
+            if (ex.Message.Contains("EMAIL_EXISTS"))
+            {
+                return Conflict(new { message = "The email is already registered." });
+            }
 
-	// POST: api/users/addTrainer
-	[Authorize(Roles = "admin,staff")]
+            // For other Firebase errors, return a generic internal server error
+            return StatusCode(500, new { message = "An error occurred during registration." });
+        }
+    }
+
+
+    // POST: api/users/addTrainer
+    [Authorize(Roles = "admin,staff")]
 	[HttpPost("addTrainer")]
 	public async Task<ActionResult> AddTrainer([FromBody] RegisterTrainerDto trainer)
 	{
@@ -969,5 +971,6 @@ public class UsersController : ControllerBase
 		return result;
 
 	}
+
 
 }
