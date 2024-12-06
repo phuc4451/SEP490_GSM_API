@@ -79,7 +79,7 @@ const Header = () => {
               <div className="dropdown-content">
                 <a href="/managManager">Quản lý nhân sự</a>
                 <a href="/manageCustomer" >Quản lý khách hàng</a>
-                <a href="/manageTrainer" >Quản lý PT</a>
+                <a href="/manageTrainer" >Quản lý Trainer</a>
                 <a href="/manageMembership" >Quản lý Membership</a>
               </div>
             </div>

@@ -6,6 +6,8 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "../assets/css/common.css";
 import "./ManageManager.css";
 
+// require('dotenv').config()
+
 import SearchIcon from "@mui/icons-material/Search";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import EditIcon from "@mui/icons-material/Edit";
@@ -17,6 +19,12 @@ import { Delete } from "@mui/icons-material";
 
 const ManageCustomer = () => {
   const [StaffDataList, setStaffDataList] = useState([]);
+  const fileInputRef = useRef(null);
+  const [previewImage, setPreviewImage] = useState(null); // To store preview image
+  const [searchQuery, setSearchQuery] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
   //PRELOAD
   const [StaffData, setStaffData] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -36,10 +44,11 @@ const ManageCustomer = () => {
   });
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 4; // Maximum 2 employees per page
+  const itemsPerPage = 8; // Maximum 2 employees per page
 
   const StaffModalRef = useRef(null);
   const successModalRef = useRef(null);
+  const errorModalRef = useRef(null);
   const deleteModalRef = useRef(null);
 
   //FETCH DATA AND PRELOAD
@@ -100,14 +109,25 @@ const ManageCustomer = () => {
     // Convert DOB object to a date string compatible with the input field
     const formattedDob = `${Staff.dob.year}-${String(Staff.dob.month).padStart(2, "0")}-${String(Staff.dob.date).padStart(2, "0")}`;
 
+    // Set form data
     setFormData({
       name: Staff.name,
-      gender: Staff.gender.toLowerCase() === "nam" ? "male" : "female",
+      gender: Staff.gender,
       dob: formattedDob, // Set formatted date
       email: Staff.email,
       phone: Staff.phone,
       address: Staff.address,
+      idCard: Staff.idCard,
+      userAvatar: Staff.userAvatar,
     });
+
+    // Set preview image if there is an avatar
+    if (Staff.userAvatar) {
+      setPreviewImage(Staff.userAvatar); // Set the current avatar to preview image
+    } else {
+      setPreviewImage(null); // No avatar, clear the preview
+    }
+
     setCurrentStaff(Staff); // Set to editing mode by assigning the Staff
     StaffModalRef.current.style.display = "block";
     StaffModalRef.current.classList.add("active");
@@ -122,48 +142,108 @@ const ManageCustomer = () => {
   };
 
   const handleInputChange = (e) => {
+    const { name, value } = e.target;
+  
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+  
+    // Trigger validation for the specific field
+    validateField(name, value);
   };
-
-  const validateForm = () => {
-    const newErrors = {};
-    if (formData.name.length < 5 || formData.name.length > 30) {
-      newErrors.name = "Họ tên phải từ 5 đến 30 ký tự.";
+  
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+  
+    switch (name) {
+      case "name":
+        if (value.length < 5 || value.length > 30) {
+          newErrors.name = "Họ tên phải từ 5 đến 30 ký tự.";
+        } else {
+          delete newErrors.name; // Clear error if valid
+        }
+        break;
+      case "dob":
+        const dob = new Date(value);
+        const currentDate = new Date();
+        if (dob >= currentDate) {
+          newErrors.dob = "Ngày tháng năm sinh phải nhỏ hơn ngày hiện tại.";
+        } else {
+          delete newErrors.dob; // Clear error if valid
+        }
+        break;
+      case "email":
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(value)) {
+          newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
+        } else {
+          delete newErrors.email; // Clear error if valid
+        }
+        break;
+      case "phone":
+        if (value.length < 9 || value.length > 11 || !/^\d+$/.test(value)) {
+          newErrors.phone = "Số điện thoại phải từ 9 đến 11 chữ số.";
+        } else {
+          delete newErrors.phone; // Clear error if valid
+        }
+        break;
+      case "address":
+        if (!value) {
+          newErrors.address = "Địa chỉ không được để trống.";
+        } else {
+          delete newErrors.address; // Clear error if valid
+        }
+        break;
+      case "idCard":
+        if (!value) {
+          newErrors.idCard = "Số căn cước không được để trống.";
+        } else {
+          delete newErrors.idCard; // Clear error if valid
+        }
+        break;
+      case "gender":
+        if (!value) {
+          newErrors.gender = "Vui lòng chọn giới tính.";
+        } else {
+          delete newErrors.gender; // Clear error if valid
+        }
+        break;
+      default:
+        break;
     }
-
-    const dob = new Date(formData.dob);
-    const minDate = new Date("2022-03-10");
-    const maxDate = new Date("2024-12-12");
-    if (dob < minDate || dob > maxDate) {
-      newErrors.dob = "Ngày tham gia phải trong khoảng từ 10/03/2022 đến 12/12/2024.";
-    }
-
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(formData.email)) {
-      newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
-    }
-
-    if (formData.phone.length < 9 || formData.phone.length > 11 || !/^\d+$/.test(formData.phone)) {
-      newErrors.phone = "Số điện thoại phải từ 9 đến 11 chữ số.";
-    }
-
+  
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Return true if no errors
   };
+  
+  
 
   // Hàm để mở modal thông báo
-  const showSuccessModal = () => {
-    successModalRef.current.style.display = "block"; // Hiển thị modal
-    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+  const showSuccessModal = (message) => {
+    setSuccessMessage(message); // Cập nhật thông báo
+    successModalRef.current.style.display = "block";
+    document.querySelector(".modal-overlay").style.display = "block";
   };
 
   // Hàm để đóng modal thông báo
   const closeSuccessModal = () => {
     successModalRef.current.style.display = "none"; // Ẩn modal
     document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
+    window.location.reload();
+  };
+
+  // Hàm để mở modal thông báo
+  const showErrorModal = (message) => {
+    setErrorMessage(message); // Cập nhật thông báo
+    errorModalRef.current.style.display = "block";
+    document.querySelector(".modal-overlay").style.display = "block";
+  };
+
+  // Hàm để đóng modal thông báo
+  const closeErrorModal = () => {
+    errorModalRef.current.style.display = "none"; // Ẩn modal
+    // document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
+    // window.location.reload();
   };
 
   const openDeleteModal = (Staff) => {
@@ -175,6 +255,45 @@ const ManageCustomer = () => {
   const closeDeleteModal = () => {
     deleteModalRef.current.style.display = "none"; // Hide delete modal
     document.querySelector(".modal-overlay").style.display = "none"; // Hide overlay
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+  
+    // Check all fields here
+    if (formData.name.length < 5 || formData.name.length > 30) {
+      newErrors.name = "Họ tên phải từ 5 đến 30 ký tự.";
+    }
+  
+    const dob = new Date(formData.dob);
+    const currentDate = new Date();
+    if (dob >= currentDate) {
+      newErrors.dob = "Ngày tháng năm sinh phải nhỏ hơn ngày hiện tại.";
+    }
+  
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(formData.email)) {
+      newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
+    }
+  
+    if (formData.phone.length < 9 || formData.phone.length > 11 || !/^\d+$/.test(formData.phone)) {
+      newErrors.phone = "Số điện thoại phải từ 9 đến 11 chữ số.";
+    }
+  
+    if (!formData.address) {
+      newErrors.address = "Địa chỉ không được để trống.";
+    }
+  
+    if (!formData.idCard) {
+      newErrors.idCard = "Số căn cước không được để trống.";
+    }
+  
+    if (!formData.gender) {
+      newErrors.gender = "Vui lòng chọn giới tính.";
+    }
+  
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0; // If no errors, form is valid
   };
 
   const handleSubmit = async (e) => {
@@ -192,36 +311,47 @@ const ManageCustomer = () => {
 
       // Create a basic Staff data object
       const StaffData = {
-        userId: currentStaff ? currentStaff.userId : "string",
         email: formData.email,
         name: formData.name,
         gender: formData.gender,
         dob: dobData,
         address: formData.address,
         phone: formData.phone,
-        roleId: "string",
-        userAvatar: "string",
-        idCard: "string",
+        userAvatar: formData.userAvatar,
+        idCard: formData.idCard,
+        position: "string",
       };
-
-      // Include password only for adding a new Staff
-      if (!currentStaff) {
-        StaffData.password = formData.password;
-      }
 
       try {
         if (currentStaff) {
+          const StaffDataEdit = {
+            userId: currentStaff.userId,
+            email: formData.email,
+            name: formData.name,
+            gender: formData.gender,
+            dob: dobData,
+            address: formData.address,
+            phone: formData.phone,
+            userAvatar: formData.userAvatar,
+            idCard: formData.idCard,
+            roleId: "string",
+          };
           // Update Staff
-          await axios.put(`http://localhost:5000/api/Users/updateStaff/${currentStaff.userId}`, StaffData, {
-            headers: { Authorization: `Bearer ${token}` },
+          await axios.patch(`http://localhost:5000/api/Users/updateStaff/${currentStaff.userId}`, StaffDataEdit, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            },
           });
 
           // Update Staff data in the list
           setStaffDataList((prevData) => prevData.map((Staff) => (Staff.userId === currentStaff.userId ? { ...Staff, ...StaffData } : Staff)));
         } else {
           // Add new Staff
+          console.log(StaffData);
           const response = await axios.post("http://localhost:5000/api/Users/addStaff", StaffData, {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              Authorization: `Bearer ${token}`
+            },
           });
 
           setStaffDataList([...StaffDataList, response.data]);
@@ -237,10 +367,11 @@ const ManageCustomer = () => {
           address: "",
           phone: "",
         });
-        showSuccessModal();
         closeModal();
+        showSuccessModal("Người dùng được lưu thành công");
       } catch (error) {
         console.error("Error saving Staff:", error);
+        showErrorModal(error.message);
       }
     }
   };
@@ -268,6 +399,39 @@ const ManageCustomer = () => {
     deleteStaff();
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Use FileReader to convert image to base64
+      const reader = new FileReader();
+  
+      reader.onloadend = () => {
+        // Extract base64 data without the "data:image/jpeg;base64," prefix
+        const base64String = reader.result.split(',')[1]; // Remove the prefix
+  
+        // Set preview image for display (include the full base64 string with prefix)
+        setPreviewImage(reader.result.split(',')[1]); // Set only the image data for preview
+  
+        // Store base64 image without the prefix in formData
+        setFormData({
+          ...formData,
+          userAvatar: base64String, // Store base64 image without the prefix in formData
+        });
+      };
+  
+      reader.readAsDataURL(file); // Convert the file to base64
+    }
+  };
+  
+  
+  
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value); // Cập nhật nội dung tìm kiếm khi người dùng nhập
+  };
+  const filteredStaffData = StaffData.filter(
+    (Staff) => Staff.email.toLowerCase().includes(searchQuery.toLowerCase()) // Tìm kiếm theo email
+  );
   return (
     <>
       <Header />
@@ -292,34 +456,22 @@ const ManageCustomer = () => {
       {/* <!-- ***** Preloader End ***** --> */}
 
       <div className="user-select">
-        <h1>Quản lí nhân viên</h1>
-        <h2>Người dùng trong hệ thống SUPER GYM</h2>
+        <h1>Quản lí nhân viên trong hệ thống SUPER GYM</h1>
 
         <div className="select-search-container">
           <div className="search-container">
-            <input type="text" id="searchUser" className="form-control" placeholder="Tìm kiếm..." />
+            <input
+              type="text"
+              id="searchUser"
+              className="form-control"
+              placeholder="Tìm kiếm theo email..."
+              value={searchQuery} // Liên kết với state searchQuery
+              onChange={handleSearchChange} // Cập nhật state khi người dùng nhập
+            />
             <span className="search-icon">
               <SearchIcon />
             </span>
           </div>
-
-          <select className="form-control  form-select" id="selectRole">
-            <option value="">Chọn vai trò</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Nhân viên</option>
-          </select>
-
-          <select className="form-control form-select" id="selectStatus">
-            <option value="">Chọn trạng thái</option>
-            <option value="active">Hoạt động</option>
-            <option value="inactive">Không hoạt động</option>
-          </select>
-
-          <select className="form-control form-select" id="selectGender">
-            <option value="">Chọn giới tính</option>
-            <option value="male">Nam</option>
-            <option value="female">Nữ</option>
-          </select>
         </div>
       </div>
 
@@ -354,27 +506,24 @@ const ManageCustomer = () => {
               </tr>
             </thead>
             <tbody>
-              {currentStaffs.map((Staff, index) => (
+              {filteredStaffData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((Staff, index) => (
                 <tr key={index}>
                   <td>
                     <img src={`data:image/jpeg;base64,${Staff.userAvatar}`} className="Staff-avatar" />
                     {Staff.name}
                   </td>
-                  {/* <td>{Staff.gender}</td> */}
-                  <td>{Staff.gender === "Male" ? "Nam" : "Nữ"}</td>
+                  <td>{Staff.gender === "male" ? "Nam" : "Nữ"}</td>
                   <td>{formatDate(Staff.dob)}</td>
                   <td>{Staff.email}</td>
                   <td>{Staff.phone}</td>
                   <td>{Staff.address}</td>
-                  {/* <td className={Staff.status === "Hoạt động" ? "status-el-active" : "status-el-inactive"}>{Staff.status}</td> */}
-                  {/* <td>{Staff.role}</td> */}
                   <td>
                     <a href="#" onClick={() => openEditStaffModal(Staff)} className="edit">
                       <EditIcon />
                     </a>
-                    <a href="#" onClick={() => openDeleteModal(Staff)} className="delete">
+                    {/* <a href="#" onClick={() => openDeleteModal(Staff)} className="delete">
                       <DeleteIcon />
-                    </a>
+                    </a> */}
                   </td>
                 </tr>
               ))}
@@ -415,7 +564,7 @@ const ManageCustomer = () => {
           <div className="modal-content">
             <form id="employeeForm" onSubmit={handleSubmit}>
               <div className="modal-header">
-                <h4 className="modal-title text-center mx-auto">{currentStaff ? "Sửa thông tin người dùng" : "Thêm nhân viên"}</h4>
+                <h4 className="modal-title text-center mx-auto">{currentStaff ? "Sửa thông tin nhân viên" : "Thêm nhân viên"}</h4>
                 <a type="button" className="close" onClick={closeModal}>
                   <CloseIcon />
                 </a>
@@ -424,53 +573,77 @@ const ManageCustomer = () => {
                 {/* First row of input fields */}
                 <div className="row">
                   <div className="form-group col">
-                    <label>Họ tên</label>
-                    <input type="text" className="form-control" name="name" value={formData.name} onChange={handleInputChange} required />
+                    <label>
+                      Họ tên <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className={`form-control ${errors.name ? "is-invalid" : ""}`} name="name" value={formData.name} onChange={handleInputChange} required />
                     {errors.name && <div className="error-message">{errors.name}</div>}
                   </div>
 
                   <div className="form-group col">
-                    <label>Ngày tham gia</label>
-                    <input type="date" className="form-control" name="dob" value={formData.dob} onChange={handleInputChange} required />
+                    <label>
+                      Ngày tháng năm sinh <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="date" className={`form-control ${errors.dob ? "is-invalid" : ""}`} name="dob" value={formData.dob} onChange={handleInputChange} required />
                     {errors.dob && <div className="error-message">{errors.dob}</div>}
                   </div>
                 </div>
 
                 <div className="row">
                   <div className="form-group col">
-                    <label>Email</label>
-                    <input type="email" className="form-control" name="email" value={formData.email} onChange={handleInputChange} required />
+                    <label>
+                      Email <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="email" className={`form-control ${errors.email ? "is-invalid" : ""}`} name="email" value={formData.email} onChange={handleInputChange} required />
                     {errors.email && <div className="error-message">{errors.email}</div>}
                   </div>
 
                   <div className="form-group col">
-                    <label>Số điện thoại</label>
-                    <input type="text" className="form-control" name="phone" value={formData.phone} onChange={handleInputChange} required />
+                    <label>
+                      Số điện thoại <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className={`form-control ${errors.phone ? "is-invalid" : ""}`} name="phone" value={formData.phone} onChange={handleInputChange} required />
                     {errors.phone && <div className="error-message">{errors.phone}</div>}
                   </div>
                 </div>
 
-                {/* Conditionally render the password input only if adding a new Staff */}
-                {!currentStaff && (
-                  <div className="row">
-                    <div className="form-group col">
-                      <label>Mật khẩu</label>
-                      <input type="password" className="form-control" name="password" value={formData.password} onChange={handleInputChange} required />
-                    </div>
+                <div className="row">
+                  <div className="form-group col">
+                    <label>Ảnh đại diện</label>
+                    <input type="file" className="form-control" onChange={handleImageChange} accept="image/*" ref={fileInputRef} />
                   </div>
-                )}
+
+                  {previewImage && (
+                    <div className="form-group col">
+                      <img src={`data:image/jpeg;base64,${previewImage}`} alt="Ảnh xem trước" className="preview-image" />
+                    </div>
+                  )}
+                </div>
 
                 <div className="row">
                   <div className="form-group col">
-                    <label>Địa chỉ</label>
-                    <input type="text" className="form-control" name="address" value={formData.address} onChange={handleInputChange} required />
+                    <label>
+                      Địa chỉ <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className={`form-control ${errors.address ? "is-invalid" : ""}`} name="address" value={formData.address} onChange={handleInputChange} required />
+                    {errors.address && <div className="error-message">{errors.address}</div>}
+                  </div>
+
+                  <div className="form-group col">
+                    <label>
+                      Số căn cước <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className={`form-control ${errors.idCard ? "is-invalid" : ""}`} name="idCard" value={formData.idCard} onChange={handleInputChange} required />
+                    {errors.idCard && <div className="error-message">{errors.idCard}</div>}
                   </div>
                 </div>
 
                 {/* Gender radio buttons */}
                 <div className="row">
                   <div className="form-group col">
-                    <label>Giới tính</label>
+                    <label>
+                      Giới tính <span className="icon-input">(*)</span>
+                    </label>
                     <div className="radio-group">
                       <label>
                         <input type="radio" name="gender" value="male" checked={formData.gender === "male"} onChange={handleInputChange} />
@@ -481,6 +654,7 @@ const ManageCustomer = () => {
                         Nữ
                       </label>
                     </div>
+                    {errors.gender && <div className="error-message">{errors.gender}</div>}
                   </div>
                 </div>
               </div>
@@ -497,6 +671,7 @@ const ManageCustomer = () => {
           </div>
         </div>
       </div>
+
       {/* Modal Overlay */}
       <div className="modal-overlay"></div>
 
@@ -535,16 +710,39 @@ const ManageCustomer = () => {
         <div className="modal-dialog modal-dialog-notify">
           <div className="modal-content">
             <div className="modal-header">
-              <h4 className="modal-title">Thông báo</h4>
-              <button type="button" className="close" onClick={closeSuccessModal}>
-                &times;
-              </button>
+              <h4 className="modal-title text-center mx-auto">Thông báo</h4>
+              <a type="button" className="close" onClick={closeSuccessModal}>
+                <CloseIcon />
+              </a>
             </div>
             <div className="modal-body">
               <p>Người dùng được lưu thành công!</p>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeSuccessModal}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Error Modal */}
+      <div ref={errorModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-notify">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Thông báo</h4>
+              <a type="button" className="close" onClick={closeErrorModal}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body">
+              <p>{errorMessage}</p> {/* Hiển thị lỗi từ state */}
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" onClick={closeErrorModal}>
                 OK
               </button>
             </div>

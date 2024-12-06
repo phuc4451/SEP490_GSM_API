@@ -17,6 +17,9 @@ import { Delete } from "@mui/icons-material";
 
 const ManageCustomer = () => {
   const [customerDataList, setCustomerDataList] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
   //PRELOAD
   const [customerData, setCustomerData] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -39,14 +42,16 @@ const ManageCustomer = () => {
     // userEnabled: "active",
     // role: "staff",
     userAvatar: null,
+    idCard: "",
   });
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 4; // Maximum 2 employees per page
+  const itemsPerPage = 8; // Maximum 2 employees per page
 
   const customerModalRef = useRef(null);
   const successModalRef = useRef(null);
   const deleteModalRef = useRef(null);
+  const errorModalRef = useRef(null);
 
   //FETCH DATA AND PRELOAD
   useEffect(() => {
@@ -117,13 +122,20 @@ const ManageCustomer = () => {
 
     setFormData({
       name: customer.name,
-      gender: customer.gender.toLowerCase() === "nam" ? "male" : "female",
+      gender: customer.gender,
       dob: formattedDob,
       email: customer.email,
       phone: customer.phone,
       address: customer.address,
       userId: customer.userId,
+      idCard: customer.idCard,
+      userAvatar: customer.userAvatar,
     });
+    if (customer.userAvatar) {
+      setPreviewImage(customer.userAvatar); // Set the current avatar to preview image
+    } else {
+      setPreviewImage(null); // No avatar, clear the preview
+    }
     setCurrentCustomer(customer);
     customerModalRef.current.style.display = "block";
     customerModalRef.current.classList.add("active");
@@ -148,37 +160,119 @@ const ManageCustomer = () => {
   };
 
   const handleInputChange = (e) => {
+    const { name, value } = e.target;
+  
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+  
+    // Trigger validation for the specific field
+    validateField(name, value);
+  };
+  
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+  
+    switch (name) {
+      case "name":
+        if (value.length < 5 || value.length > 30) {
+          newErrors.name = "Họ tên phải từ 5 đến 30 ký tự.";
+        } else {
+          delete newErrors.name; // Clear error if valid
+        }
+        break;
+      case "dob":
+        const dob = new Date(value);
+        const currentDate = new Date();
+        if (dob >= currentDate) {
+          newErrors.dob = "Ngày tháng năm sinh phải nhỏ hơn ngày hiện tại.";
+        } else {
+          delete newErrors.dob; // Clear error if valid
+        }
+        break;
+      case "email":
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(value)) {
+          newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
+        } else {
+          delete newErrors.email; // Clear error if valid
+        }
+        break;
+      case "phone":
+        if (value.length < 9 || value.length > 11 || !/^\d+$/.test(value)) {
+          newErrors.phone = "Số điện thoại phải từ 9 đến 11 chữ số.";
+        } else {
+          delete newErrors.phone; // Clear error if valid
+        }
+        break;
+      case "address":
+        if (!value) {
+          newErrors.address = "Địa chỉ không được để trống.";
+        } else {
+          delete newErrors.address; // Clear error if valid
+        }
+        break;
+      case "idCard":
+        if (!value) {
+          newErrors.idCard = "Số căn cước không được để trống.";
+        } else {
+          delete newErrors.idCard; // Clear error if valid
+        }
+        break;
+      case "gender":
+        if (!value) {
+          newErrors.gender = "Vui lòng chọn giới tính.";
+        } else {
+          delete newErrors.gender; // Clear error if valid
+        }
+        break;
+      default:
+        break;
+    }
+  
+    setErrors(newErrors);
   };
 
   const validateForm = () => {
     const newErrors = {};
+  
+    // Check all fields here
     if (formData.name.length < 5 || formData.name.length > 30) {
       newErrors.name = "Họ tên phải từ 5 đến 30 ký tự.";
     }
-
+  
     const dob = new Date(formData.dob);
-    const minDate = new Date("2022-03-10");
-    const maxDate = new Date("2024-12-12");
-    if (dob < minDate || dob > maxDate) {
-      newErrors.dob = "Ngày tham gia phải trong khoảng từ 10/03/2022 đến 12/12/2024.";
+    const currentDate = new Date();
+    if (dob >= currentDate) {
+      newErrors.dob = "Ngày tháng năm sinh phải nhỏ hơn ngày hiện tại.";
     }
-
+  
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(formData.email)) {
       newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
     }
-
+  
     if (formData.phone.length < 9 || formData.phone.length > 11 || !/^\d+$/.test(formData.phone)) {
       newErrors.phone = "Số điện thoại phải từ 9 đến 11 chữ số.";
     }
-
+  
+    if (!formData.address) {
+      newErrors.address = "Địa chỉ không được để trống.";
+    }
+  
+    if (!formData.idCard) {
+      newErrors.idCard = "Số căn cước không được để trống.";
+    }
+  
+    if (!formData.gender) {
+      newErrors.gender = "Vui lòng chọn giới tính.";
+    }
+  
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Return true if no errors
+    return Object.keys(newErrors).length === 0; // If no errors, form is valid
   };
+
 
   const showSuccessModal = (message) => {
     setSuccessMessage(message); // Cập nhật thông báo
@@ -192,6 +286,21 @@ const ManageCustomer = () => {
     document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
     window.location.reload();
   };
+
+  // Hàm để mở modal thông báo
+  const showErrorModal = (message) => {
+    setErrorMessage(message); // Cập nhật thông báo
+    errorModalRef.current.style.display = "block";
+    document.querySelector(".modal-overlay").style.display = "block";
+  };
+
+  // Hàm để đóng modal thông báo
+  const closeErrorModal = () => {
+    errorModalRef.current.style.display = "none"; // Ẩn modal
+    // document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
+    // window.location.reload();
+  };
+
   const openDeleteModal = (customer) => {
     setCustomerToDelete(customer); // Set customer to be deleted
     deleteModalRef.current.style.display = "block"; // Show delete modal
@@ -216,38 +325,41 @@ const ManageCustomer = () => {
         year: dob.getFullYear(),
       };
   
-      // Create a basic customer data object
-      const customerData = {
-        userId: currentCustomer ? currentCustomer.userId : "string",
-        email: formData.email,
-        name: formData.name,
-        gender: formData.gender,
-        dob: dobData,
-        address: formData.address,
-        phone: formData.phone,
-        roleId: "string",
-        userAvatar: formData.userAvatar,
-        idCard: "string",
-      };
-  
-      // Include gymMembershipId only for adding a new customer
-      if (!currentCustomer) {
-        customerData.gymMembershipId = "string"; // Include gymMembershipId for new customers
-        customerData.password = formData.password; // Include password for new customers
-      }
-  
       try {
         if (currentCustomer) {
+          const customerDataEdit = {
+            userId: currentCustomer.userId,
+            name: formData.name,
+            email: formData.email,
+            gender: formData.gender,
+            dob: dobData,
+            address: formData.address,
+            phone: formData.phone,
+            roleId: "string",
+            userAvatar: formData.userAvatar,
+            idCard: formData.idCard,
+          };
+      
           // Update customer
-          await axios.patch(`http://localhost:5000/api/Users/updateCustomer/${currentCustomer.userId}`, customerData, {
+          await axios.patch(`http://localhost:5000/api/Users/updateCustomer/${currentCustomer.userId}`, customerDataEdit, {
             headers: { Authorization: `Bearer ${token}` },
           });
   
           // Update customer data in the list
           setCustomerDataList((prevData) => prevData.map((customer) => (customer.userId === currentCustomer.userId ? { ...customer, ...customerData } : customer)));
         } else {
+          const customerDataAdd = {
+            email: formData.email,
+            name: formData.name,
+            gender: formData.gender,
+            dob: dobData,
+            address: formData.address,
+            phone: formData.phone,
+            userAvatar: formData.userAvatar,
+            idCard: formData.idCard,
+          };
           // Add new customer
-          const response = await axios.post("http://localhost:5000/api/Users/addcustomer", customerData, {
+          const response = await axios.post("http://localhost:5000/api/Users/addcustomer", customerDataAdd, {
             headers: { Authorization: `Bearer ${token}` },
           });
   
@@ -268,6 +380,8 @@ const ManageCustomer = () => {
         showSuccessModal("Người dùng được lưu thành công");
       } catch (error) {
         console.error("Error saving customer:", error);
+        showErrorModal(error.message);
+
       }
     }
   };
@@ -300,16 +414,31 @@ const ManageCustomer = () => {
     if (file) {
       // Use FileReader to convert image to base64
       const reader = new FileReader();
+  
       reader.onloadend = () => {
+        // Extract base64 data without the "data:image/jpeg;base64," prefix
+        const base64String = reader.result.split(',')[1]; // Remove the prefix
+  
+        // Set preview image for display (include the full base64 string with prefix)
+        setPreviewImage(reader.result.split(',')[1]); // Set only the image data for preview
+  
+        // Store base64 image without the prefix in formData
         setFormData({
           ...formData,
-          userAvatar: reader.result, // Store base64 image
+          userAvatar: base64String, // Store base64 image without the prefix in formData
         });
       };
+  
       reader.readAsDataURL(file); // Convert the file to base64
     }
   };
-  
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value); // Cập nhật nội dung tìm kiếm khi người dùng nhập
+  };
+  const filteredCustomerData = customerData.filter(
+    (Customer) => Customer.email.toLowerCase().includes(searchQuery.toLowerCase()) // Tìm kiếm theo email
+  );
 
   return (
     <>
@@ -319,33 +448,22 @@ const ManageCustomer = () => {
       {/* <!-- ***** Preloader End ***** --> */}
 
       <div className="user-select">
-        <h1>Quản lý người dùng trong hệ thống super gym</h1>
+        <h1>Quản lý khách hàng trong hệ thống super gym</h1>
 
         <div className="select-search-container">
           <div className="search-container">
-            <input type="text" id="searchUser" className="form-control" placeholder="Tìm kiếm..." />
+            <input
+              type="text"
+              id="searchUser"
+              className="form-control"
+              placeholder="Tìm kiếm theo email..."
+              value={searchQuery} // Liên kết với state searchQuery
+              onChange={handleSearchChange} // Cập nhật state khi người dùng nhập
+            />
             <span className="search-icon">
               <SearchIcon />
             </span>
           </div>
-
-          <select className="form-control  form-select" id="selectRole">
-            <option value="">Chọn vai trò</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Nhân viên</option>
-          </select>
-
-          <select className="form-control form-select" id="selectStatus">
-            <option value="">Chọn trạng thái</option>
-            <option value="active">Hoạt động</option>
-            <option value="inactive">Không hoạt động</option>
-          </select>
-
-          <select className="form-control form-select" id="selectGender">
-            <option value="">Chọn giới tính</option>
-            <option value="male">Nam</option>
-            <option value="female">Nữ</option>
-          </select>
         </div>
       </div>
 
@@ -380,14 +498,14 @@ const ManageCustomer = () => {
               </tr>
             </thead>
             <tbody>
-              {currentCustomers.map((customer, index) => (
+            {filteredCustomerData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((customer, index) => (
                 <tr key={index}>
                   <td>
                     <img src={`data:image/jpeg;base64,${customer.userAvatar}`} className="customer-avatar" />
                     {customer.name}
                   </td>
                   {/* <td>{customer.gender}</td> */}
-                  <td>{customer.gender === "Male" ? "Nam" : "Nữ"}</td>
+                  <td>{customer.gender === "male" ? "Nam" : "Nữ"}</td>
                   <td>{formatDate(customer.dob)}</td>
                   <td>{customer.email}</td>
                   <td>{customer.phone}</td>
@@ -441,7 +559,7 @@ const ManageCustomer = () => {
           <div className="modal-content">
             <form id="employeeForm" onSubmit={handleSubmit}>
               <div className="modal-header">
-                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Sửa thông tin người dùng" : "Thêm khách hàng"}</h4>
+                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Sửa thông tin khách hàng" : "Thêm khách hàng"}</h4>
                 <a type="button" className="close" onClick={closeModal}>
                   <CloseIcon />
                 </a>
@@ -450,77 +568,70 @@ const ManageCustomer = () => {
                 {/* First row of input fields */}
                 <div className="row">
                   <div className="form-group col">
-                    <label>Họ tên <span className="icon-input">(*)</span></label>
-                    <input type="text" className="form-control" name="name" value={formData.name} onChange={handleInputChange} required />
+                    <label>
+                      Họ tên <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className={`form-control ${errors.name ? "is-invalid" : ""}`} name="name" value={formData.name} onChange={handleInputChange} required />
                     {errors.name && <div className="error-message">{errors.name}</div>}
                   </div>
 
                   <div className="form-group col">
-                    <label>Ngày tham gia</label>
-                    <input type="date" className="form-control" name="dob" value={formData.dob} onChange={handleInputChange} required />
+                    <label>
+                      Ngày tháng năm sinh <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="date" className={`form-control ${errors.dob ? "is-invalid" : ""}`} name="dob" value={formData.dob} onChange={handleInputChange} required />
                     {errors.dob && <div className="error-message">{errors.dob}</div>}
                   </div>
                 </div>
 
                 <div className="row">
                   <div className="form-group col">
-                    <label>Email</label>
-                    <input type="email" className="form-control" name="email" value={formData.email} onChange={handleInputChange} required />
+                    <label>
+                      Email <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="email" className={`form-control ${errors.email ? "is-invalid" : ""}`} name="email" value={formData.email} onChange={handleInputChange} required />
                     {errors.email && <div className="error-message">{errors.email}</div>}
                   </div>
 
                   <div className="form-group col">
-                    <label>Số điện thoại <span className="icon-input">(*)</span></label>
-                    <input type="text" className="form-control" name="phone" value={formData.phone} onChange={handleInputChange} required />
+                    <label>
+                      Số điện thoại <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className={`form-control ${errors.phone ? "is-invalid" : ""}`} name="phone" value={formData.phone} onChange={handleInputChange} required />
                     {errors.phone && <div className="error-message">{errors.phone}</div>}
                   </div>
                 </div>
 
-                {/* Conditionally render the password input only if adding a new customer */}
-                {!currentCustomer && (
-                  <div className="row">
-                    <div className="form-group col">
-                      <label>Mật khẩu</label>
-                      <input type="password" className="form-control" name="password" value={formData.password} onChange={handleInputChange} required />
-                    </div>
+                <div className="row">
+                  <div className="form-group col">
+                    <label>Ảnh đại diện</label>
+                    <input type="file" className="form-control" onChange={handleImageChange} accept="image/*" ref={fileInputRef} />
                   </div>
-                )}
 
-                {/* <div className="row">
-                  <div className="form-group col">
-                    <label>Địa chỉ</label>
-                    <input type="text" className="form-control " name="address" value={formData.address} onChange={handleInputChange} required />
-                  </div>
-                  <div className="form-group col">
-                    <label>Chọn gói</label>
-                    <select
-                      className="form-control form-select"
-                      name="package"
-                      value={formData.package}
-                      onChange={handleInputChange}
-                    >
-                      <option value="Gói tập 1 tháng">Gói tập 1 tháng</option>
-                      <option value="Gói tập 3 tháng">Gói tập 3 tháng</option>
-                    </select>
-                  </div>
-                </div> */}
+                  {previewImage && (
+                    <div className="form-group col">
+                      <img src={`data:image/jpeg;base64,${previewImage}`} alt="Ảnh xem trước" className="preview-image" />
+                    </div>
+                  )}
+                </div>
+
 
                 <div className="row">
                   <div className="form-group col">
-                    <label>Ảnh nhận diện <span className="icon-input">(*)</span></label>
-                    <input
-                      type="file"
-                      className="form-control"
-                      onChange={handleImageChange}
-                      accept="image/*"
-                      ref={fileInputRef} // Thêm ref ở đây
-                    />
+                    <label>
+                      Địa chỉ <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className={`form-control ${errors.address ? "is-invalid" : ""}`} name="address" value={formData.address} onChange={handleInputChange} required />
+                    {errors.address && <div className="error-message">{errors.address}</div>}
                   </div>
-                  {previewImage && (
-                    <div className="form-group col">
-                      <img src={previewImage} alt="Ảnh xem trước" className="preview-image" />
-                    </div>
-                  )}
+
+                  <div className="form-group col">
+                    <label>
+                      Số căn cước <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className={`form-control ${errors.idCard ? "is-invalid" : ""}`} name="idCard" value={formData.idCard} onChange={handleInputChange} required />
+                    {errors.idCard && <div className="error-message">{errors.idCard}</div>}
+                  </div>
                 </div>
 
                 {/* Gender radio buttons */}
@@ -604,6 +715,29 @@ const ManageCustomer = () => {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeSuccessModal}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Error Modal */}
+      <div ref={errorModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-notify">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Thông báo</h4>
+              <a type="button" className="close" onClick={closeErrorModal}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body">
+              <p>{errorMessage}</p> {/* Hiển thị lỗi từ state */}
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" onClick={closeErrorModal}>
                 OK
               </button>
             </div>

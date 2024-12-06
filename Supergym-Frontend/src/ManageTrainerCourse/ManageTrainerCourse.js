@@ -154,6 +154,8 @@ const ManageTrainerCourse = () => {
         pricePerPersonPerSession: 0,
         pricePerPersonPerMonth: 0,
       });
+      closeModal();
+      showSuccessModal("Gói Boxing được lưu thành công");
     } catch (error) {
       if (error.response && error.response.status === 409) {
         showErrorModal("Gói Trainer đã tồn tại, vui lòng thêm gói Trainer khác!");
