@@ -457,7 +457,7 @@ const Home = () => {
             </section>
             {/* <!-- ***** Our Classes End ***** --> */}
             {/* SCHEDULE START */}
-            <section className="section" id="schedule">
+            {/* <section className="section" id="schedule">
                 <div className="container">
                     <div className="row">
                         <div className="col-lg-6 offset-lg-3">
@@ -520,7 +520,7 @@ const Home = () => {
                         </div>
                     </div>
                 </div>
-            </section>
+            </section> */}
             {/* SCHEDULE END */}
 
             {/* <!-- ***** Testimonials Starts ***** --> */}

@@ -254,26 +254,36 @@ const ManageSchedule = () => {
   };
 
   //END SCHEDULE
-
+  useEffect(() => {
+    // Automatically set today's date when the page is loaded
+    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    setSelectedDate(today); // Set the selectedDate to today's date
+  }, []); 
   // Hàm lấy dữ liệu huấn luyện viên từ API
   useEffect(() => {
-    const fetchTrainerData = async () => {
+    const fetchTrainerData = async (date = "") => {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
           console.error("No token found in localStorage");
           return;
         }
-        const response = await fetch("http://localhost:5000/api/Schedule/Slots/All", {
+
+        // Cập nhật URL với tham số ngày được chọn (hoặc mặc định là All nếu không có ngày chọn)
+        const apiUrl =  `http://localhost:5000/api/Schedule/Slots/All?inputDate=${date}`;
+
+        const response = await fetch(apiUrl, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         });
+
         if (!response.ok) {
           throw new Error("Failed to fetch trainer data");
         }
+
         const data = await response.json();
         setAllTrainerData(data); // Lưu toàn bộ dữ liệu gốc
         setTrainers(data); // Hiển thị ban đầu với tất cả dữ liệu
@@ -284,20 +294,14 @@ const ManageSchedule = () => {
       }
     };
 
-    fetchTrainerData();
-  }, []);
+    // Gọi hàm fetchTrainerData với ngày đã chọn (hoặc không có ngày)
+    fetchTrainerData(selectedDate);
+  }, [selectedDate]); // Lần này useEffect sẽ phụ thuộc vào selectedDate
 
+  // Xử lý thay đổi ngày
   const handleDateChange = (e) => {
-    const selected = e.target.value; // Lấy ngày được chọn
-    setSelectedDate(selected);
-
-    // Lọc dữ liệu theo ngày được chọn
-    const filteredData = allTrainerData.map((trainer) => {
-      // Kiểm tra nếu trainer.slots tồn tại và là mảng
-      const filteredSlots = Array.isArray(trainer.slots) ? trainer.slots.filter((slot) => slot.date === selected) : []; // Nếu không có slots, trả về mảng rỗng
-      return { ...trainer, slots: filteredSlots };
-    });
-    setTrainers(filteredData); // Cập nhật dữ liệu hiển thị theo ngày
+    const selected = e.target.value; // Lấy ngày được chọn từ input
+    setSelectedDate(selected); // Cập nhật selectedDate và gọi lại fetch API
   };
 
   return (
@@ -322,20 +326,12 @@ const ManageSchedule = () => {
                           type="date"
                           onChange={handleDateChange} // Handle date change
                           placeholder="Chọn ngày trong tuần"
+                          value={selectedDate} 
                         />
                       </div>
                     </div>
                   </div>
-                  {/* Before removing */}
-                  {/* <button
-                    className="btn btn-success btn-sm"
-                    onClick={openBookTrainerModal} // No longer passing trainer
-                  >
-                    Đăng kí Trainer
-                  </button> */}
                   <button className="btn btn-success btn-sm" onClick={handleRegisterTrainer}>Đăng ký Trainer</button>
-
-                  {/* After removing (just remove the button) */}
                 </section>
               </div>
             </div>

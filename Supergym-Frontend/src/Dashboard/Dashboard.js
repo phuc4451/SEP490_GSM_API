@@ -11,12 +11,14 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, DoughnutController, Arc
 const Home = () => {
   // State cho các bộ lọc
   const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedMonthPackage, setSelectedMonthPackage] = useState("");
   const [selectedDay, setSelectedDay] = useState("");
   const [monthlyData, setMonthlyData] = useState([]);
   const [totalRevenueAllMonth, setTotalRevenueAllMonth] = useState([]);
   const [dailyCheckinData, setDailyCheckinData] = useState([]);
   // Labels cho tháng và ngày trong tuần
   const monthlyLabels = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+  const monthlyPackageLabels = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
   const dailyLabels = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"];
 
   // Dữ liệu gốc cho biểu đồ Tổng tiền theo tháng
@@ -91,6 +93,21 @@ const Home = () => {
     quantityPackage: [],
   });
 
+  const [op, setOp] = useState({
+    plugins: {
+      legend: {
+        display: true,
+        position: "bottom", // Đặt legend ở dưới
+        align: "start", // Căn trái
+        labels: {
+          boxWidth: 20, // Độ rộng của hộp màu trong legend
+          padding: 10, // Khoảng cách giữa các mục trong legend
+        },
+      },
+    },
+    maintainAspectRatio: false,
+  });
+
   useEffect(() => {
     // Lấy dữ liệu doanh thu từ API
     const fetchRevenueData = async () => {
@@ -116,48 +133,6 @@ const Home = () => {
         });
       } catch (error) {
         console.error("Error fetching registration data:", error);
-      }
-    };
-
-    const fetchPackageSold = async () => {
-      try {
-        // Get current year
-        const currentYear = new Date().getFullYear();
-
-        // Calculate the start and end dates of the year
-        const startDate = new Date(currentYear, 0, 1); // January 1st of current year
-        const endDate = new Date(currentYear, 11, 31); // December 31st of current year
-
-        // Format dates to YYYY-MM-DD (use ISO string and slice to get the date part)
-        const startDateString = startDate.toISOString().slice(0, 10);
-        const endDateString = endDate.toISOString().slice(0, 10);
-
-        // Call the API with dynamic start and end dates
-        const response = await fetch(`http://localhost:5000/api/Finance/sold-packages?startDate=${startDateString}&endDate=${endDateString}`);
-        const data = await response.json();
-
-        // Calculate the total packages and extract names and quantities
-        let totalPackage = 0;
-        const namePackage = [];
-        const quantityPackage = [];
-
-        // Iterate through the data to extract package names and quantities
-        for (const packageName in data) {
-          if (data.hasOwnProperty(packageName)) {
-            namePackage.push(packageName);
-            quantityPackage.push(data[packageName]);
-            totalPackage += data[packageName]; // Add the quantity to the total package count
-          }
-        }
-
-        // Update the state with the calculated values
-        setPackageSold({
-          totalPackage,
-          namePackage,
-          quantityPackage,
-        });
-      } catch (error) {
-        console.error("Error fetching package sold data:", error);
       }
     };
 
@@ -197,6 +172,45 @@ const Home = () => {
     fetchRevenueData();
     fetchRegistrationData();
   }, []);
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  // Function to fetch package sales data based on the selected month
+  const fetchPackageSold = async (month) => {
+    try {
+      // If no month is selected, fetch data for all months
+      const monthParam = month ? monthNames[month - 1] : "AllMonths";
+
+      const response = await fetch(`http://localhost:5000/api/Finance/sold-packages?month=${monthParam}`);
+      const data = await response.json();
+
+      let totalPackage = 0;
+      const namePackage = [];
+      const quantityPackage = [];
+
+      // Iterate through the data to extract package names and quantities
+      for (const packageName in data) {
+        if (data.hasOwnProperty(packageName)) {
+          namePackage.push(packageName);
+          quantityPackage.push(data[packageName]);
+          totalPackage += data[packageName];
+        }
+      }
+
+      // Update the state with the fetched data
+      setPackageSold({
+        totalPackage,
+        namePackage,
+        quantityPackage,
+      });
+    } catch (error) {
+      console.error("Error fetching package sold data:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPackageSold(selectedMonthPackage); // Fetch data based on the selected month
+  }, [selectedMonthPackage]);
 
   const filteredDailyCheckinData = {
     labels: selectedDay ? [dailyLabels[selectedDay - 1]] : dailyLabels,
@@ -239,7 +253,7 @@ const Home = () => {
 
   // Package sales data
   const packageSalesData = {
-    labels: packageSold.namePackage, // Package names as labels
+    labels: packageSold.namePackage.map((name, index) => `${name}: ${packageSold.quantityPackage[index]}`), // Combine name and quantity for the label
     datasets: [
       {
         label: "Số lượng bán ra",
@@ -271,9 +285,8 @@ const Home = () => {
                   <h4>Doanh thu trong tháng</h4>
                   <p>{`${revenueData.revenueThisMonth.toLocaleString()} VND`}</p>
                   <span className={`stat-percentage ${revenueData.growthPercentage > 0 ? "text-success" : "text-danger"}`}>
-  {revenueData.growthPercentage > 0 ? "↑" : "↓"} {Math.abs(revenueData.growthPercentage).toFixed(2)}%
-</span>
-
+                    {revenueData.growthPercentage > 0 ? "↑" : "↓"} {Math.abs(revenueData.growthPercentage).toFixed(2)}%
+                  </span>
                 </div>
               </div>
             </div>
@@ -281,13 +294,26 @@ const Home = () => {
             {/* <!-- Pie Chart - Gói bán ra với thông tin bên phải --> */}
             <div className="col-lg-5 col-md-12 align-items-center stat-card">
               <div className="row w-100">
-                <div className="col-md-6 d-flex align-items-center justify-content-center" style={{ maxWidth: "300px" }}>
-                  <Doughnut data={packageSalesData} options={{ maintainAspectRatio: false }} />
+                <div className="col-md-6 d-flex align-items-left justify-content-left chart-container" style={{ marginBottom: packageSold.namePackage.length > 0 ? "20px" : "0" }}>
+                  <Doughnut data={packageSalesData} options={op} />
                 </div>
 
-                <div className="col-md-6 d-flex flex-column justify-content-center stat-info">
-                  <h4>Lượng gói bán được: {`${packageSold.totalPackage.toLocaleString()}`}</h4>
-                  <ul>{packageSold.namePackage.length > 0 ? packageSold.namePackage.map((name, index) => <li key={index}>{`${name}: ${packageSold.quantityPackage[index]}`}</li>) : <li>Loading...</li>}</ul>
+                <div className="col-md-6 d-flex flex-column justify-content-start stat-info">
+                  <div className="month-package-filter pb-1">
+                    <label className="pb-1 text-start" htmlFor="monthPackageFilter" style={{ display: "block" }}>
+                      Chọn tháng:
+                    </label>
+                    <select id="monthPackageFilter" className="form-select" value={selectedMonthPackage} onChange={(e) => setSelectedMonthPackage(e.target.value)}>
+                      <option value="">Tất cả tháng</option>
+                      {monthlyPackageLabels.map((monthPackage, index) => (
+                        <option key={index} value={index + 1}>
+                          {monthPackage}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <h4 className="text-start">Lượng gói bán được: {`${packageSold.totalPackage.toLocaleString()}`}</h4>
                 </div>
               </div>
             </div>
@@ -305,7 +331,7 @@ const Home = () => {
                   </svg>
                 </div>
                 <div className="stat-info">
-                  <h4>Lượt khách đăng ký</h4>
+                  <h4>Lượt khách đăng ký trong tháng</h4>
                   <p>{registrationData.registrationsThisMonth} Lượt</p>
                   <span className={`stat-percentage ${registrationData.growthPercentage > 0 ? "text-success" : "text-danger"}`}>
                     {registrationData.growthPercentage > 0 ? "↑" : "↓"} {Math.abs(registrationData.growthPercentage).toFixed(2)}%
@@ -351,7 +377,7 @@ const Home = () => {
             {/* Biểu đồ Tổng tiền theo tháng */}
             <div className="col-md-6">
               <h4 className="chart-title">Biểu đồ doanh thu theo tháng</h4>
-              <h4 className="chart-title">Doanh thu trong năm: {totalRevenueAllMonth} VND</h4>
+              <h4 className="chart-title">Doanh thu trong năm: {totalRevenueAllMonth.toLocaleString()} VND</h4>
               <div className="small-chart">
                 <Bar data={filteredMonthlyData} options={options} />
               </div>

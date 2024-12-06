@@ -240,7 +240,7 @@ body {
   
   .table-fixed tbody {
     display: block;
-    height: 220px; /* Giữ chiều cao cố định cho phần thân bảng (2 hàng) */
+    height: 440px !important; /* Giữ chiều cao cố định cho phần thân bảng (2 hàng) */
   }
   
   .table-fixed thead, .table-fixed tbody tr {
