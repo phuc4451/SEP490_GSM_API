@@ -37,35 +37,62 @@ function Signin() {
 
   const handleLogin = async (event) => {
     event.preventDefault();
-    setIsLoading(true);  // Show preloader during login attempt
-
+    setIsLoading(true); // Show preloader during login attempt
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/login", { email, password });
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/loginweb",
+        { email, password }
+      );
       if (response.status === 200) {
         const token = response.data.jwTtoken;
         localStorage.setItem("token", token);
         navigate("/dashboard");
       }
     } catch (err) {
-      setError("Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản và mật khẩu.");
+      //setError("Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản và mật khẩu.");
       console.error(err);
+      if (err.response && err.response.status === 403) {
+        setError(err.response.data.message); // Display clean "Access denied"
+      } else if (err.response) {
+        setError(err.response.data.message);
+      } else {
+        setError("An unexpected error occurred.");
+      }
     } finally {
-      setIsLoading(false);  // Hide preloader after login attempt
+      setIsLoading(false); // Hide preloader after login attempt
     }
   };
   return (
     <div className="app-signin-container">
-    {isLoading ? <Preloader /> : <div>{/* Nội dung khác của ManageCustomer */}</div>}
+      {isLoading ? (
+        <Preloader />
+      ) : (
+        <div>{/* Nội dung khác của ManageCustomer */}</div>
+      )}
 
       <div className="login-container">
         <div className="login-box">
           <img src={logo} alt="logo" className="logo-signin" />
           <form onSubmit={handleLogin}>
             <div className="input-group-signin">
-              <input className="input-signin" type="text" placeholder="Tài khoản" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input
+                className="input-signin"
+                type="text"
+                placeholder="Tài khoản"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
             <div className="input-group">
-              <input className="input-signin" type="password" placeholder="Mật khẩu" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              <input
+                className="input-signin"
+                type="password"
+                placeholder="Mật khẩu"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
             {error && <p className="error-message">{error}</p>}
             <button type="submit" className="login-btn">

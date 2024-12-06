@@ -168,6 +168,13 @@ namespace Alpha_API.Controllers
 		[HttpPost("login")]
 		public async Task<ActionResult> Login([FromBody] LogUserDto logUser)
 		{
+			// Retrieve the uid claim
+			var userIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
+
+			if (userIdClaim != null)
+			{
+				return Ok("User is already logged in.");
+			}
 			var requestUrl = $"{_firebaseAuthUrl}{_firebaseApiKey}";
 
 			var requestBody = new
@@ -192,9 +199,6 @@ namespace Alpha_API.Controllers
 				var responseBody = await response.Content.ReadAsStringAsync();
 				var signInResponse = JsonConvert.DeserializeObject<FirebaseSignInResponse>(responseBody);
 
-				// After signing in and receiving the ID token:
-				HttpContext.Session.SetString("FirebaseIdToken", signInResponse.IdToken);
-
 				var decodedToken = await _firebaseAuth.VerifyIdTokenAsync(signInResponse.IdToken);
 				var uid = decodedToken.Uid;
 
@@ -217,6 +221,11 @@ namespace Alpha_API.Controllers
 				if (firebaseUser.ContainsKey("roleId"))
 				{
 					var roleId = firebaseUser["roleId"].ToString();
+					var roleName = await GetRoleNameFromFirebase(roleId);
+					if (roleName.Equals("staff"))
+					{
+						return StatusCode(StatusCodes.Status403Forbidden, new { message = "Access denied" });
+					}
 
 					var existingUser = await _firebaseAuth.GetUserByEmailAsync(signInResponse.Email);
 
@@ -224,7 +233,107 @@ namespace Alpha_API.Controllers
 					if (existingUser.EmailVerified)
 					{
 						// Email is verified, proceed with login
-						var roleName = await GetRoleNameFromFirebase(roleId);
+						var token = GenerateJwtToken(existingUser.Email, roleName, uid);
+						// After signing in and receiving the ID token:
+						HttpContext.Session.SetString("FirebaseIdToken", signInResponse.IdToken);
+						return Ok(new { jwTtoken = token, firebaseToken = signInResponse.IdToken });
+					}
+					else
+					{
+						// Email is not verified
+						return BadRequest("Please verify your email before logging in.");
+					}
+
+
+					//// Return the Firebase ID token, and additional details as JSON result
+					//return Ok(new
+					//{
+					//	token = signInResponse.IdToken,
+					//	email = signInResponse.Email,
+					//	refreshToken = signInResponse.RefreshToken,
+					//	expiresIn = signInResponse.ExpiresIn
+					//});
+				}
+
+				return StatusCode(400, new { message = "No role found" });
+
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { message = "Exception occurred during sign-in", details = ex.Message });
+			}
+		}
+
+		[HttpPost("loginWeb")]
+		public async Task<ActionResult> LoginWeb([FromBody] LogUserDto logUser)
+		{
+			// Retrieve the uid claim
+			var userIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
+
+			if (userIdClaim != null)
+			{
+				return Ok("User is already logged in.");
+			}
+
+			var requestUrl = $"{_firebaseAuthUrl}{_firebaseApiKey}";
+
+			var requestBody = new
+			{
+				email = logUser.Email,
+				password = logUser.Password,
+				returnSecureToken = true
+			};
+
+			var content = new StringContent(JsonConvert.SerializeObject(requestBody), Encoding.UTF8, "application/json");
+
+			try
+			{
+				var response = await _httpClient.PostAsync(requestUrl, content);
+
+				if (!response.IsSuccessStatusCode)
+				{
+					var errorResponse = await response.Content.ReadAsStringAsync();
+					return BadRequest(new { message = "Error signing in", details = errorResponse });
+				}
+
+				var responseBody = await response.Content.ReadAsStringAsync();
+				var signInResponse = JsonConvert.DeserializeObject<FirebaseSignInResponse>(responseBody);
+
+				var decodedToken = await _firebaseAuth.VerifyIdTokenAsync(signInResponse.IdToken);
+				var uid = decodedToken.Uid;
+
+				_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+
+				//_firebaseClient = new FirebaseClient(_firebaseBaseUrl,
+				//	new FirebaseOptions
+				//	{
+				//		AuthTokenAsyncFactory = () => Task.FromResult(signInResponse.IdToken)
+				//	});
+
+				var firebaseUser = await _firebaseClient
+					.Child("users")
+					.Child(uid)
+					.OnceSingleAsync<Dictionary<string, object>>();
+
+				// Now you can access fields dynamically
+				if (firebaseUser.ContainsKey("roleId"))
+				{
+					var roleId = firebaseUser["roleId"].ToString();
+					var roleName = await GetRoleNameFromFirebase(roleId);
+					if (!roleName.Equals("admin") && !roleName.Equals("staff"))
+					{
+						return StatusCode(StatusCodes.Status403Forbidden, new { message = "Access denied" });
+					}
+					// After signing in and receiving the ID token:
+					HttpContext.Session.SetString("FirebaseIdToken", signInResponse.IdToken);
+
+					var existingUser = await _firebaseAuth.GetUserByEmailAsync(signInResponse.Email);
+
+					//check if email is verified
+					if (existingUser.EmailVerified)
+					{
+						// Email is verified, proceed with login
 						var token = GenerateJwtToken(existingUser.Email, roleName, uid);
 
 						return Ok(new { jwTtoken = token, firebaseToken = signInResponse.IdToken });
