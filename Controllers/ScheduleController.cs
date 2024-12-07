@@ -346,196 +346,193 @@ namespace Alpha_API.Controllers
 
 
         [HttpGet("Slots/All")]
-        public async Task<ActionResult<IEnumerable<Object>>> GetAllTrainersSchedules(DateTime? inputDate)
+        public async Task<ActionResult<IEnumerable<object>>> GetAllTrainersSchedules(DateTime? inputDate)
         {
-            _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
-
-            // Fetch all trainers
-            var trainersTask = _firebaseClient.Child("Trainers").OnceAsync<Trainer>();
-            // Fetch all schedules
-            var schedulesTask = _firebaseClient.Child("Schedules").OnceAsync<Schedule>();
-            // Fetch all slots
-            var slotsTask = _firebaseClient.Child("Slots").OnceAsync<Slot>();
-            // Fetch all users (customers)
-            var usersTask = _firebaseClient.Child("users").OnceAsync<User>();
-            // Fetch TrainerRentalRegistrations and BoxingRegistrations
-            var trainerRentalRegistrationsTask = _firebaseClient.Child("TrainerRentalRegistrations").OnceAsync<TrainerRentalRegistration>();
-            var boxingRegistrationsTask = _firebaseClient.Child("BoxingRegistrations").OnceAsync<BoxingRegistration>();
-            // Fetch TrainerRentalPlans and BoxingMembershipPlans
-            var trainerRentalPlansTask = _firebaseClient.Child("TrainerRentalPlans").OnceAsync<TrainerRentalPlan>();
-            var boxingMembershipPlansTask = _firebaseClient.Child("BoxingMembershipPlans").OnceAsync<BoxingMembershipPlan>();
-            // Fetch RentalOptions and BoxingOptions
-            var rentalOptionsTask = _firebaseClient.Child("RentalOptions").OnceAsync<RentalOption>();
-            var boxingOptionsTask = _firebaseClient.Child("BoxingOptions").OnceAsync<BoxingOption>();
-
-            // Wait for all queries to complete
-            await Task.WhenAll(trainersTask, schedulesTask, slotsTask, usersTask, trainerRentalRegistrationsTask, boxingRegistrationsTask, trainerRentalPlansTask, boxingMembershipPlansTask, rentalOptionsTask, boxingOptionsTask);
-
-            var trainers = trainersTask.Result;
-            var schedules = schedulesTask.Result;
-            var slots = slotsTask.Result;
-            var users = usersTask.Result;
-            var trainerRentalRegistrations = trainerRentalRegistrationsTask.Result;
-            var boxingRegistrations = boxingRegistrationsTask.Result;
-            var trainerRentalPlans = trainerRentalPlansTask.Result;
-            var boxingMembershipPlans = boxingMembershipPlansTask.Result;
-            var rentalOptions = rentalOptionsTask.Result;
-            var boxingOptions = boxingOptionsTask.Result;
-
-            // Group schedules by trainer
-            var groupedSchedules = trainers
-                .GroupJoin(schedules,
-                    trainer => trainer.Key, // Tìm TrainerId
-                    schedule => schedule.Object.TrainerId, // Tìm các lịch theo TrainerId
-                    (trainer, scheduleGroup) => new
-                    {
-                        TrainerId = trainer.Key,
-                        TrainerName = trainer.Object.Name,
-                        Schedules = scheduleGroup.ToList() // Chuyển nhóm schedule thành danh sách
-                    })
-                .ToList();
-
-            // Now build the result by slot, including customers and rental/boxing options
-            var result = new List<object>();
-
-            foreach (var trainerGroup in groupedSchedules)
+            try
             {
-                var trainerName = trainerGroup.TrainerName;
-                var trainerId = trainerGroup.TrainerId;
+                _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
-                // Group by date for the trainer, filtering by date if provided
-                var groupedByDate = slots
-                    .Where(slot => slot.Object.ScheduleId != null && slot.Object.ScheduleId != "" && trainerGroup.Schedules.Any(s => s.Key == slot.Object.ScheduleId))
-                    .Where(slot => !inputDate.HasValue || slot.Object.Date == DateOnly.FromDateTime(inputDate.Value)) // Chuyển inputDate thành DateOnly
-                    .GroupBy(slot => slot.Object.Date)
-                    .ToList();
+                // Định nghĩa các nhiệm vụ riêng biệt với kiểu trả về cụ thể
+                var trainersTask = _firebaseClient.Child("Trainers").OnceAsync<Trainer>();
+                var schedulesTask = _firebaseClient.Child("Schedules").OnceAsync<Schedule>();
+                var slotsTask = _firebaseClient.Child("Slots").OnceAsync<Slot>();
+                var usersTask = _firebaseClient.Child("users").OnceAsync<User>();
+                var trainerRentalRegistrationsTask = _firebaseClient.Child("TrainerRentalRegistrations").OnceAsync<TrainerRentalRegistration>();
+                var boxingRegistrationsTask = _firebaseClient.Child("BoxingRegistrations").OnceAsync<BoxingRegistration>();
+                var trainerRentalPlansTask = _firebaseClient.Child("TrainerRentalPlans").OnceAsync<TrainerRentalPlan>();
+                var boxingMembershipPlansTask = _firebaseClient.Child("BoxingMembershipPlans").OnceAsync<BoxingMembershipPlan>();
+                var rentalOptionsTask = _firebaseClient.Child("RentalOptions").OnceAsync<RentalOption>();
+                var boxingOptionsTask = _firebaseClient.Child("BoxingOptions").OnceAsync<BoxingOption>();
 
+                // Chờ tất cả các nhiệm vụ hoàn thành đồng thời
+                await Task.WhenAll(
+                    trainersTask,
+                    schedulesTask,
+                    slotsTask,
+                    usersTask,
+                    trainerRentalRegistrationsTask,
+                    boxingRegistrationsTask,
+                    trainerRentalPlansTask,
+                    boxingMembershipPlansTask,
+                    rentalOptionsTask,
+                    boxingOptionsTask
+                );
 
-                var trainerSlots = new List<object>();
+                // Giải nén dữ liệu và chuyển thành Dictionary cho tra cứu nhanh
+                var trainers = (await trainersTask).ToDictionary(t => t.Key, t => t.Object);
+                var schedules = (await schedulesTask).ToList();
+                var slots = (await slotsTask).ToList();
+                var users = (await usersTask).ToDictionary(u => u.Key, u => u.Object);
+                var trainerRentalRegistrations = (await trainerRentalRegistrationsTask).ToDictionary(tr => tr.Object.ScheduleId, tr => tr.Object);
+                var boxingRegistrations = (await boxingRegistrationsTask).ToDictionary(br => br.Object.ScheduleId, br => br.Object);
+                var trainerRentalPlans = (await trainerRentalPlansTask).ToDictionary(rp => rp.Key, rp => rp.Object);
+                var boxingMembershipPlans = (await boxingMembershipPlansTask).ToDictionary(bp => bp.Key, bp => bp.Object);
+                var rentalOptions = (await rentalOptionsTask).ToDictionary(ro => ro.Key, ro => ro.Object.Description);
+                var boxingOptions = (await boxingOptionsTask).ToDictionary(bo => bo.Key, bo => bo.Object.Description);
 
-                foreach (var dateGroup in groupedByDate)
+                // Tạo Dictionary cho Schedules theo TrainerId
+                var schedulesByTrainer = schedules.GroupBy(s => s.Object.TrainerId)
+                                                  .ToDictionary(g => g.Key, g => g.ToList());
+
+                // Tạo Dictionary cho Schedules theo ScheduleId
+                var schedulesById = schedules.ToDictionary(s => s.Key, s => s.Object);
+
+                // Lọc slots theo inputDate nếu có
+                if (inputDate.HasValue)
                 {
-                    var date = dateGroup.Key;
-                    var slotsForDate = dateGroup.ToList();
+                    var targetDate = DateOnly.FromDateTime(inputDate.Value);
+                    slots = slots.Where(slot => slot.Object.Date == targetDate).ToList();
+                }
 
-                    foreach (var slot in slotsForDate)
+                // Tạo Dictionary cho Slots theo ScheduleId
+                var slotsByScheduleId = slots.GroupBy(slot => slot.Object.ScheduleId)
+                                             .ToDictionary(g => g.Key, g => g.ToList());
+
+                var result = new List<object>();
+
+                foreach (var trainer in trainers)
+                {
+                    var trainerName = trainer.Value.Name;
+                    var trainerId = trainer.Key;
+
+                    if (!schedulesByTrainer.TryGetValue(trainerId, out var trainerSchedules))
                     {
-                        var timeSlot = _timeSlotService.GetTimeSlot(slot.Object.TimeSlotId); // Assuming this gets the time slot info
-
-                        // Get the customers (userIds) for the slot
-                        var customersIds = schedules
-                            .Where(s => s.Key == slot.Object.ScheduleId) // Find the schedule for the slot
-                            .SelectMany(s => s.Object.UserIds?.Split(',') ?? Array.Empty<string>()) // Get all userIds (customers) from the schedule
-                            .ToList();
-
-                        // Fetch user details for customers (names) from Users
-                        var customerDetails = users
-                            .Where(u => customersIds.Contains(u.Key))  // Filter users by the customerIds (userIds)
-                            .Select(u => new
-                            {
-                                u.Object.Name
-                            })
-                            .ToList();
-
-                        // Lookup Rental or Boxing Registration to get the planId
-                        var planId = string.Empty;
-                        var rentalOptionId = string.Empty;
-                        var boxingOptionId = string.Empty;
-
-                        // Check if it's a TrainerRentalRegistration
-                        var trainerRentalRegistration = trainerRentalRegistrations
-                            .FirstOrDefault(tr => tr.Object.ScheduleId == slot.Object.ScheduleId);
-
-                        if (trainerRentalRegistration != null)
+                        // Trainer không có schedule
+                        result.Add(new
                         {
-                            planId = trainerRentalRegistration.Object.PlanId;
-                            var rentalPlan = trainerRentalPlans
-                                .FirstOrDefault(rp => rp.Key == planId);
-
-                            if (rentalPlan != null)
-                            {
-                                rentalOptionId = rentalPlan.Object.RentalOptionId;
-                            }
-                        }
-                        else
-                        {
-                            // Check if it's a BoxingRegistration
-                            var boxingRegistration = boxingRegistrations
-                                .FirstOrDefault(br => br.Object.ScheduleId == slot.Object.ScheduleId);
-
-                            if (boxingRegistration != null)
-                            {
-                                planId = boxingRegistration.Object.BoxingMembershipPlanId;
-                                var boxingPlan = boxingMembershipPlans
-                                    .FirstOrDefault(bp => bp.Key == planId);
-
-                                if (boxingPlan != null)
-                                {
-                                    boxingOptionId = boxingPlan.Object.BoxingOptionId;
-                                }
-                            }
-                        }
-
-                        // Lookup descriptions from RentalOptions or BoxingOptions
-                        var rentalOptionDescription = rentalOptions
-                            .Where(ro => ro.Key == rentalOptionId) // Assuming RentalOptionId is part of RentalPlans
-                            .Select(ro => ro.Object.Description)
-                            .FirstOrDefault();
-
-                        var boxingOptionDescription = boxingOptions
-                            .Where(bo => bo.Key == boxingOptionId) // Assuming BoxingOptionId is part of BoxingPlans
-                            .Select(bo => bo.Object.Description)
-                            .FirstOrDefault();
-
-                        // Add the slot details along with customers and options to the result
-                        trainerSlots.Add(new
-                        {
-                            Date = date.ToString("yyyy-MM-dd"),
-                            TimeSlot = timeSlot,
-                            Customers = customerDetails.Any()
-                                ? customerDetails.Cast<object>().ToList()  // Convert customerDetails to List<object>
-                                : new List<object> { new { Message = "No customers" } },
-                            RentalOption = rentalOptionDescription ?? "No rental option",
-                            BoxingOption = boxingOptionDescription ?? "No boxing option"
+                            TrainerName = trainerName,
+                            Schedules = "No slots found for this trainer"
                         });
+                        continue;
                     }
 
-                    // If the trainer has no slots for the day, we still show the date but with an empty customer list
+                    var trainerSlots = new List<object>();
+
+                    foreach (var schedule in trainerSchedules)
+                    {
+                        var scheduleId = schedule.Key;
+
+                        if (!slotsByScheduleId.TryGetValue(scheduleId, out var scheduleSlots))
+                        {
+                            // Schedule không có slot
+                            trainerSlots.Add(new
+                            {
+                                Date = schedule.Object.FirstSlot.ToString("yyyy-MM-dd"), // Sửa đổi tại đây
+                                TimeSlot = "No scheduled time slots",
+                                Customers = new List<object> { new { Name = "No customers" } },
+                                RentalOption = "No rental option",
+                                BoxingOption = "No boxing option"
+                            });
+                            continue;
+                        }
+
+                        foreach (var slot in scheduleSlots)
+                        {
+                            var timeSlot = _timeSlotService.GetTimeSlot(slot.Object.TimeSlotId) ?? "Unknown Time Slot";
+
+                            // Lấy danh sách khách hàng
+                            var customerIds = schedule.Object.UserIds?.Split(',').Where(id => !string.IsNullOrWhiteSpace(id)).ToList() ?? new List<string>();
+                            var customerDetails = customerIds
+                                .Where(id => users.ContainsKey(id))
+                                .Select(id => (object)new { Name = users[id].Name })
+                                .ToList();
+
+                            // Xác định loại đăng ký và kế hoạch
+                            string rentalOptionDescription = "No rental option";
+                            string boxingOptionDescription = "No boxing option";
+
+                            if (trainerRentalRegistrations.TryGetValue(scheduleId, out var rentalRegistration))
+                            {
+                                var planId = rentalRegistration.PlanId;
+                                if (trainerRentalPlans.TryGetValue(planId, out var rentalPlan))
+                                {
+                                    var rentalOptionId = rentalPlan.RentalOptionId;
+                                    if (rentalOptions.TryGetValue(rentalOptionId, out var rentalDesc))
+                                    {
+                                        rentalOptionDescription = rentalDesc;
+                                    }
+                                }
+                            }
+                            else if (boxingRegistrations.TryGetValue(scheduleId, out var boxingRegistration))
+                            {
+                                var planId = boxingRegistration.BoxingMembershipPlanId;
+                                if (boxingMembershipPlans.TryGetValue(planId, out var boxingPlan))
+                                {
+                                    var boxingOptionId = boxingPlan.BoxingOptionId;
+                                    if (boxingOptions.TryGetValue(boxingOptionId, out var boxingDesc))
+                                    {
+                                        boxingOptionDescription = boxingDesc;
+                                    }
+                                }
+                            }
+
+                            // Thêm slot với Customers là List<object>
+                            trainerSlots.Add(new
+                            {
+                                Date = slot.Object.Date.ToString("yyyy-MM-dd"),
+                                TimeSlot = timeSlot,
+                                Customers = customerDetails.Any()
+                                    ? customerDetails
+                                    : new List<object> { new { Message = "No customers" } },
+                                RentalOption = rentalOptionDescription,
+                                BoxingOption = boxingOptionDescription
+                            });
+                        }
+                    }
+
+                    // Nếu trainer không có slots nào sau khi lọc, thêm thông tin mặc định
                     if (!trainerSlots.Any())
                     {
                         trainerSlots.Add(new
                         {
-                            Date = date.ToString("yyyy-MM-dd"),
+                            Date = inputDate?.ToString("yyyy-MM-dd") ?? "No date specified",
                             TimeSlot = "No scheduled time slots",
-                            Customers = new List<string> { "No customers" },
+                            Customers = new List<object> { new { Message = "No customers" } },
                             RentalOption = "No rental option",
                             BoxingOption = "No boxing option"
                         });
                     }
-                }
 
-                // If the trainer has no slots at all, we return a message
-                if (!trainerSlots.Any())
-                {
-                    result.Add(new
-                    {
-                        TrainerName = trainerName,
-                        Schedules = "No slots found for this trainer"
-                    });
-                }
-                else
-                {
                     result.Add(new
                     {
                         TrainerName = trainerName,
                         Slots = trainerSlots
                     });
                 }
-            }
 
-            // Return the result
-            return result;
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                // Log ngoại lệ (giả sử có dịch vụ logging)
+                _logger.LogError(ex, "Error fetching trainer schedules");
+                return StatusCode(500, "An error occurred while processing your request.");
+            }
         }
+
+
+
+
 
 
         [HttpPost("changeTimeslot")]
@@ -1123,28 +1120,17 @@ namespace Alpha_API.Controllers
                 return null;
             }
 
-            if (string.IsNullOrWhiteSpace(trainer.UserId))
+            if (string.IsNullOrWhiteSpace(trainer.Name))
             {
-                _logger.LogWarning($"UserId is null or empty for TrainerId: {trainerId}");
+                _logger.LogWarning($"Trainer name is null or empty for TrainerId: {trainerId}");
                 return null;
             }
 
-            _logger.LogInformation($"Fetching User with UserId: {trainer.UserId}");
-            var user = await _firebaseClient
-                .Child("users")
-                .Child(trainer.UserId)
-                .OnceSingleAsync<User>();
-
-            if (user == null)
-            {
-                _logger.LogWarning($"User not found for UserId: {trainer.UserId}");
-                return null;
-            }
-
-            string trainerName = user.Name;
+            string trainerName = trainer.Name;  // Lấy trực tiếp tên từ Trainer
             _logger.LogInformation($"Trainer Name: {trainerName}");
             return trainerName;
         }
+
 
         // Hàm lấy CurrentSlot
         private async Task<CurrentSlot> GetCurrentSlot(string scheduleId)
