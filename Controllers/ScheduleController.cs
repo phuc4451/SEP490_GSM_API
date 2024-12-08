@@ -1213,6 +1213,85 @@ namespace Alpha_API.Controllers
             return users.FirstOrDefault()?.Object;
         }
 
+        [HttpDelete("{scheduleId}")]
+        public async Task<IActionResult> DeleteSchedule(string scheduleId)
+        {
+            if (string.IsNullOrWhiteSpace(scheduleId))
+            {
+                return BadRequest("scheduleId không được để trống.");
+            }
+
+            _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+            try
+            {
+                // Kiểm tra sự tồn tại của scheduleId trong bảng Schedules
+                var schedule = await _firebaseClient
+                    .Child("Schedules")
+                    .Child(scheduleId)
+                    .OnceSingleAsync<Schedule>();
+
+                if (schedule == null)
+                {
+                    return NotFound($"Không tìm thấy Schedule với scheduleId: {scheduleId}");
+                }
+
+                // Tạo một danh sách các nhiệm vụ xoá để thực hiện đồng thời
+                var deleteTasks = new List<Task>();
+
+                // 1. Xoá tất cả các Slots liên quan
+                var slots = await _firebaseClient
+                    .Child("Slots")
+                    .OrderBy("scheduleId")
+                    .EqualTo(scheduleId)
+                    .OnceAsync<Slot>();
+
+                foreach (var slot in slots)
+                {
+                    deleteTasks.Add(_firebaseClient.Child("Slots").Child(slot.Key).DeleteAsync());
+                }
+
+                // 2. Xoá tất cả các TrainerRentalRegistration liên quan
+                var trainerRentalRegistrations = await _firebaseClient
+                    .Child("TrainerRentalRegistrations")
+                    .OrderBy("scheduleId")
+                    .EqualTo(scheduleId)
+                    .OnceAsync<TrainerRentalRegistration>();
+
+                foreach (var registration in trainerRentalRegistrations)
+                {
+                    deleteTasks.Add(_firebaseClient.Child("TrainerRentalRegistrations").Child(registration.Key).DeleteAsync());
+                }
+
+                // 3. Xoá tất cả các BoxingRegistration liên quan
+                var boxingRegistrations = await _firebaseClient
+                    .Child("BoxingRegistrations")
+                    .OrderBy("scheduleId")
+                    .EqualTo(scheduleId)
+                    .OnceAsync<BoxingRegistration>();
+
+                foreach (var registration in boxingRegistrations)
+                {
+                    deleteTasks.Add(_firebaseClient.Child("BoxingRegistrations").Child(registration.Key).DeleteAsync());
+                }
+
+                // 4. Xoá bản ghi trong bảng Schedules
+                deleteTasks.Add(_firebaseClient.Child("Schedules").Child(scheduleId).DeleteAsync());
+
+                // Thực hiện tất cả các nhiệm vụ xoá đồng thời
+                await Task.WhenAll(deleteTasks);
+
+                _logger.LogInformation($"Đã xoá thành công Schedule và các bản ghi liên quan với scheduleId: {scheduleId}");
+
+                return Ok(new { message = $"Đã xoá thành công Schedule và các bản ghi liên quan với scheduleId: {scheduleId}" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi khi xoá Schedule với scheduleId: {scheduleId}");
+                return StatusCode(500, $"Đã xảy ra lỗi khi xoá Schedule: {ex.Message}");
+            }
+        }
+
     }
 
 }
