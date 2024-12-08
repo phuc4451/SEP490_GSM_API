@@ -18,7 +18,7 @@ using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using DocumentFormat.OpenXml.Office2016.Excel;
 using System.Security.Claims;
 using ExcelDataReader.Log;
-
+using System.Collections.Concurrent;
 namespace Alpha_API.Controllers
 {
     [Route("api/[controller]")]
@@ -739,7 +739,7 @@ namespace Alpha_API.Controllers
                 var user = await GetUserByEmail(request.Email);
                 if (user == null)
                 {
-                    return BadRequest("Email không tồn tại.");
+                    return BadRequest("Email is not valid.");
                 }
                 string userId = user.UserId;
 
@@ -762,8 +762,14 @@ namespace Alpha_API.Controllers
                     .Where(r => r.Object.UserIds.Split(',').Contains(userId))
                     .ToList();
 
-                // Khởi tạo danh sách phản hồi
-                var responseList = new List<RegistrationSummary>();
+                // Kiểm tra nếu không có bất kỳ đăng ký nào
+                if (!boxingRegistrations.Any() && !trainerRentalRegistrations.Any())
+                {
+                    return BadRequest("User does not have any registration.");
+                }
+
+                // Khởi tạo danh sách phản hồi an toàn cho luồng
+                var responseList = new ConcurrentBag<RegistrationSummary>();
 
                 // Bước 3: Xử lý BoxingRegistrations
                 var boxingTasks = boxingRegistrations.Select(async boxingReg =>
@@ -818,8 +824,11 @@ namespace Alpha_API.Controllers
                 // Chờ tất cả các tác vụ hoàn thành
                 await Task.WhenAll(boxingTasks.Concat(rentalTasks));
 
+                // Chuyển ConcurrentBag thành List trước khi trả về
+                var finalResponse = responseList.ToList();
+
                 // Trả về danh sách phản hồi
-                return Ok(responseList);
+                return Ok(finalResponse);
             }
             catch (Exception ex)
             {
