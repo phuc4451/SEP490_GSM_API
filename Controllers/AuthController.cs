@@ -336,7 +336,7 @@ namespace Alpha_API.Controllers
 						// Email is verified, proceed with login
 						var token = GenerateJwtToken(existingUser.Email, roleName, uid);
 
-						return Ok(new { jwTtoken = token, firebaseToken = signInResponse.IdToken, role = roleName });
+						return Ok(new { jwTtoken = token, firebaseToken = signInResponse.IdToken, role = roleName, userId = uid });
 					}
 					else
 					{
