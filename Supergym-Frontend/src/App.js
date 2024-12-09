@@ -8,6 +8,7 @@ import ManageManager from './ManageManager/ManageManager';
 import ManageCustomer from './ManageCustomer/ManageCustomer';
 import ManageMembership from './ManageMembership/ManageMembership';
 import ManageTrainer from './ManageTrainer/ManageTrainer';
+import EditTrainer from './EditTrainer/EditTrainer';
 import ManageEquipment from './ManageEquipment/ManageEquipment';
 import ManageCourse from './ManageCourse/ManageCourse';
 import ManageTrainerCourse from './ManageTrainerCourse/ManageTrainerCourse';
@@ -16,7 +17,9 @@ import ManageBoxingCourse from './ManageBoxingCourse/ManageBoxingCourse';
 import ManageFeedback from './ManageFeedback/ManageFeedback';
 import ManageSchedule from './ManageSchedule/ManageSchedule';
 import BookTrainerForm from './BookTrainerForm/BookTrainerForm';
+import ChangeSlotForm from './ChangeSlotForm/ChangeSlotForm';
 import Home from './home/home';
+import ForgotPassword  from './ForgotPassword/ForgotPassword';
 
 const App = () => {
   return (
@@ -25,12 +28,14 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/login" element={<Signin />} />
+        <Route path="/ForgotPassword" element={<ForgotPassword />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/header" element={<Header />} />
-        <Route path="/managManager" element={<ManageManager />} />
+        <Route path="/manageManager" element={<ManageManager />} />
         <Route path="/manageCustomer" element={<ManageCustomer />} />
         <Route path="/manageMembership" element={<ManageMembership />} />
         <Route path="/manageTrainer" element={<ManageTrainer />} />
+        <Route path="/EditTrainer" element={<EditTrainer />} />
         <Route path="/manageEquipment" element={<ManageEquipment />} />
         <Route path="/manageCourse" element={<ManageCourse />} />
         <Route path="/manageTrainerCourse" element={<ManageTrainerCourse />} />
@@ -39,6 +44,7 @@ const App = () => {
         <Route path="/manageFeedback" element={<ManageFeedback />} />
         <Route path="/ManageSchedule" element={<ManageSchedule />} />
         <Route path="/BookTrainerForm" element={<BookTrainerForm />} />
+        <Route path="/ChangeSlotForm" element={<ChangeSlotForm />} />
       </Routes>
     </Router>
   );

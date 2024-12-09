@@ -492,8 +492,6 @@ const ManageCustomer = () => {
                 <th>Email</th>
                 <th>Số điện thoại</th>
                 <th>Địa chỉ</th>
-                {/* <th className="status-center">Trạng thái</th> */}
-                {/* <th className="role-el">Vai trò</th> */}
                 <th className="action-el">Hành động</th>
               </tr>
             </thead>

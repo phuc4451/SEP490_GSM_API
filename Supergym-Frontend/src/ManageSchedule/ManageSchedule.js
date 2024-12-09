@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import CloseIcon from "@mui/icons-material/Close";
+import Preloader from "../Preloader/Preloader";
 
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./ManageSchedule.css";
@@ -17,6 +18,7 @@ const ManageSchedule = () => {
   const [loading, setLoading] = useState(true); // Loading state for the API call
   const [selectedDate, setSelectedDate] = useState(null); // Track selected date
   const timeSlots = ["6:00", "7:00", "8:00", "9:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   // MODAL
   const [currentTrainer, setCurrentTrainer] = useState(null); // for editing trainer
@@ -35,7 +37,7 @@ const ManageSchedule = () => {
 
   const openViewDetailSlot = (trainerName, timeSlot, customers, rentalOption, boxingOption) => {
     const [startTime, endTime] = timeSlot.split("-");
-  
+
     // If rentalOption is "No rental option", display boxingOption, and vice versa
     let optionToDisplay = "No option";
     if (rentalOption && rentalOption !== "No rental option") {
@@ -43,7 +45,7 @@ const ManageSchedule = () => {
     } else if (boxingOption && boxingOption !== "No boxing option") {
       optionToDisplay = boxingOption;
     }
-  
+
     setFormData({
       ...formData,
       trainerName,
@@ -55,14 +57,11 @@ const ManageSchedule = () => {
       boxingOption, // Add boxingOption to formData
       optionToDisplay, // Display the correct option
     });
-  
+
     viewDetailSlot.current.style.display = "block";
     viewDetailSlot.current.classList.add("active");
     document.querySelector(".modal-overlay").style.display = "block";
   };
-  
-
-
 
   const showSuccessModal = (message) => {
     setSuccessMessage(message); // Cập nhật thông báo
@@ -103,42 +102,6 @@ const ManageSchedule = () => {
     });
   };
 
-  const handleSubmitAddTrainerToCourse = async (e) => {
-    e.preventDefault(); // Ngăn hành vi mặc định của form
-
-    if (trainerToAddCourse && selectedOption) {
-      const token = localStorage.getItem("token");
-
-      // Chuẩn bị dữ liệu gửi tới API
-      const data = {
-        trainerRentalPlanId: "string", // Bạn cần gán ID hợp lệ tại đây nếu cần
-        trainerId: trainerToAddCourse.trainerId, // ID của huấn luyện viên đã chọn
-        rentalOptionId: selectedOption, // rentalOptionId là giá trị ID của gói đã chọn
-      };
-
-      try {
-        // Gửi yêu cầu API để thêm huấn luyện viên vào khóa học
-        const response = await axios.post(
-          "http://localhost:5000/api/trainerRentalPlan",
-          data, // Gửi payload
-          {
-            headers: { Authorization: `Bearer ${token}` }, // Thêm token vào header
-          }
-        );
-
-        // Hiển thị thông báo thành công và đóng modal
-        closeModal(); // Đóng modal
-        showSuccessModal("Huấn luyện viên đã được thêm vào khóa học thành công!");
-      } catch (error) {
-        console.error("Error adding trainer to course:", error);
-        showSuccessModal("Có lỗi khi thêm huấn luyện viên vào khóa học.");
-      }
-    } else {
-      // Nếu không chọn huấn luyện viên hoặc gói, hiển thị thông báo lỗi
-      showSuccessModal("Vui lòng chọn huấn luyện viên và gói!");
-    }
-  };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -147,79 +110,16 @@ const ManageSchedule = () => {
       ...formData,
       [name]: value,
     });
-
-    // When the radio button for trainer type is clicked
-    if (name === "trainerType") {
-      setSelectedOption(""); // Reset the selected package before fetching new ones
-
-      // Fetch the packages based on the selected trainer type
-      fetchPackages(value); // Call fetchPackages with "Gym" or "Boxing"
-    }
   };
-
-  // Fetch gym or boxing packages based on selection
-  const fetchPackages = async (type) => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        console.error("No token found in localStorage");
-        return;
-      }
-
-      const response = await axios.get(`http://localhost:5000/api/PackagesAndTrainers?type=${type}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      // Update selected packages based on type
-      if (type === "Gym") {
-        setSelectedPackages(response.data); // Set Gym packages for selection
-      } else if (type === "Boxing") {
-        setSelectedPackages(response.data); // Set Boxing packages for selection
-      }
-    } catch (error) {
-      console.error("Error fetching packages:", error);
-    }
-  };
-
-  useEffect(() => {
-    // Optionally fetch trainers or other data initially
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          console.error("No token found in localStorage");
-          return;
-        }
-
-        // Fetch gym and boxing packages initially (without triggering via radio button)
-        const [gymResponse, boxingResponse] = await Promise.all([
-          axios.get("http://localhost:5000/api/PackagesAndTrainers?type=TrainerRental", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          axios.get("http://localhost:5000/api/PackagesAndTrainers?type=Boxing", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-        ]);
-
-        setGymPackages(gymResponse.data); // Set gym packages
-        setBoxingPackages(boxingResponse.data); // Set boxing packages
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
 
   const handleRegisterTrainer = () => {
     // Mở tab mới và chuyển đến URL bạn muốn
     window.open("http://localhost:3000/bookTrainerForm", "_blank");
+  };
+
+  const handleChangeSlot = () => {
+    // Mở tab mới và chuyển đến URL bạn muốn
+    window.open("http://localhost:3000/changeSlotForm", "_blank");
   };
 
   // END MODAL
@@ -256,22 +156,21 @@ const ManageSchedule = () => {
   //END SCHEDULE
   useEffect(() => {
     // Automatically set today's date when the page is loaded
-    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const today = new Date().toISOString().split("T")[0]; // Format YYYY-MM-DD
     setSelectedDate(today); // Set the selectedDate to today's date
-  }, []); 
+  }, []);
   // Hàm lấy dữ liệu huấn luyện viên từ API
   useEffect(() => {
-    const fetchTrainerData = async (date = "") => {
+    const fetchTrainerData = async (date) => {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
           console.error("No token found in localStorage");
           return;
         }
-
-        // Cập nhật URL với tham số ngày được chọn (hoặc mặc định là All nếu không có ngày chọn)
-        const apiUrl =  `http://localhost:5000/api/Schedule/Slots/All?inputDate=${date}`;
-
+  
+        const apiUrl = `http://localhost:5000/api/Schedule/Slots/All?inputDate=${date}`;
+  
         const response = await fetch(apiUrl, {
           method: "GET",
           headers: {
@@ -279,24 +178,69 @@ const ManageSchedule = () => {
             "Content-Type": "application/json",
           },
         });
-
+  
         if (!response.ok) {
           throw new Error("Failed to fetch trainer data");
+          return;
         }
-
+  
         const data = await response.json();
-        setAllTrainerData(data); // Lưu toàn bộ dữ liệu gốc
-        setTrainers(data); // Hiển thị ban đầu với tất cả dữ liệu
-        setLoading(false);
+        setAllTrainerData(data);
+        setTrainers(data);
       } catch (error) {
         console.error("Error fetching trainer data:", error);
-        setLoading(false);
+      } finally {
+        setIsDataLoading(false);
       }
     };
-
-    // Gọi hàm fetchTrainerData với ngày đã chọn (hoặc không có ngày)
-    fetchTrainerData(selectedDate);
-  }, [selectedDate]); // Lần này useEffect sẽ phụ thuộc vào selectedDate
+  
+    // Set today's date và fetch data trong cùng một useEffect
+    const today = new Date().toISOString().split("T")[0];
+    setSelectedDate(today);
+    fetchTrainerData(today);
+  }, []); // Chỉ chạy một lần khi component mount
+  
+  // useEffect riêng cho việc fetch data khi selectedDate thay đổi
+  useEffect(() => {
+    // Không fetch data khi lần đầu component mount (selectedDate === null)
+    if (!selectedDate) return;
+  
+    const fetchTrainerData = async () => {
+      setIsDataLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.error("No token found in localStorage");
+          return;
+        }
+  
+        const apiUrl = `http://localhost:5000/api/Schedule/Slots/All?inputDate=${selectedDate}`;
+  
+        const response = await fetch(apiUrl, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+  
+        if (!response.ok) {
+          throw new Error("Failed to fetch trainer data");
+          return;
+        }
+  
+        const data = await response.json();
+        setAllTrainerData(data);
+        setTrainers(data);
+      } catch (error) {
+        console.error("Error fetching trainer data:", error);
+      } finally {
+        setIsDataLoading(false);
+      }
+    };
+  
+    fetchTrainerData();
+  }, [selectedDate]); // Chỉ chạy khi selectedDate thay đổi
 
   // Xử lý thay đổi ngày
   const handleDateChange = (e) => {
@@ -307,7 +251,9 @@ const ManageSchedule = () => {
   return (
     <>
       <Header />
+      {isDataLoading ? <Preloader /> : null}
 
+      {/* <!-- ***** Preloader End ***** --> */}
       {/* Schedule Section */}
       <section className="section" id="schedule">
         <div className="container">
@@ -326,12 +272,17 @@ const ManageSchedule = () => {
                           type="date"
                           onChange={handleDateChange} // Handle date change
                           placeholder="Chọn ngày trong tuần"
-                          value={selectedDate} 
+                          value={selectedDate}
                         />
                       </div>
                     </div>
                   </div>
-                  <button className="btn btn-success btn-sm" onClick={handleRegisterTrainer}>Đăng ký Trainer</button>
+                  <button className="btn btn-success btn-sm" onClick={handleRegisterTrainer}>
+                    Đăng ký Trainer
+                  </button>
+                  <button className="btn btn-danger btn-sm ms-3" onClick={handleChangeSlot}>
+                    Đổi slot
+                  </button>
                 </section>
               </div>
             </div>
@@ -378,7 +329,8 @@ const ManageSchedule = () => {
       <div ref={viewDetailSlot} className="modal">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
-            <form id="addTrainerToCourseForm" onSubmit={handleSubmitAddTrainerToCourse}>
+            {/* <form id="addTrainerToCourseForm" onSubmit={handleSubmitAddTrainerToCourse}> */}
+            <form id="addTrainerToCourseForm">
               <div className="modal-header">
                 <h4 className="modal-title text-center mx-auto">
                   <span style={{ color: "red" }}>

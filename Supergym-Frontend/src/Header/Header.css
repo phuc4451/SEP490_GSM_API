@@ -229,13 +229,90 @@ body {
 }
 
 /* Đặt màu mũi tên dropdown thành màu đỏ */
-#userManagementDropdown::after,
+/* #userManagementDropdown::after,
 #courseManagementDropdown::after,
 #userDropdown::after {
-  border-top-color: red !important; /* Màu đỏ cho mũi tên */
-}
+  border-top-color: red !important; 
+} */
 
 .dropdown-toggle::after {
   border-top-color: red !important;
 }
 
+/* Tùy chỉnh mũi tên cho Quản lý Trainer */
+.dropright-toggle::after {
+  content: ">";
+  display: inline-block;
+  margin-left: 8px; /* Khoảng cách giữa text và mũi tên */
+  color: red; /* Màu đỏ cho mũi tên */
+  font-size: 14px; /* Kích thước mũi tên */
+  transform: rotate(0deg); /* Hướng mũi tên sang phải */
+}
+
+
+/* Styles for nested dropdown */
+.dropdown-submenu {
+  position: relative;
+}
+
+.dropdown-submenu .dropdown-content {
+  display: none;
+  position: absolute;
+  left: 100%; /* Hiển thị danh sách con ở bên phải */
+  top: 0;
+  background-color: #f9f9f9;
+  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  z-index: 1;
+}
+
+.dropdown-submenu:hover .dropdown-content {
+  display: block; /* Hiện danh sách con khi hover */
+}
+
+.dropdown-submenu .dropdown-toggle::after {
+  content: ">";
+  float: right;
+  margin-left: 10px;
+  color: red; /* Đổi màu mũi tên thành đỏ */
+}
+
+.dropdown-submenu .dropdown-content a {
+  padding: 10px 16px;
+}
+
+.dropdown-submenu .dropdown-content a:hover {
+  background-color: #f1f1f1;
+}
+
+/* Ẩn menu con (submenu) mặc định */
+.dropdown-submenu .submenu-content {
+  display: none;
+  position: absolute;
+  left: 100%; /* Đẩy menu con sang bên phải */
+  top: 0;
+  background-color: #f9f9f9;
+  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  z-index: 1;
+  min-width: 200px;
+}
+
+/* Hiển thị menu con khi di chuột vào Quản lý Trainer */
+.dropdown-submenu:hover .submenu-content {
+  display: block;
+}
+
+/* Tùy chỉnh mũi tên cho Quản lý Trainer */
+.dropdown-submenu > .dropdown-toggle::after {
+  content: ">";
+  display: inline-block;
+  margin-left: 8px;
+  color: red; /* Màu đỏ cho mũi tên */
+  font-size: 14px;
+}
+
+/* Tùy chỉnh hover cho các liên kết bên trong menu */
+.dropdown-submenu .submenu-content a:hover {
+  background-color: #f1f1f1;
+}

@@ -45,8 +45,10 @@ function Signin() {
       );
       if (response.status === 200) {
         const token = response.data.jwTtoken;
+        const role = response.data.role;
         localStorage.setItem("token", token);
-        navigate("/dashboard");
+        localStorage.setItem("role", role);
+        navigate("/");
       }
     } catch (err) {
       //setError("Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản và mật khẩu.");
@@ -99,15 +101,15 @@ function Signin() {
               Đăng nhập
             </button>
           </form>
-          <p className="register-link">
+          {/* <p className="register-link">
             <a href="/signup">
               Đăng kí tài khoản
               <FontAwesomeIcon icon={faArrowRightFromBracket} />
             </a>
-          </p>
+          </p> */}
 
           <p className="register-link">
-            <a href="#">Quên mật khẩu</a>
+            <a href="/ForgotPassword">Quên mật khẩu</a>
           </p>
         </div>
       </div>

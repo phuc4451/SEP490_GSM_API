@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import CloseIcon from "@mui/icons-material/Close";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./BookTrainerForm.css";
+// import "./BookTrainerForm.css";
 import Header from "../Header/Header.js";
 
 const ManageSchedule = () => {
@@ -17,6 +17,7 @@ const ManageSchedule = () => {
     isTrainerGym: true,
     isTrainerBoxing: true,
   });
+
   const [selectedPackages, setSelectedPackages] = useState([]); // Dữ liệu các gói
   const [trainers, setTrainers] = useState([]); // Store trainers data
   const [showBoxingOptions, setShowBoxingOptions] = useState(false); // For showing boxing-specific radio buttons
@@ -29,8 +30,24 @@ const ManageSchedule = () => {
   const [qrDataUrl, setQrDataUrl] = useState(""); // State to store the QR code data URL
   const [showQR, setShowQR] = useState(true);
 
+  const [searchEmail, setSearchEmail] = useState("");
+  const [courseData, setCourseData] = useState([]);
+  const [courseDetail, setCourseDetail] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [selectedTrainerId, setSelectedTrainerId] = useState("");
+  const [selectedTimeslotId, setSelectedTimeSlotId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const errorModalRef = useRef(null);
+  const [formCourseData, setFormCourseData] = useState({
+    userId: "",
+    registrationId: "",
+    registrationType: "",
+    description: "",
+  });
+  const [isEmailValid, setIsEmailValid] = useState(false);
+  const [errors, setErrors] = useState({
+    email: "",
+  });
 
   useEffect(() => {
     openBookTrainerModal(); // Gọi hàm mở modal khi trang load
@@ -164,27 +181,11 @@ const ManageSchedule = () => {
     const selectedPackageId = e.target.value;
     setSelectedOption(selectedPackageId); // Update selected package state
 
-    // Reset related states when package changes
-    setTrainerToAddCourse(null); // Reset selected trainer
-    setFormData((prevData) => ({
-      ...prevData,
-      trainerRentalPlanId: null,
-      boxingMembershipPlanId: null,
-      timeSlot: "", // Reset time slot
-      sessionCount: "", // Reset session count if applicable
-    }));
+    // Find the selected package by packageId
+    const selectedPackage = selectedPackages.find((pkg) => pkg.packageId === selectedPackageId);
 
-    // Reset checkDetailPack
-    setCheckDetailPack(null);
-
-    if (selectedPackageId) {
-      // Only fetch trainers if a package is actually selected
-      fetchTrainersByPackage(selectedPackageId);
-    } else {
-      // Clear trainers if no package is selected
-      setTrainers([]);
-      setTrainersData([]);
-    }
+    // Fetch trainers based on the selected package
+    fetchTrainersByPackage(selectedPackageId);
   };
 
   // // useEffect để theo dõi sự thay đổi của checkIsMonthly
@@ -222,6 +223,67 @@ const ManageSchedule = () => {
     return null;
   };
 
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+
+    switch (name) {
+      case "email":
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(value)) {
+          newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
+        } else {
+          delete newErrors.email; // Clear error if valid
+        }
+        break;
+
+      case "gender":
+        if (!value) {
+          newErrors.gender = "Vui lòng chọn giới tính.";
+        } else {
+          delete newErrors.gender; // Clear error if valid
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
+  const validateEmail = (email) => {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setErrors((prev) => ({
+        ...prev,
+        email: "Email không được để trống",
+      }));
+      setIsEmailValid(false);
+    } else if (!emailPattern.test(email)) {
+      setErrors((prev) => ({
+        ...prev,
+        email: "Email không hợp lệ",
+      }));
+      setIsEmailValid(false);
+    } else {
+      setErrors((prev) => ({
+        ...prev,
+        email: "",
+      }));
+      setIsEmailValid(true);
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(formData.email)) {
+      newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0; // If no errors, form is valid
+  };
+
   const closeModal = () => {
     setCheckDetailPack(null); // Reset thông tin gói
     setSuccessMessage(""); // Xóa thông báo thành công
@@ -231,7 +293,7 @@ const ManageSchedule = () => {
     // window.close();
   };
 
-  const closeTrainerRegisterModal = () => {
+  const closeChangeSlotModal = () => {
     setCheckDetailPack(null); // Reset thông tin gói
     setSuccessMessage(""); // Xóa thông báo thành công
     BookTrainer.current.style.display = "none";
@@ -308,144 +370,136 @@ const ManageSchedule = () => {
   const handleBookTrainer = async (e) => {
     e.preventDefault();
 
-    // Collect form data Gym
-    const emailInputs = Array.from(document.querySelectorAll('input[type="email"]')).map((input) => input.value);
-    const selectedTimeSlot = formData.timeSlot; // Assuming timeSlot is captured in formData
-    const trainerRentalPlanId = formData.trainerRentalPlanId; // Make sure this value is set
-    const duration = formData.sessionCount; // sessionCount for Gym
-    const qrPayment = formData.qrPayment;
-    const gymDuration = duration ? duration : null;
-
-    // Prepare data for Gym
-    const gymData = {
-      emails: emailInputs, // Emails from input fields
-      boxingMembershipPlanId: null,
-      gymMembershipId: null,
-      trainerRentalPlanId: trainerRentalPlanId, // Ensure this is included
-      qrPayment: true,
-      duration: gymDuration, // Use the value of gymDuration
-      selectedTimeSlot: selectedTimeSlot,
-      isMonWedFri: trainerType === "TrainerRental" ? true : false, // Only true for Gym
-    };
-
-    // Collect form data BOXING
-    const BOXINGemailInputs = Array.from(document.querySelectorAll('input[type="email"]')).map((input) => input.value);
-    const BOXINGselectedTimeSlot = formData.timeSlot; // Assuming timeSlot is captured in formData
-    const BOXINGboxingMembershipPlanId = formData.boxingMembershipPlanId; // Make sure this value is set
-    const BOXINGduration = formData.sessionCount; // sessionCount for Gym
-    const BOXINGqrPayment = formData.qrPayment;
-    const BOXINGisMonWedFri = formData.isMonWedFri;
-
-    // Prepare data for Boxing
-    const boxingData = {
-      emails: BOXINGemailInputs, // Emails from input fields
-      boxingMembershipPlanId: BOXINGboxingMembershipPlanId,
-      gymMembershipId: null,
-      trainerRentalPlanId: null, // Ensure this is included
-      qrPayment: true,
-      duration: 1,
-      selectedTimeSlot: BOXINGselectedTimeSlot,
-      isMonWedFri: BOXINGisMonWedFri, // Set true or false based on the radio selection
-    };
-
-    // Send the request based on the trainer type
     try {
       const token = localStorage.getItem("token");
+      const slotData = {
+        userId: courseData[0].userId,
+        trainerId: courseDetail.trainerId,
+        oldSlotId: courseDetail.currentSlot.timeSlotId,
+        newSlotId: selectedTimeslotId,
+        scheduleId: courseDetail.scheduleId,
+      };
 
-      // If it's a Gym trainer
-      if (trainerType === "TrainerRental") {
-        const response = await fetch("http://localhost:5000/api/trainerRentalRegistration", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(gymData),
-        });
+      const response = await fetch("http://localhost:5000/api/Schedule/changeTimeslot", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(slotData),
+      });
 
-        const responseText = await response.text();
+      const responseText = await response.text();
 
-        // Kiểm tra nếu response không ok
-        if (!response.ok) {
-          try {
-            const errorData = JSON.parse(responseText);
-            if (errorData.message) {
-              let fullErrorMessage = errorData.message;
-              if (errorData.details) {
-                fullErrorMessage = `${errorData.message}\n\nChi tiết: ${errorData.details}`;
-              }
-              showErrorModal(fullErrorMessage);
-            } else {
-              showErrorModal(responseText);
+      // Kiểm tra nếu response không ok
+      if (!response.ok) {
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.message) {
+            let fullErrorMessage = errorData.message;
+            if (errorData.details) {
+              fullErrorMessage = `${errorData.message}\n\nChi tiết: ${errorData.details}`;
             }
-          } catch (parseError) {
+            showErrorModal(fullErrorMessage);
+          } else {
             showErrorModal(responseText);
           }
-          return;
-        }
-
-        // Nếu response ok thì mới parse và xử lý data
-        try {
-          const responseData = JSON.parse(responseText);
-          if (responseData && responseData[0] && responseData[0].qrDataUrl) {
-            setQrDataUrl(responseData[0].qrDataUrl);
-          }
         } catch (parseError) {
-          showErrorModal("Lỗi xử lý dữ liệu từ server");
-          return;
+          showErrorModal(responseText);
         }
-      }
-      // If it's a Boxing trainer
-      else if (trainerType === "Boxing") {
-        const response = await fetch("http://localhost:5000/api/BoxingRegistration", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(boxingData),
-        });
-
-        const responseText = await response.text();
-
-        if (!response.ok) {
-          try {
-            const errorData = JSON.parse(responseText);
-            if (errorData.message) {
-              let fullErrorMessage = errorData.message;
-              if (errorData.details) {
-                fullErrorMessage = `${errorData.message}\n\nChi tiết: ${errorData.details}`;
-              }
-              showErrorModal(fullErrorMessage);
-            } else {
-              showErrorModal(responseText);
-            }
-          } catch (parseError) {
-            showErrorModal(responseText);
-          }
-          return;
-        }
-
-        try {
-          const responseData = JSON.parse(responseText);
-          if (responseData && responseData[0] && responseData[0].qrDataUrl) {
-            setQrDataUrl(responseData[0].qrDataUrl);
-          }
-        } catch (parseError) {
-          showErrorModal("Lỗi xử lý dữ liệu từ server");
-          return;
-        }
+        return;
       }
 
-      // Chỉ chạy closeModal và showQr khi không có lỗi
+      // Nếu response ok thì đóng modal và hiện thông báo thành công
       closeModal();
-      showQr();
+      showSuccessModal("Đổi slot thành công");
     } catch (error) {
-      console.error("Error during trainer registration:", error);
+      console.error("Error during change timeslot:", error);
       showErrorModal("Có lỗi xảy ra. Vui lòng thử lại.");
     }
   };
 
+  const searchRegistrationByEmail = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const dataSend = {
+        email: searchEmail,
+      };
+
+      const response = await fetch("http://localhost:5000/api/Schedule/getRegistrationsByEmail", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dataSend),
+      });
+
+      const responseText = await response.text();
+
+      // Kiểm tra nếu response không ok
+      if (!response.ok) {
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.message) {
+            let fullErrorMessage = errorData.message;
+            if (errorData.details) {
+              fullErrorMessage = `${errorData.message}\n\nChi tiết: ${errorData.details}`;
+            }
+            showErrorModal(fullErrorMessage);
+          } else {
+            showErrorModal(responseText);
+          }
+        } catch (parseError) {
+          showErrorModal(responseText);
+        }
+        return;
+      }
+
+      // Nếu response ok thì parse data và set state
+      try {
+        const responseData = JSON.parse(responseText);
+        setCourseData(responseData);
+      } catch (parseError) {
+        showErrorModal("Lỗi xử lý dữ liệu từ server");
+        return;
+      }
+    } catch (error) {
+      console.error("Error searching registration:", error);
+      showErrorModal("Có lỗi xảy ra khi tìm kiếm. Vui lòng thử lại.");
+    }
+  };
+  const handleSearchEmailChange = (e) => {
+    const value = e.target.value;
+    setSearchEmail(value);
+    validateEmail(value);
+  };
+
+  const handleChange = async (event) => {
+    const selectedCourseIdInput = event.target.value;
+    setSelectedCourseId(selectedCourseIdInput);
+    // Reset selected timeslot
+    setSelectedTimeSlotId("");
+
+    if (selectedCourseIdInput) {
+      try {
+        const response = await axios.post("http://localhost:5000/api/Schedule/getRegistrationDetails", {
+          registrationId: selectedCourseIdInput,
+        });
+        setCourseDetail(response.data);
+        console.log("API Response:", response.data);
+      } catch (error) {
+        console.error("Error posting registration ID:", error);
+      }
+    }
+  };
+  const handleTrainerChange = (event) => {
+    setSelectedTrainerId(event.target.value);
+  };
+
+  const handleSelectTimeslotChange = (event) => {
+    setSelectedTimeSlotId(event.target.value);
+  };
   return (
     <>
       <Header />
@@ -461,117 +515,76 @@ const ManageSchedule = () => {
             <form id="addTrainerToCourseForm" onSubmit={handleBookTrainer}>
               <div className="modal-header">
                 <h4 className="modal-title text-center mx-auto">
-                  <span style={{ color: "red" }}>Đăng kí Trainer theo gói</span>
+                  <span style={{ color: "red" }}>Đổi slot</span>
                 </h4>
-                <a type="button" className="close" onClick={closeTrainerRegisterModal}>
+                <a type="button" className="close" onClick={closeChangeSlotModal}>
                   <CloseIcon />
                 </a>
               </div>
 
               <div className="modal-body">
-                <div className="row">
-                  <div className="form-group col">
-                    <label>
-                      Loại huấn luyện viên<span className="icon-input">(*)</span>
-                    </label>
-                    <div>
-                      <div className="form-check form-check-inline">
-                        <input type="radio" id="gym" name="trainerType" value="TrainerRental" checked={trainerType === "TrainerRental"} onChange={handleInputChange} className="form-check-input" />
-                        <label className="form-check-label" htmlFor="gym">
-                          Gym
-                        </label>
-                      </div>
-                      <div className="form-check form-check-inline">
-                        <input type="radio" id="boxing" name="trainerType" value="Boxing" checked={trainerType === "Boxing"} onChange={handleInputChange} className="form-check-input" />
-                        <label className="form-check-label" htmlFor="boxing">
-                          Boxing
-                        </label>
-                      </div>
+              <div>
+                  <label className="me-2">Tìm kiếm email</label>
+                  <div className="d-flex flex-column">
+                    <div className="d-flex align-items-center mb-2">
+                      <input 
+                        type="email" 
+                        className={`form-control me-2 ${errors.email ? "is-invalid" : ""}`}
+                        value={searchEmail} 
+                        onChange={handleSearchEmailChange}
+                        placeholder="Nhập email"
+                        required 
+                      />
+                      <button 
+                        type="button" 
+                        className="btn btn-primary" 
+                        onClick={searchRegistrationByEmail}
+                        disabled={!isEmailValid}
+                      >
+                        Tìm kiếm
+                      </button>
                     </div>
-                  </div>
-
-                  <div className="form-group col">
-                    <label>Gói đăng kí</label>
-                    <select className="form-control form-select" name="option" value={selectedOption} onChange={handlePackageChange} required>
-                      <option value="">Chọn gói</option>
-                      {selectedPackages.map((option, index) => (
-                        <option key={index} value={option.packageId}>
-                          {option.description}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="row">
-                  <div className="form-group col">
-                    <label>Chọn Huấn luyện viên</label>
-                    <select
-                      className="form-control"
-                      name="trainer"
-                      value={trainerToAddCourse ? trainerToAddCourse.trainerId : ""}
-                      onChange={(e) => {
-                        const selectedTrainer = trainers.find((trainer) => trainer.trainerId === e.target.value);
-                        setTrainerToAddCourse(selectedTrainer);
-
-                        // Check if selected trainer is a boxing trainer and update based on trainerType
-                        if (selectedTrainer && trainerType === "Boxing") {
-                          // If it's a boxing trainer, set the trainerId and clear trainerRentalPlanId
-                          setFormData((prevData) => ({
-                            ...prevData,
-                            boxingMembershipPlanId: selectedTrainer ? selectedTrainer.boxingMembershipPlanId : "",
-                            trainerRentalPlanId: null, // Clear trainerRentalPlanId for boxing trainers
-                          }));
-                        } else if (selectedTrainer && trainerType === "TrainerRental") {
-                          // If it's a gym trainer, set the trainerRentalPlanId and clear trainerId
-                          setFormData((prevData) => ({
-                            ...prevData,
-                            trainerRentalPlanId: selectedTrainer ? selectedTrainer.trainerRentalPlanId : "",
-                            boxingMembershipPlanId: null, // Clear trainerId for gym trainers
-                          }));
-                        }
-                      }}
-                      required
-                    >
-                      <option value="">Chọn Huấn luyện viên</option>
-                      {trainers.map((trainer, index) => (
-                        <option key={index} value={trainer.trainerId}>
-                          {trainer.name} - {trainer.specialization}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="row">
-                  <div className="form-group col">
-                    {showBoxingOptions && (
-                      <>
-                        <div className="form-check form-check-inline">
-                          <input type="radio" id="option2" name="boxingOption" value="true" onChange={handleInputChange} className="form-check-input" />
-                          <label className="form-check-label" htmlFor="option2">
-                            Thứ 2, thứ 4, thứ 6
-                          </label>
-                        </div>
-                        <div className="form-check form-check-inline">
-                          <input type="radio" id="option3" name="boxingOption" value="false" onChange={handleInputChange} className="form-check-input" />
-                          <label className="form-check-label" htmlFor="option3">
-                            Thứ 3, thứ 5, thứ 7
-                          </label>
-                        </div>
-                      </>
+                    {errors.email && (
+                      <div className="invalid-feedback d-block ms-1">
+                        {errors.email}
+                      </div>
                     )}
                   </div>
                 </div>
-
                 <div className="row">
                   <div className="form-group col">
-                    <label>Chọn khung giờ</label>
+                    <label>Gói đăng kí</label>
+                    <select className="form-control form-select" name="option" value={selectedCourseId} onChange={handleChange} required>
+                      <option value="">Chọn gói</option>
+                      {/* {selectedPackages.map((option, index) => ( */}
+                      {courseData.map((courseData) => (
+                        <option key={courseData.registrationId} value={courseData.registrationId}>
+                          {courseData.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="form-group col">
+                    <label>Huấn luyện viên</label>
+                    <input type="text" className="form-control" name="trainerName" value={courseDetail.trainerName} disabled />
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="form-group col">
+                    <label>Khung giờ cũ</label>
+                    <input type="text" className="form-control" name="timeSlotDisable" value={courseDetail?.currentSlot?.time || ""} disabled />
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="form-group col">
+                    <label>Chọn khung giờ mới</label>
                     <select
                       className="form-control form-select"
                       name="timeSlot"
-                      value={formData.timeSlot || ""} // Thay đổi ở đây
-                      onChange={handleInputChange}
+                      value={selectedTimeslotId || ""} // Thay đổi ở đây
+                      onChange={handleSelectTimeslotChange}
                       required
                     >
                       <option value="">Chọn khung giờ</option> {/* Thay đổi ở đây */}
@@ -583,29 +596,10 @@ const ManageSchedule = () => {
                     </select>
                   </div>
                 </div>
-
-                <div className="row">
-                  <div className="form-group col">
-                    {showSessionCount && (
-                      <>
-                        <label>Chọn số lượng</label>
-                        <input
-                          className="form-control"
-                          type="number"
-                          name="sessionCount" // Đảm bảo rằng input này có name
-                          value={formData.sessionCount || ""}
-                          onChange={handleInputChange} // Gọi handleInputChange để cập nhật giá trị
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {renderEmailInputs()}
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-default" onClick={closeTrainerRegisterModal} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
+                <button type="button" className="btn btn-default" onClick={closeChangeSlotModal} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
                   Hủy
                 </button>
 

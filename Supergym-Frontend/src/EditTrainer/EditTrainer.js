@@ -4,7 +4,7 @@ import Header from "../Header/Header";
 import Preloader from "../Preloader/Preloader";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../assets/css/common.css";
-import "./ManageTrainer.css";
+import "./EditTrainer.css";
 import Select from "react-select";
 import SearchIcon from "@mui/icons-material/Search";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
@@ -15,7 +15,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import { Delete } from "@mui/icons-material";
 
-const ManageTrainer = () => {
+const EditTrainer = () => {
   const [trainerDataList, setTrainerDataList] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -74,30 +74,29 @@ const ManageTrainer = () => {
         setTrainerData(response.data);
       } catch (error) {
         console.error("Error fetching trainers:", error);
-      } 
-      finally {
+      } finally {
         setIsDataLoading(false);
       }
     };
     fetchTrainers();
   }, []);
 
-  // useEffect(() => {
-  //   const fetchUserTrainers = async () => {
-  //     const token = localStorage.getItem("token");
-  //     try {
-  //       const response = await axios.get("http://localhost:5000/api/Trainer/GetTrainerAccounts", {
-  //         headers: { Authorization: `Bearer ${token}` },
-  //       });
-  //       setTrainerUserData(response.data);
-  //     } catch (error) {
-  //       console.error("Error fetching trainers:", error);
-  //     } finally {
-  //       setIsDataLoading(false);
-  //     }
-  //   };
-  //   fetchUserTrainers();
-  // }, []);
+  useEffect(() => {
+    const fetchUserTrainers = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const response = await axios.get("http://localhost:5000/api/Users/GetTrainerAccounts", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setTrainerUserData(response.data);
+      } catch (error) {
+        console.error("Error fetching trainers:", error);
+      } finally {
+        setIsDataLoading(false);
+      }
+    };
+    fetchUserTrainers();
+  }, []);
 
   useEffect(() => {
     const fetchRentalOptions = async () => {
@@ -189,17 +188,21 @@ const ManageTrainer = () => {
     const formattedDob = `${dob.year || "----"}-${String(dob.month || "01").padStart(2, "0")}-${String(dob.date || "01").padStart(2, "0")}`;
 
     setFormData({
-      email: trainer.email,
-      isTrainerBoxing: trainer.isTrainerBoxing,
-      isTrainerGym: trainer.isTrainerGym,
-      name: trainer.name,
-      gender: trainer.gender,
-      dob: formattedDob,
-      address: trainer.address,
-      phone: trainer.phone,
-      userAvatar: trainer.userAvatar,
-      idCard: trainer.idCard,
-    });
+        name: trainer.name,
+        gender: trainer.gender,
+        dob: formattedDob,
+        email: trainer.email,
+        phone: trainer.phone,
+        address: trainer.address,
+        userId: trainer.userId,
+        idCard: trainer.idCard,
+        userAvatar: trainer.userAvatar,
+      });
+      if (trainer.userAvatar) {
+        setPreviewImage(trainer.userAvatar); // Set the current avatar to preview image
+      } else {
+        setPreviewImage(null); // No avatar, clear the preview
+      }
     setCurrentTrainer(trainer);
     trainerModalRef.current.style.display = "block";
     trainerModalRef.current.classList.add("active");
@@ -405,27 +408,22 @@ const ManageTrainer = () => {
         year: dob.getFullYear(),
       };
 
-      // Create a basic trainer data object
-      const trainerData = {
-        trainerId: currentTrainer ? currentTrainer.trainerId : "string",
-        userId: formData.userId,
-        name: formData.name,
-        isTrainerGym: formData.isTrainerGym,
-        isTrainerBoxing: formData.isTrainerBoxing,
-        bio: formData.bio,
-        specialization: formData.specialization,
-      };
-
-      // Include gymMembershipId only for adding a new trainer
-      // if (!currentTrainer) {
-      //   trainerData.gymMembershipId = "string"; // Include gymMembershipId for new trainers
-      //   trainerData.password = formData.password; // Include password for new trainers
-      // }
-
       try {
         if (currentTrainer) {
+            const trainerDataEdit = {
+                userId: currentTrainer.userId,
+                name: formData.name,
+                email: formData.email,
+                gender: formData.gender,
+                dob: dobData,
+                address: formData.address,
+                phone: formData.phone,
+                roleId: "string",
+                userAvatar: formData.userAvatar,
+                idCard: formData.idCard,
+              };
           // Update trainer
-          await axios.patch(`http://localhost:5000/api/Trainer/updateTrainer/${currentTrainer.trainerId}`, trainerData, {
+          await axios.patch(`http://localhost:5000/api/Users/${currentTrainer.trainerId}`, trainerDataEdit, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
@@ -636,7 +634,7 @@ const ManageTrainer = () => {
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value); // Cập nhật nội dung tìm kiếm khi người dùng nhập
   };
-  const filteredTrainerData = trainerData.filter(
+  const filteredTrainerData = trainerUserData.filter(
     (Trainer) => Trainer.name.toLowerCase().includes(searchQuery.toLowerCase()) // Tìm kiếm theo email
   );
 
@@ -648,7 +646,7 @@ const ManageTrainer = () => {
       {/* <!-- ***** Preloader End ***** --> */}
 
       <div className="user-select">
-        <h1>Thêm huấn luyện viên trong hệ thống super gym</h1>
+        <h1>Sửa thông tin huấn luyện viên trong hệ thống super gym</h1>
 
         <div className="select-search-container">
           <div className="search-container">
@@ -672,51 +670,53 @@ const ManageTrainer = () => {
           <div className="table-title">
             <div className="row">
               <div className="col-sm-6">
-                <h2>Thêm mới/Thêm huấn luyện viên vào gói</h2>
+                <h2>Sửa thông tin huấn luyện viên</h2>
               </div>
-              <div className="col-sm-6">
+              {/* <div className="col-sm-6">
                 <button onClick={openAddTrainerModal} className="btn btn-success">
                   <AddCircleOutlineIcon />
                   <span>Thêm mới huấn luyện viên</span>
                 </button>
-              </div>
+              </div> */}
             </div>
           </div>
 
           <table className="table table-hover table-fixed">
-            <thead>
+          <thead>
               <tr>
-                <th className="name-el">Tên huấn luyện viên</th>
-                <th>Loại huấn luyện viên</th>
-                <th>Chuyên môn</th>
+                <th className="name-el">Họ tên</th>
+                <th>Giới tính</th>
+                <th>Ngày sinh</th>
+                <th>Email</th>
+                <th>Số điện thoại</th>
+                <th>Địa chỉ</th>
+                {/* <th className="status-center">Trạng thái</th> */}
+                {/* <th className="role-el">Vai trò</th> */}
                 <th className="action-el">Hành động</th>
               </tr>
             </thead>
             <tbody>
-              {filteredTrainerData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((trainer, index) => (
+            {filteredTrainerData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((trainer, index) => (
                 <tr key={index}>
                   <td>
                     <img src={`data:image/jpeg;base64,${trainer.userAvatar}`} className="customer-avatar" />
                     {trainer.name}
                   </td>
+                  {/* <td>{customer.gender}</td> */}
+                  <td>{trainer.gender === "male" ? "Nam" : "Nữ"}</td>
+                  <td>{formatDate(trainer.dob)}</td>
+                  <td>{trainer.email}</td>
+                  <td>{trainer.phone}</td>
+                  <td>{trainer.address}</td>
+                  {/* <td className={customer.status === "Hoạt động" ? "status-el-active" : "status-el-inactive"}>{customer.status}</td> */}
+                  {/* <td>{customer.role}</td> */}
                   <td>
-                    {/* Display multiple types if both Gym and Boxing are true */}
-                    {trainer.isTrainerGym && trainer.isTrainerBoxing ? "Gym, Boxing" : trainer.isTrainerGym ? "Gym" : trainer.isTrainerBoxing ? "Boxing" : "N/A"}
-                  </td>
-
-                  <td>{trainer.specialization || "Chưa có chuyên môn"}</td>
-                  {/* <td>{trainer.bio || 'Chưa có thông tin'}</td> */}
-                  <td>
-                    {/* Add the actions: Edit and Delete */}
-                    {/* <a href="#" onClick={() => openEditTrainerModal(trainer)} className="edit">
+                    <a href="#" onClick={() => openEditTrainerModal(trainer)} className="edit">
                       <EditIcon />
                     </a>
-                    <a href="#" onClick={() => openDeleteModal(trainer)} className="delete">
+                    {/* <a href="#" onClick={() => openDeleteModal(trainer)} className="delete">
                       <DeleteIcon />
                     </a> */}
-                    <a href="#" onClick={() => openAddTrainToCourseModal(trainer)} className="add">
-                      <AddCircleOutlineIcon />
-                    </a>
                   </td>
                 </tr>
               ))}
@@ -833,19 +833,6 @@ const ManageTrainer = () => {
 
                 {/* Gym and Boxing checkboxes */}
                 <div className="row">
-                  <div className="form-group col">
-                    <label>Loại huấn luyện viên</label>
-                    <div className="checkbox-group">
-                      <div>
-                        <input type="checkbox" id="isTrainerGym" name="isTrainerGym" checked={formData.isTrainerGym} onChange={handleCheckboxChange} />
-                        <label htmlFor="isTrainerGym">Gym</label>
-
-                        <input className="ms-3" type="checkbox" id="isTrainerBoxing" name="isTrainerBoxing" checked={formData.isTrainerBoxing} onChange={handleCheckboxChange} />
-                        <label htmlFor="isTrainerBoxing">Boxing</label>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="form-group col">
                     <label>Giới tính</label>
                     <div className="radio-group-trainer">
@@ -1066,4 +1053,4 @@ const ManageTrainer = () => {
   );
 };
 
-export default ManageTrainer;
+export default EditTrainer;

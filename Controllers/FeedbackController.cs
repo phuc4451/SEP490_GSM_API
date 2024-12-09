@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Alpha_API.Models;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Alpha_API.ViewModel;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -36,6 +37,59 @@ public class FeedbackController : ControllerBase
         }).ToList();
 
         return Ok(feedbackList);
+    }
+
+    [HttpGet("FeedbackWithUserInfo")]
+    [Authorize(Roles = "admin")]
+    public async Task<ActionResult<IEnumerable<Feedback>>> GetFeedbackWithUserInfo()
+    {
+        try
+        {
+            // Lấy tất cả feedback
+            var feedbacks = await _firebaseClient
+                .Child("Feedback")
+                .OnceAsync<Feedback>();
+
+            // Tạo danh sách để lưu kết quả
+            var feedbackWithUserList = new List<FeedbackWithUserInfoDTO>();
+
+            // Với mỗi feedback, lấy thông tin user tương ứng
+            foreach (var f in feedbacks)
+            {
+                var feedback = f.Object;
+                feedback.FeedbackId = f.Key;
+
+                // Lấy thông tin user từ userId trong feedback
+                var user = await _firebaseClient
+                    .Child("users")
+                    .Child(feedback.UserId)
+                    .OnceSingleAsync<User>();
+
+                if (user != null)
+                {
+                    user.UserId = feedback.UserId;
+                }
+
+                // Tạo đối tượng mới kết hợp feedback và user
+                var feedbackWithUser = new FeedbackWithUserInfoDTO
+                {
+                    FeedbackId = feedback.FeedbackId,
+                    UserId = feedback.UserId,
+                    Message = feedback.Message,
+                    Rating = feedback.Rating,
+                    SubmittedAt = feedback.SubmittedAt,
+                    User = user
+                };
+
+                feedbackWithUserList.Add(feedbackWithUser);
+            }
+
+            return Ok(feedbackWithUserList);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
     }
 
     // POST: api/feedback

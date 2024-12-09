@@ -1,14 +1,33 @@
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Dashboard.css";
+import { useNavigate } from "react-router-dom";
+import { getRole,Logout } from '../utils/authUtils';
 import Header from "../Header/Header.js";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, DoughnutController, ArcElement, Title, Tooltip, Legend } from "chart.js";
 
 // Đăng ký các thành phần của Chart.js
 ChartJS.register(CategoryScale, LinearScale, BarElement, DoughnutController, ArcElement, Title, Tooltip, Legend);
+const generateColors = (numColors) => {
+  const colors = [];
+  for (let i = 0; i < numColors; i++) {
+    const randomColor = `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 0.5)`;
+    colors.push(randomColor);
+  }
+  return colors;
+};
 
 const Home = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const userRole = getRole();
+    if (userRole !== 'admin') {
+      Logout();
+      navigate('/login'); // or redirect to login
+      return;
+    }
+  }, [navigate]);
   // State cho các bộ lọc
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedMonthPackage, setSelectedMonthPackage] = useState("");
@@ -16,6 +35,7 @@ const Home = () => {
   const [monthlyData, setMonthlyData] = useState([]);
   const [totalRevenueAllMonth, setTotalRevenueAllMonth] = useState([]);
   const [dailyCheckinData, setDailyCheckinData] = useState([]);
+  const [packageColors, setPackageColors] = useState([]);
   // Labels cho tháng và ngày trong tuần
   const monthlyLabels = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
   const monthlyPackageLabels = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
@@ -24,6 +44,7 @@ const Home = () => {
   // Dữ liệu gốc cho biểu đồ Tổng tiền theo tháng
   const originalMonthlyData = [1000000, 2000000, 1500000, 3000000, 2500000, 4000000, 4500000, 3800000, 3200000, 2900000, 3700000, 4200000];
   const originalDailyCheckinData = [150, 200, 180, 220, 210, 230, 170];
+
 
   // Cấu hình tùy chọn cho biểu đồ
   const options = {
@@ -242,24 +263,32 @@ const Home = () => {
   };
 
   // Function to generate random colors
-  const generateColors = (numColors) => {
-    const colors = [];
-    for (let i = 0; i < numColors; i++) {
-      const randomColor = `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 0.5)`;
-      colors.push(randomColor);
-    }
-    return colors;
-  };
+  // const generateColors = (numColors) => {
+  //   const colors = [];
+  //   for (let i = 0; i < numColors; i++) {
+  //     const randomColor = `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 0.5)`;
+  //     colors.push(randomColor);
+  //   }
+  //   return colors;
+  // };
 
   // Package sales data
+
+  
+  useEffect(() => {
+    if (packageSold.quantityPackage.length > 0 && packageColors.length !== packageSold.quantityPackage.length) {
+      const newColors = generateColors(packageSold.quantityPackage.length);
+      setPackageColors(newColors);
+    }
+  }, [packageSold.quantityPackage.length]);
   const packageSalesData = {
-    labels: packageSold.namePackage.map((name, index) => `${name}: ${packageSold.quantityPackage[index]}`), // Combine name and quantity for the label
+    labels: packageSold.namePackage.map((name, index) => `${name}: ${packageSold.quantityPackage[index]}`),
     datasets: [
       {
         label: "Số lượng bán ra",
-        data: packageSold.quantityPackage, // Package quantities as data
-        backgroundColor: generateColors(packageSold.quantityPackage.length), // Generate dynamic colors
-        borderColor: generateColors(packageSold.quantityPackage.length).map((color) => color.replace("0.5", "1")), // Border colors (same as background but fully opaque)
+        data: packageSold.quantityPackage,
+        backgroundColor: packageColors, // Sử dụng màu từ state
+        borderColor: packageColors.map(color => color.replace("0.5", "1")),
         borderWidth: 1,
       },
     ],

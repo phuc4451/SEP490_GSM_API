@@ -43,6 +43,7 @@ const ManageEquipment = () => {
   const [errors, setErrors] = useState({});
   const [currentEquipment, setCurrentEquipment] = useState(null); // for editing equipment
   const [searchCode, setSearchCode] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [formData, setFormData] = useState({
     equipmentName: "",
@@ -75,8 +76,6 @@ const ManageEquipment = () => {
     equipmentWeightStack: 0,
     equipmentMaterial: "",
   };
-
-  
 
   const formatNumberWithCommas = (value) => {
     return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -349,7 +348,7 @@ const ManageEquipment = () => {
     setFormData({
       equipmentName: equipment.equipmentName,
       equipmentCode: equipment.equipmentCode,
-      equipmentImportPrice: equipment.equipmentImportPrice,
+      equipmentImportPrice: equipment.equipmentImportPrice.toLocaleString(),
       equipmentBrand: equipment.equipmentBrand,
       equipmentQuantity: equipment.equipmentQuantity,
       equipmentManufactured: equipment.equipmentManufactured,
@@ -587,6 +586,12 @@ const ManageEquipment = () => {
     setIsSubmitDisabled(false);
     // Reset dữ liệu hoặc trạng thái nếu cần
   };
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value); // Cập nhật nội dung tìm kiếm khi người dùng nhập
+  };
+  const filteredEquipmentData = equipmentList.filter(
+    (Equipment) => Equipment.equipmentCode.toLowerCase().includes(searchQuery.toLowerCase()) // Tìm kiếm theo email
+  );
 
   return (
     <>
@@ -598,13 +603,20 @@ const ManageEquipment = () => {
 
         <div className="select-search-container">
           <div className="search-container">
-            <input type="text" id="searchUser" className="form-control" placeholder="Tìm kiếm..." />
+            <input
+              type="text"
+              id="searchUser"
+              className="form-control"
+              placeholder="Tìm kiếm theo mã thiết bị..."
+              value={searchQuery} // Liên kết với state searchQuery
+              onChange={handleSearchChange} // Cập nhật state khi người dùng nhập
+            />
             <span className="search-icon">
               <SearchIcon />
             </span>
           </div>
 
-          <select className="form-control  form-select" id="selectRole">
+          {/* <select className="form-control  form-select" id="selectRole">
             <option value="">Chọn vai trò</option>
             <option value="admin">Admin</option>
             <option value="staff">Nhân viên</option>
@@ -620,7 +632,7 @@ const ManageEquipment = () => {
             <option value="">Chọn giới tính</option>
             <option value="male">Nam</option>
             <option value="female">Nữ</option>
-          </select>
+          </select> */}
         </div>
       </div>
 
@@ -660,7 +672,7 @@ const ManageEquipment = () => {
               </tr>
             </thead>
             <tbody>
-              {currentEquipments.map((equipment) => (
+              {filteredEquipmentData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((equipment) => (
                 <tr key={equipment.equipmentId}>
                   <td>{equipment.equipmentName}</td>
                   <td>{equipment.equipmentCode}</td>

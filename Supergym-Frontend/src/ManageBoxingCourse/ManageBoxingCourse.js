@@ -227,9 +227,9 @@ const ManageBoxingCourse = () => {
                         <div className="row row-course">
                           <div className="col-6">
                             <p>Số buổi: {course.sessions}</p>
+                            <p>Thời hạn: {course.months}</p>
                           </div>
                           <div className="col-6">
-                            <p>Thời hạn: {course.months}</p>
                             <p>Lượng thành viên: {course.memberCount}</p>
                           </div>
                         </div>

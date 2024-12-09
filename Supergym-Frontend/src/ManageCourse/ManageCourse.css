@@ -98,7 +98,7 @@ features
     font-style: italic;
     font-size: 16px;
     color: #555;
-    margin-left: 10px; /* Adds some spacing between button and price */
+    /* margin-left: 10px;  */
     text-align: right;
     display: flex;
     align-items: center; /* Centers the price vertically within the container */
@@ -185,5 +185,9 @@ features
     margin-right: 20px; /* Khoảng cách giữa nhãn (label) và checkbox tiếp theo */
   }
   
-  
+  .price-course-input {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none; /* Loại bỏ viền bên phải */
+  }
   

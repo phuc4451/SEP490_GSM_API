@@ -22,7 +22,6 @@ const ManageCourse = () => {
   const errorModalRef = useRef(null);
   const [errorMessage, setErrorMessage] = useState("");
 
-
   const [courses, setCourses] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -35,17 +34,12 @@ const ManageCourse = () => {
   const openAddCustomerModal = () => {
     setFormData({
       name: "",
-      gender: "male",
-      dob: "",
-      email: "",
-      phone: "",
-      address: "",
-      userAvatar: null, // Đặt lại ảnh đã chọn
+      durationMonths: "",
+      sessionCount: "",
+      price: "",
     });
-    setPreviewImage(null); // Đặt lại ảnh xem trước
-    if (fileInputRef.current) {
-      fileInputRef.current.value = null; // Đặt lại giá trị input file
-    }
+    setErrors({}); // Xóa lỗi trước đó
+    setErrorMessage(""); // Xóa thông báo lỗi trước đó
     setCurrentCustomer(null); // Đặt lại khách hàng hiện tại để thêm mới
     customerModalRef.current.style.display = "block"; // Hiển thị modal
     customerModalRef.current.classList.add("active"); // Thêm class 'active'
@@ -57,8 +51,10 @@ const ManageCourse = () => {
       name: course.name,
       durationMonths: course.durationMonths,
       sessionCount: course.sessionCount,
-      price: course.price,
+      price: course.price.toLocaleString(),
     });
+    setErrors({}); // Xóa lỗi trước đó
+    setErrorMessage(""); // Xóa thông báo lỗi trước đó
     setCurrentCustomer(course); // Lưu thông tin gói tập để biết được ID của gói cần chỉnh sửa
     customerModalRef.current.style.display = "block"; // Hiển thị modal
     customerModalRef.current.classList.add("active");
@@ -139,34 +135,102 @@ const ManageCourse = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value, // Cập nhật giá trị tương ứng trong formData
-    }));
+
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+
+    // Trigger validation for the specific field
+    validateField(name, value);
+  };
+
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+
+    switch (name) {
+      case "name":
+        if (value.length <= 0) {
+          newErrors.name = "Tên gói phải có ít nhất từ 1 ký tự.";
+        } else {
+          delete newErrors.name; // Clear error if valid
+        }
+        break;
+      case "durationMonths":
+        if (value.length <= 0) {
+          newErrors.durationMonths = "Thời gian phải lớn hơn 0";
+        } else {
+          delete newErrors.durationMonths; // Clear error if valid
+        }
+        break;
+      case "price":
+        if (value.length <= 0) {
+          newErrors.price = "Giá gói tập phải lớn hơn 0";
+        } else {
+          delete newErrors.price; // Clear error if valid
+        }
+        break;
+      case "sessionCount":
+        if (!value) {
+          newErrors.sessionCount = "Số buổi phải lớn hơn hoặc bằng 0";
+        } else {
+          delete newErrors.sessionCount; // Clear error if valid
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Check all fields here
+    if (formData.name.length <= 0) {
+      newErrors.name = "Tên gói phải có ít nhất 1 ký tự.";
+    }
+
+    if (formData.durationMonths.length < 0) {
+      newErrors.name = "Thời gian phải lớn hoặc bằng hơn 0";
+    }
+
+    if (formData.price.length <= 0) {
+      newErrors.name = "Giá gói tập phải lớn hơn 0";
+    }
+
+    if (formData.sessionCount.length < 0) {
+      newErrors.name = "Số buổi phải lớn hơn hoặc bằng 0";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0; // If no errors, form is valid
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post("http://localhost:5000/api/GymMembership", formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCourses((prevCourses) => [...prevCourses, response.data]);
-      setFormData({
-        name: "",
-        durationMonths: "",
-        sessionCount: "",
-        price: "",
-      });
-      closeModal();
-      showSuccessModal("Gói Gym được lưu thành công");
-    } catch (error) {
-      if (error.response && error.response.status === 409) {
-        showErrorModal("Gói Gym đã tồn tại, vui lòng thêm gói Gym khác!");
-      } else {
-        showErrorModal("Lỗi khi tạo gói Gym");
-        console.error("Error saving equipment:", error);
+    if (validateForm()) {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.post("http://localhost:5000/api/GymMembership", formData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCourses((prevCourses) => [...prevCourses, response.data]);
+        setFormData({
+          name: "",
+          durationMonths: "",
+          sessionCount: "",
+          price: "",
+        });
+        closeModal();
+        showSuccessModal("Gói Gym được lưu thành công");
+      } catch (error) {
+        if (error.response && error.response.status === 409) {
+          showErrorModal("Gói Gym đã tồn tại, vui lòng thêm gói Gym khác!");
+        } else {
+          showErrorModal("Lỗi khi tạo gói Gym");
+          console.error("Error saving equipment:", error);
+        }
       }
     }
   };
@@ -234,25 +298,30 @@ const ManageCourse = () => {
                     <div className="right-content">
                       <div className="course-action">
                         <h4>{course.name}</h4>
-                        <p>Thời gian: {course.durationMonths} tháng</p>
-                        <p>Số buổi: {course.sessionCount}</p>
+                        <div className="row">
+                          <div className="col-lg-6">
+                            <p>Thời gian: {course.durationMonths} tháng</p>
+                            <p>Số buổi: {course.sessionCount}</p>
+                          </div>
+                        </div>
+
                         <a href="#" onClick={() => openEditCustomerModal(course)} className="btn-fix detail-button">
-                          Chi tiết 
+                          Chi tiết
                         </a>
-                        <a href="#" className="btn-fix edit-button">
+                        {/* <a href="#" className="btn-fix edit-button">
                           Sửa
                         </a>
                         <a href="#" className="btn-fix delete-button">
                           Xóa
-                        </a>
+                        </a> */}
+                        <p className="price">Giá gói: {course.price.toLocaleString()} VND</p>
                       </div>
 
                       <div className="sale-price-section">
-                        <button id="add-sale-button" className="btn btn-primary sale-btn">
+                        {/* <button id="add-sale-button" className="btn btn-primary sale-btn">
                           Áp dụng giảm giá
                           <LocalOfferIcon />
-                        </button>
-                        <p className="price">Giá: {course.price} VND</p>
+                        </button> */}
                       </div>
                     </div>
                   </li>
@@ -277,19 +346,23 @@ const ManageCourse = () => {
                 <div className="modal-body">
                   <div className="form-group">
                     <label>Tên gói tập</label>
-                    <input type="text" className="form-control" name="name" value={formData.name} onChange={handleInputChange} required />
+                    <input type="text" className={`form-control ${errors.name ? "is-invalid" : ""}`} name="name" value={formData.name} onChange={handleInputChange} required />
+                    {errors.name && <div className="error-message">{errors.name}</div>}
                   </div>
                   <div className="form-group">
                     <label>Thời gian (tháng)</label>
-                    <input type="number" className="form-control" name="durationMonths" value={formData.durationMonths} onChange={handleInputChange} required />
+                    <input type="number" className={`form-control ${errors.durationMonths ? "is-invalid" : ""}`} name="durationMonths" value={formData.durationMonths} onChange={handleInputChange} required />
+                    {errors.durationMonths && <div className="error-message">{errors.durationMonths}</div>}
                   </div>
                   <div className="form-group">
                     <label>Số buổi</label>
-                    <input type="number" className="form-control" name="sessionCount" value={formData.sessionCount} onChange={handleInputChange} required />
+                    <input type="number" className={`form-control ${errors.sessionCount ? "is-invalid" : ""}`} name="sessionCount" value={formData.sessionCount} onChange={handleInputChange} required />
+                    {errors.sessionCount && <div className="error-message">{errors.sessionCount}</div>}
                   </div>
                   <div className="form-group">
                     <label>Giá</label>
-                    <input type="number" className="form-control" name="price" value={formData.price} onChange={handleInputChange} required />
+                    <input type="number" className={`form-control ${errors.price ? "is-invalid" : ""}`} name="price" value={formData.price} onChange={handleInputChange} required />
+                    {errors.price && <div className="error-message">{errors.price}</div>}
                   </div>
                 </div>
                 <div className="modal-footer">
@@ -325,7 +398,7 @@ const ManageCourse = () => {
                     <label>
                       Tên gói tập <span className="icon-input">(*)</span>
                     </label>
-                    <input type="text" className="form-control" name="name" value={formData.name} onChange={handleInputChange} required />
+                    <input type="text" className={`form-control ${errors.name ? "is-invalid" : ""}`} name="name" value={formData.name} onChange={handleInputChange} required />
                     {errors.name && <div className="error-message">{errors.name}</div>}
                   </div>
 
@@ -333,8 +406,8 @@ const ManageCourse = () => {
                     <label>
                       Thời gian <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="durationMonths" value={formData.durationMonths} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
+                    <input type="number" className={`form-control ${errors.durationMonths ? "is-invalid" : ""}`} name="durationMonths" value={formData.durationMonths} onChange={handleInputChange} required />
+                    {errors.durationMonths && <div className="error-message">{errors.durationMonths}</div>}
                   </div>
                 </div>
 
@@ -343,16 +416,21 @@ const ManageCourse = () => {
                     <label>
                       Giá <span className="icon-input">(*)</span>
                     </label>
-                    <input type="text" className="form-control" name="price" value={formData.price} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
+                    <div className="input-group">
+                      <input type="text" className={`form-control ${errors.price ? "is-invalid" : ""}`} name="price" value={formData.price} onChange={handleInputChange} required />
+
+                      <span className="input-readonly">VNĐ</span>
+                    </div>
+
+                    {errors.price && <div className="error-message">{errors.price}</div>}
                   </div>
 
                   <div className="form-group col">
                     <label>
                       Số buổi <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="sessionCount" value={formData.sessionCount} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
+                    <input type="number" className={`form-control ${errors.sessionCount ? "is-invalid" : ""}`} name="sessionCount" value={formData.sessionCount} onChange={handleInputChange} required />
+                    {errors.sessionCount && <div className="error-message">{errors.sessionCount}</div>}
                   </div>
                 </div>
 

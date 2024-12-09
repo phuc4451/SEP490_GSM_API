@@ -12,12 +12,22 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import StarIcon from "@mui/icons-material/Star";
-
+import { useNavigate } from "react-router-dom";
+import { getRole,Logout } from '../utils/authUtils';
 const ManageFeedback = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const userRole = getRole();
+    if (userRole !== 'admin') {
+      Logout();
+      navigate('/login'); // or redirect to login
+      return;
+    }
+  }, [navigate]);
   const [feedbackList, setFeedbackList] = useState([]);
+  const [feedbackListUserInfor, setFeedbackListUserInfor] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedGender, setSelectedGender] = useState("");
@@ -25,42 +35,60 @@ const ManageFeedback = () => {
   const [selectedRating, setSelectedRating] = useState("");
 
   const [users, setUsers] = useState({});
-  const itemsPerPage = 4;
+  const itemsPerPage = 8;
+  const [searchQuery, setSearchQuery] = useState("");
 
   const feedbackModalRef = useRef(null);
   const [currentFeedback, setCurrentFeedback] = useState(null);
 
+  // useEffect(() => {
+  //   const fetchFeedbacks = async () => {
+  //     const token = localStorage.getItem("token");
+  //     try {
+  //       const response = await axios.get("http://localhost:5000/api/Feedback", {
+  //         headers: { Authorization: `Bearer ${token}` },
+  //       });
+  //       setFeedbackList(response.data);
+
+  //       const uniqueUserIds = [...new Set(response.data.map((fb) => fb.userId))];
+  //       await Promise.all(
+  //         uniqueUserIds.map(async (userId) => {
+  //           const userResponse = await axios.get(`http://localhost:5000/api/Users/${userId}`, {
+  //             headers: { Authorization: `Bearer ${token}` },
+  //           });
+  //           setUsers((prevUsers) => ({
+  //             ...prevUsers,
+  //             [userId]: userResponse.data,
+  //           }));
+  //         })
+  //       );
+  //     } catch (error) {
+  //       console.error("Error fetching data:", error);
+  //     } finally {
+  //       setIsDataLoading(false);
+  //     }
+  //   };
+  //   fetchFeedbacks();
+  // }, []);
+
   useEffect(() => {
-    const fetchFeedbacks = async () => {
+    const fetchFeedbacksWithUserInfor = async () => {
       const token = localStorage.getItem("token");
       try {
-        const response = await axios.get("http://localhost:5000/api/Feedback", {
+        const response = await axios.get("http://localhost:5000/api/Feedback/FeedbackWithUserInfo", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setFeedbackList(response.data);
-
-        const uniqueUserIds = [...new Set(response.data.map((fb) => fb.userId))];
-        await Promise.all(
-          uniqueUserIds.map(async (userId) => {
-            const userResponse = await axios.get(`http://localhost:5000/api/Users/${userId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            setUsers((prevUsers) => ({
-              ...prevUsers,
-              [userId]: userResponse.data,
-            }));
-          })
-        );
+        setFeedbackListUserInfor(response.data);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
         setIsDataLoading(false);
       }
     };
-    fetchFeedbacks();
+    fetchFeedbacksWithUserInfor();
   }, []);
 
-  const totalPages = Math.ceil(feedbackList.length / itemsPerPage);
+  // const totalPages = Math.ceil(feedbackListUserInfor.length / itemsPerPage);
   // const currentFeedbacks = feedbackList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   // const openViewFeedbackModal = (feedback) => {
@@ -69,7 +97,7 @@ const ManageFeedback = () => {
   //   document.querySelector(".modal-overlay").style.display = "block";
   // };
 
-  const currentFeedbacks = feedbackList
+  const currentFeedbacks = feedbackListUserInfor
     .filter((feedback) => {
       if (selectedMonth && new Date(feedback.submittedAt).getMonth() + 1 !== parseInt(selectedMonth)) return false;
       if (selectedRating && feedback.rating !== parseInt(selectedRating)) return false;
@@ -80,6 +108,8 @@ const ManageFeedback = () => {
   const openViewFeedbackModal = (feedback) => {
     setCurrentFeedback(feedback);
     feedbackModalRef.current.style.display = "block";
+    feedbackModalRef.current.classList.add("active"); // Thêm class 'active'
+
     document.querySelector(".modal-overlay").style.display = "block";
   };
 
@@ -94,8 +124,23 @@ const ManageFeedback = () => {
   };
 
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
+    setSearchQuery(e.target.value); // Cập nhật nội dung tìm kiếm khi người dùng nhập
   };
+// First, combine all filters (search, rating, month)
+const filteredUserData = feedbackListUserInfor.filter((feedback) => {
+  // Search by email
+  const emailMatch = feedback.user.email.toLowerCase().includes(searchQuery.toLowerCase());
+  
+  // Filter by month (if selected)
+  const monthMatch = !selectedMonth || 
+    new Date(feedback.submittedAt).getMonth() + 1 === parseInt(selectedMonth);
+  
+  // Filter by rating (if selected)
+  const ratingMatch = !selectedRating || 
+    feedback.rating === parseInt(selectedRating);
+
+  return emailMatch && monthMatch && ratingMatch;
+});
 
   const deleteFeedback = async (feedbackId) => {
     const token = localStorage.getItem("token");
@@ -110,25 +155,35 @@ const ManageFeedback = () => {
   };
 
   const calculateAverageRating = () => {
-    if (feedbackList.length === 0) return 0;
-    const totalRating = feedbackList.reduce((sum, feedback) => sum + feedback.rating, 0);
-    return (totalRating / feedbackList.length).toFixed(1); // Làm tròn đến một chữ số thập phân
+    if (feedbackListUserInfor.length === 0) return 0;
+    const totalRating = feedbackListUserInfor.reduce((sum, feedback) => sum + feedback.rating, 0);
+    return (totalRating / feedbackListUserInfor.length).toFixed(1); // Làm tròn đến một chữ số thập phân
   };
 
   const averageRating = calculateAverageRating();
-
+// Pagination calculation for filtered data
+const totalPages = Math.ceil(filteredUserData.length / itemsPerPage);
+const currentPageData = filteredUserData.slice(
+  (currentPage - 1) * itemsPerPage, 
+  currentPage * itemsPerPage
+);
   return (
     <>
       <Header />
       {isDataLoading ? <Preloader /> : null}
 
       <div className="user-select">
-        <h1>Quản lý phản hồi</h1>
-        <h2>Phản hồi từ hệ thống SUPER GYM</h2>
-
+        <h1>Quản lý phản hồi từ hệ thống SUPER GYM</h1>
         <div className="select-search-container">
-          <div className="search-container">
-            <input type="text" id="searchUser" className="form-control" placeholder="Tìm kiếm..." value={searchQuery} onChange={handleSearchChange} />
+        <div className="search-container">
+            <input
+              type="text"
+              id="searchUser"
+              className="form-control"
+              placeholder="Tìm kiếm theo email..."
+              value={searchQuery} // Liên kết với state searchQuery
+              onChange={handleSearchChange} // Cập nhật state khi người dùng nhập
+            />
             <span className="search-icon">
               <SearchIcon />
             </span>
@@ -161,66 +216,72 @@ const ManageFeedback = () => {
               <div className="col-sm-6">
                 <h2>Quản lí phản hồi khách hàng</h2>
               </div>
-              <div className="col-sm-6">
+              {/* <div className="col-sm-6">
                 <button className="btn btn-success">
                   <AddCircleOutlineIcon /> Thêm mới
                 </button>
-              </div>
+              </div> */}
             </div>
           </div>
           <table className="table table-hover table-fixed">
             <thead>
               <tr>
-                <th>User</th>
-                <th>Message</th>
-                <th>Rating</th>
-                <th>Submitted At</th>
-                <th>Actions</th>
+                <th>Người dùng</th>
+                <th>Nội dung</th>
+                <th>Đánh giá</th>
+                <th>Ngày đánh giá</th>
+                <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
-              {currentFeedbacks.map((feedback) => {
-                const user = users[feedback.userId];
-                const rowClass = feedback.rating <= 3 ? "low-rating" : ""; // Apply class for low ratings
-                return (
-                  <tr key={feedback.feedbackId} className={rowClass}>
-                    <td>
-                      {user && (
-                        <div className="user-info">
-                          <img src={`data:image/jpeg;base64,${user.userAvatar}`} alt="User Avatar" className="customer-avatar" />
-                          <span>{user.name}</span>
-                        </div>
-                      )}
-                    </td>
-                    <td>{feedback.message}</td>
-                    <td>
-                      {Array.from({ length: 5 }, (_, index) => (
-                        <StarIcon
-                          key={index}
-                          style={{
-                            color: index < feedback.rating ? "#FFD700" : "#E0E0E0", // Gold for rated stars, light gray for non-rated
-                          }}
-                        />
-                      ))}
-                    </td>
-                    <td>{new Date(feedback.submittedAt).toLocaleDateString("vi-VN")}</td>
-                    <td>
-                      <a href="#" onClick={() => openViewFeedbackModal(feedback)} className="view">
-                        <VisibilityIcon />
-                      </a>
-                      <a href="#" onClick={() => deleteFeedback(feedback.feedbackId)} className="delete">
-                        <DeleteIcon />
-                      </a>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
+  {currentPageData.map((feedback) => {
+    const rowClass = feedback.rating <= 3 ? "low-rating" : "";
+    
+    return (
+      <tr key={feedback.feedbackId} className={rowClass}>
+        <td>
+          <div className="user-info">
+            <img 
+              src={`data:image/jpeg;base64,${feedback.user.userAvatar}`} 
+              alt="User Avatar" 
+              className="customer-avatar" 
+            />
+            <span>{feedback.user.name}</span>
+          </div>
+        </td>
+        <td>{feedback.message}</td>
+        <td>
+          {Array.from({ length: 5 }, (_, index) => (
+            <StarIcon
+              key={index}
+              style={{
+                color: index < feedback.rating ? "#FFD700" : "#E0E0E0",
+              }}
+            />
+          ))}
+        </td>
+        <td>{new Date(feedback.submittedAt).toLocaleDateString("vi-VN")}</td>
+        <td>
+          <a 
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault();
+              openViewFeedbackModal(feedback);
+            }} 
+            className="view"
+          >
+            <VisibilityIcon />
+          </a>
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
           </table>
 
           <div className="clearfix-el">
             <div className="hint-text">
-              Showing <b>{currentFeedbacks.length}</b> out of <b>{feedbackList.length}</b> entries
+              Showing <b>{currentFeedbacks.length}</b> out of <b>{filteredUserData.length}</b> entries
             </div>
             <ul className="pagination">
               <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
@@ -259,13 +320,19 @@ const ManageFeedback = () => {
               {currentFeedback && (
                 <>
                   <p>
-                    <strong>User ID:</strong> {currentFeedback.userId}
+                    <strong>ID người phản hồi:</strong> {currentFeedback.user.userId}
                   </p>
                   <p>
-                    <strong>Message:</strong> {currentFeedback.message}
+                    <strong>Tên:</strong> {currentFeedback.user.name}
                   </p>
                   <p>
-                    <strong>Rating:</strong> {currentFeedback.rating}
+                    <strong>Email:</strong> {currentFeedback.user.email}
+                  </p>
+                  <p>
+                    <strong>Nội dung:</strong> {currentFeedback.message}
+                  </p>
+                  <p>
+                    <strong>Phản hồi:</strong> {currentFeedback.rating}⭐
                   </p>
                   <p>
                     <strong>Submitted At:</strong> {new Date(currentFeedback.submittedAt).toLocaleDateString("vi-VN")}

@@ -16,8 +16,18 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import { Delete } from "@mui/icons-material";
-
+import { useNavigate } from "react-router-dom";
+import { getRole,Logout } from '../utils/authUtils';
 const ManageCustomer = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const userRole = getRole();
+    if (userRole !== 'admin') {
+      Logout();
+      navigate('/login'); // or redirect to login
+      return;
+    }
+  }, [navigate]);
   const [StaffDataList, setStaffDataList] = useState([]);
   const fileInputRef = useRef(null);
   const [previewImage, setPreviewImage] = useState(null); // To store preview image

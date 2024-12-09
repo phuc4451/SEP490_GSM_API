@@ -22,6 +22,8 @@ const ManageMembership = () => {
   const [selectedPackages, setSelectedPackages] = useState([]); // Dữ liệu các gói
   const [qrDataUrl, setQrDataUrl] = useState(""); // State to store the QR code data URL
   const showQrPicture = useRef(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   //PRELOAD
   const [membershipData, setMembershipData] = useState([]); // renamed variable
@@ -47,11 +49,12 @@ const ManageMembership = () => {
   });
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 4; // Maximum 2 employees per page
+  const itemsPerPage = 8; // Maximum 2 employees per page
 
   const membershipModalRef = useRef(null); // renamed ref
   const successModalRef = useRef(null);
   const deleteModalRef = useRef(null);
+  const errorModalRef = useRef(null);
 
   //FETCH DATA AND PRELOAD
   useEffect(() => {
@@ -85,9 +88,7 @@ const ManageMembership = () => {
         setSelectedPackages(response.data); // updated variable
       } catch (error) {
         console.error("Error fetching memberships:", error); // renamed error message
-      } finally {
-        setIsDataLoading(false);
-      }
+      } 
     };
     fetchPackage(); // renamed function call
   }, []);
@@ -149,7 +150,7 @@ const ManageMembership = () => {
 
     setFormData({
       name: membership.user.name,
-      gender: membership.user.gender.toLowerCase() === "nam" ? "male" : "female",
+      gender: membership.user.gender,
       dob: formattedDob,
       email: membership.user.email,
       phone: membership.user.phone,
@@ -200,42 +201,65 @@ const ManageMembership = () => {
   };
 
   const handleInputChange = (e) => {
+    const { name, value } = e.target;
+  
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+  
+    // Trigger validation for the specific field
+    validateField(name, value);
+  };
+
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+
+    switch (name) {
+      case "email":
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(value)) {
+          newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
+        } else {
+          delete newErrors.email; // Clear error if valid
+        }
+        break;
+      case "gender":
+        if (!value) {
+          newErrors.gender = "Vui lòng chọn giới tính.";
+        } else {
+          delete newErrors.gender; // Clear error if valid
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
   };
 
   const validateForm = () => {
     const newErrors = {};
-    if (formData.name.length < 5 || formData.name.length > 30) {
-      newErrors.name = "Họ tên phải từ 5 đến 30 ký tự.";
-    }
-
-    const dob = new Date(formData.dob);
-    const minDate = new Date("2022-03-10");
-    const maxDate = new Date("2024-12-12");
-    if (dob < minDate || dob > maxDate) {
-      newErrors.dob = "Ngày tham gia phải trong khoảng từ 10/03/2022 đến 12/12/2024.";
-    }
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(formData.email)) {
       newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
-    }
 
-    if (formData.phone.length < 9 || formData.phone.length > 11 || !/^\d+$/.test(formData.phone)) {
-      newErrors.phone = "Số điện thoại phải từ 9 đến 11 chữ số.";
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0; // If no errors, form is valid
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Return true if no errors
   };
 
   const showSuccessModal = (message) => {
     setSuccessMessage(message); // Cập nhật thông báo
     successModalRef.current.style.display = "block";
     document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+  };
+
+  const closeSuccessModal = () => {
+    successModalRef.current.style.display = "none"; // Ẩn modal
+    document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
+    window.location.reload();
   };
   const showQr = () => {
     showQrPicture.current.style.display = "block";
@@ -247,13 +271,24 @@ const ManageMembership = () => {
     showQrPicture.current.style.display = "none"; // Ẩn modal
     document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
     window.close();
+    window.location.reload();
+
   };
 
-  const closeSuccessModal = () => {
-    successModalRef.current.style.display = "none"; // Ẩn modal
-    document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
-    window.location.reload();
+  // Hàm để mở modal thông báo
+  const showErrorModal = (message) => {
+    setErrorMessage(message); // Cập nhật thông báo
+    errorModalRef.current.style.display = "block";
+    document.querySelector(".modal-overlay").style.display = "block";
   };
+
+  // Hàm để đóng modal thông báo
+  const closeErrorModal = () => {
+    errorModalRef.current.style.display = "none"; // Ẩn modal
+    // document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
+    // window.location.reload();
+  };
+
   const openDeleteModal = (membership) => {
     // renamed function
     setMembershipToDelete(membership); // renamed variable
@@ -306,10 +341,14 @@ const ManageMembership = () => {
       }
 
       closeModal(); // Close the modal after success
-      showQr(); // Show QR if applicable
+      if (qrPaymentInput === false) {
+        showSuccessModal("Thanh toán thành công");
+      } else {
+        showQr(); // Show QR if applicable
+      }
     } catch (error) {
       console.error("Error during trainer registration:", error);
-      showSuccessModal("Có lỗi khi đăng ký huấn luyện viên. Vui lòng thử lại.");
+      showErrorModal("Có lỗi khi đăng ký đăng ký thành viên. Vui lòng thử lại.");
     }
   };
 
@@ -336,7 +375,12 @@ const ManageMembership = () => {
     e.preventDefault();
     deleteMembership(); // renamed function
   };
-
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value); // Cập nhật nội dung tìm kiếm khi người dùng nhập
+  };
+  const filteredMembershipData = membershipData.filter(
+    (Membership) => Membership.user.email.toLowerCase().includes(searchQuery.toLowerCase()) // Tìm kiếm theo email
+  );
   return (
     <>
       <Header />
@@ -349,29 +393,18 @@ const ManageMembership = () => {
 
         <div className="select-search-container">
           <div className="search-container">
-            <input type="text" id="searchUser" className="form-control" placeholder="Tìm kiếm..." />
+            <input
+              type="text"
+              id="searchUser"
+              className="form-control"
+              placeholder="Tìm kiếm theo email..."
+              value={searchQuery} // Liên kết với state searchQuery
+              onChange={handleSearchChange} // Cập nhật state khi người dùng nhập
+            />
             <span className="search-icon">
               <SearchIcon />
             </span>
           </div>
-
-          <select className="form-control  form-select" id="selectRole">
-            <option value="">Chọn vai trò</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Nhân viên</option>
-          </select>
-
-          <select className="form-control form-select" id="selectStatus">
-            <option value="">Chọn trạng thái</option>
-            <option value="active">Hoạt động</option>
-            <option value="inactive">Không hoạt động</option>
-          </select>
-
-          <select className="form-control form-select" id="selectGender">
-            <option value="">Chọn giới tính</option>
-            <option value="male">Nam</option>
-            <option value="female">Nữ</option>
-          </select>
         </div>
       </div>
 
@@ -404,31 +437,28 @@ const ManageMembership = () => {
               </tr>
             </thead>
             <tbody>
-              {currentMemberships.map((membership, index) => (
+              {filteredMembershipData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((membership, index) => (
                 <tr key={index}>
                   <td>
                     <img src={`data:image/jpeg;base64,${membership.user.userAvatar}`} className="customer-avatar" />
                     {membership.user.name}
                   </td>
-                  <td>{membership.user.gender === "Male" ? "Nam" : "Nữ"}</td>
+                  {/* <td>{customer.gender}</td> */}
+                  <td>{membership.user.gender === "male" ? "Nam" : "Nữ"}</td>
                   <td>{formatDate(membership.user.dob)}</td>
                   <td>{membership.user.email}</td>
                   <td>{membership.user.phone}</td>
                   <td>{membership.user.address}</td>
-                  {/* <td> */}
-                    {/* <a href="#" onClick={() => openEditMembershipModal(membership)} className="edit">
+                  {/* <td className={customer.status === "Hoạt động" ? "status-el-active" : "status-el-inactive"}>{customer.status}</td> */}
+                  {/* <td>{customer.role}</td> */}
+                  {/* <td>
+                    <a href="#" onClick={() => openEditMembershipModal(membership.user)} className="edit">
                       <EditIcon />
                     </a>
-                    <a href="#" onClick={() => openDeleteModal(membership)} className="delete">
+                    <a href="#" onClick={() => openDeleteModal(membership.user)} className="delete">
                       <DeleteIcon />
-                    </a> */}
-                    {/* <a href="#" onClick={() => openAddMembershipModal(membership)} className="add">
-                      <AddCircleOutlineIcon />
-                    </a> */}
-                    {/* <a href="#" onClick={() => openViewDetail(membership)} className="view">
-                      <VisibilityIcon  />
-                    </a> */}
-                  {/* </td> */}
+                    </a>
+                  </td> */}
                 </tr>
               ))}
             </tbody>
@@ -476,15 +506,15 @@ const ManageMembership = () => {
               <div className="modal-body">
                 <div className="row">
                   <div className="form-group col">
-                    <label>Email</label>
-                    <input type="email" className="form-control" name="email" value={formData.email} onChange={handleInputChange} required />
+                    Email <span className="icon-input">(*)</span>
+                    <input type="email" className={`form-control ${errors.email ? "is-invalid" : ""}`} name="email" value={formData.email} onChange={handleInputChange} required />
                     {errors.email && <div className="error-message">{errors.email}</div>}
                   </div>
                 </div>
 
                 <div className="row">
                   <div className="form-group col">
-                    <label>Gói đăng kí</label>
+                    <label>Gói đăng kí <span className="icon-input">(*)</span></label>
                     <select className="form-control form-select" name="option" value={selectedOption} onChange={handlePackageChange} required>
                       <option value="">Chọn gói</option>
                       {selectedPackages.map((option, index) => (
@@ -498,7 +528,7 @@ const ManageMembership = () => {
 
                 <div className="row">
                   <div className="form-group col">
-                    <label>Chọn kiểu thanh toán</label>
+                    <label>Chọn kiểu thanh toán <span className="icon-input">(*)</span></label>
                     <div className="radio-group">
                       <label>
                         <input type="radio" name="qrPayment" value="true" checked={formData.qrPayment === "true"} onChange={handleInputChange} />
@@ -603,6 +633,29 @@ const ManageMembership = () => {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeQr}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Error Modal */}
+      <div ref={errorModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-notify">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Thông báo</h4>
+              <a type="button" className="close" onClick={closeErrorModal}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body">
+              <p>{errorMessage}</p> {/* Hiển thị lỗi từ state */}
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" onClick={closeErrorModal}>
                 OK
               </button>
             </div>

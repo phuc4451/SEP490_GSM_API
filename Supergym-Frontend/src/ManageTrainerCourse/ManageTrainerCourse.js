@@ -232,9 +232,11 @@ const ManageTrainerCourse = () => {
                         <h4>{course.description}</h4>
 
                         <div className="row">
-                          <div className="col-6">
+                          <div className="col-lg-6">
                             <p>Số buổi tối thiểu: {course.sessionCountMin}</p>
                             <p>Số buổi tối đa: {course.sessionCountMax}</p>
+                          </div>
+                          <div className="col-lg-6">
                             <p>Thành viên trong gói: {course.memberCount}</p>
                           </div>
                         </div>
@@ -242,21 +244,21 @@ const ManageTrainerCourse = () => {
                         <a href="#" onClick={() => openEditCustomerModal(course)} className="btn-fix detail-button">
                           Chi tiết
                         </a>
-                        <a href="#" className="btn-fix edit-button">
+                        {/* <a href="#" className="btn-fix edit-button">
                           Sửa
                         </a>
                         <a href="#" className="btn-fix delete-button">
                           Xóa
-                        </a>
+                        </a> */}
                       </div>
 
                       <div className="sale-price-section">
-                        <button id="add-sale-button" className="btn btn-primary sale-btn">
+                        {/* <button id="add-sale-button" className="btn btn-primary sale-btn">
                           Áp dụng giảm giá
                           <LocalOfferIcon />
-                        </button>
-                        {course.pricePerPersonPerSession > 0 && <p>Giá 1 người/buổi: {course.pricePerPersonPerSession} VND</p>}
-                        {course.pricePerPersonPerMonth > 0 && <p>Giá 1 người/tháng: {course.pricePerPersonPerMonth} VND</p>}
+                        </button> */}
+                        {course.pricePerPersonPerSession > 0 && <p className="price">Giá 1 người/buổi: {course.pricePerPersonPerSession} VND</p>}
+                        {course.pricePerPersonPerMonth > 0 && <p className="price">Giá 1 người/tháng: {course.pricePerPersonPerMonth} VND</p>}
                       </div>
                     </div>
                   </li>
