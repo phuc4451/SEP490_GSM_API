@@ -89,6 +89,7 @@ const Header = () => {
         case "staff-management":
         case "dashboard":
         case "feedback":
+        case "trainer-management": // Added trainer management case
           return false;
         default:
           return true;
@@ -259,18 +260,19 @@ const Header = () => {
                 Quản lý người dùng
               </a>
               <div className="dropdown-content">
-                {/* Staff Management - hidden for staff */}
                 {shouldShowMenu("staff-management") && <a href="/manageManager">Quản lý nhân sự</a>}
                 <a href="/manageCustomer">Quản lý khách hàng</a>
-                <div className="dropdown-submenu">
-                  <a href="#" className="dropright-toggle">
-                    Quản lý huấn luyện viên
-                  </a>
-                  <div className="submenu-content">
-                    <a href="/ManageTrainer">Thêm huấn luyện viên</a>
-                    <a href="/EditTrainer">Sửa thông tin huấn luyện viên</a>
+                {shouldShowMenu("trainer-management") && (
+                  <div className="dropdown-submenu">
+                    <a href="#" className="dropright-toggle">
+                      Quản lý huấn luyện viên
+                    </a>
+                    <div className="submenu-content">
+                      <a href="/ManageTrainer">Thêm huấn luyện viên</a>
+                      <a href="/EditTrainer">Sửa thông tin huấn luyện viên</a>
+                    </div>
                   </div>
-                </div>
+                )}
                 <a href="/manageMembership">Quản lý Membership</a>
               </div>
             </div>
