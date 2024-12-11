@@ -91,8 +91,8 @@ namespace Alpha_API.Services
 			{
 				// Check for active registrations
 				var hasActiveRegistration = existingRegistrations.Result.Any(exReg =>
-				exReg.Value.IsActive &&
-				(exReg.Value.EndDate >= DateTime.Now && exReg.Value.SessionLeft > 0));
+				exReg.Object.IsActive &&
+				(exReg.Object.EndDate >= DateTime.Now && exReg.Object.SessionLeft > 0));
 
 				if (hasActiveRegistration)
 				{
@@ -159,8 +159,13 @@ namespace Alpha_API.Services
 				PaymentStatus = "Pending",
 				TransactionId = "Pending",
 			};
+			var paymentTask = _firebaseClient
+				.Child("Payments")
+				.Child(info)
+				.PutAsync(jsonString);
 
-			var paymentTask = _firebaseClient.UpdateDataAsync<Payment>("Payments", info, payment);
+
+			//var paymentTask = _firebaseClient.UpdateDataAsync<Payment>("Payments", info, payment);
 
 			await Task.WhenAll(paymentTask, regTask);
 
@@ -555,11 +560,12 @@ namespace Alpha_API.Services
 				IsMonWedFri = request.IsMonWedFri,
 				SelectedTimeSlotId = request.SelectedTimeSlot,
 			};
-			var schedule = await _scheduleService.CreateSchedule(scheduleRequest, userIdsString);
+                        // Build comma-separated userIds for storage
+            var userIdsString = string.Join(",", userIds);
+            var schedule = await _scheduleService.CreateSchedule(scheduleRequest, userIdsString);
 			var scheduleId = schedule.Item1;
 
-			// Build comma-separated userIds for storage
-			var userIdsString = string.Join(",", userIds);
+
 
 			var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembershipEndDate(userId, schedule.Item2));
 			var hasMembership = await Task.WhenAll(checkMembershipTask);
