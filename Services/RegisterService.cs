@@ -312,6 +312,16 @@ namespace Alpha_API.Services
 
 			if (hasMembership.Any(membership => !membership))
 			{
+				var tasks = new List<Task>();
+
+				tasks.Add(_firebaseClient.Child("Schedules").Child(scheduleId).DeleteAsync());
+
+				// Handle slot deletions
+				var slots = await _firebaseClient.Child("Slots")
+					.OrderBy("scheduleId").EqualTo(scheduleId).OnceAsync<Slot>();
+				tasks.AddRange(slots.Select(slot => _firebaseClient.Child("Slots").Child(slot.Key).DeleteAsync()));
+				// Execute all deletions
+				await Task.WhenAll(tasks);
 				throw new InvalidOperationException("User doesn't have an active gym membership");
 			}
 
@@ -556,6 +566,16 @@ namespace Alpha_API.Services
 
 			if (hasMembership.Any(membership => !membership))
 			{
+				var tasks = new List<Task>();
+
+				tasks.Add(_firebaseClient.Child("Schedules").Child(scheduleId).DeleteAsync());
+
+				// Handle slot deletions
+				var slots = await _firebaseClient.Child("Slots")
+					.OrderBy("scheduleId").EqualTo(scheduleId).OnceAsync<Slot>();
+				tasks.AddRange(slots.Select(slot => _firebaseClient.Child("Slots").Child(slot.Key).DeleteAsync()));
+				// Execute all deletions
+				await Task.WhenAll(tasks);
 				throw new InvalidOperationException("User doesn't have an active gym membership");
 			}
 
