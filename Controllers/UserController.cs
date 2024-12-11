@@ -13,6 +13,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Collections;
 using Alpha_API.Services;
 using ClosedXML.Excel;
+using System.Globalization;
+using static Google.Apis.Requests.BatchRequest;
 
 
 [Route("api/[controller]")]
@@ -972,5 +974,211 @@ public class UsersController : ControllerBase
 
 	}
 
+    [HttpGet("membershipDetails/{userId}")]
+    public async Task<IActionResult> GetUserMembershipDetails(string userId)
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            return BadRequest("UserId không được để trống.");
+        }
+
+        try
+        {
+            var response = new UserMembershipDetails
+            {
+                GymMemberships = new List<GymMembershipDetail>(),
+                BoxingOptions = new List<BoxingOptionDetail>(),
+                RentalOptions = new List<RentalOptionDetail>()
+            };
+
+            // 1. Lấy GymRegistrations cho userId
+            var gymRegistrations = await _firebaseClient
+                .Child("GymRegistrations")
+                .OrderBy("userId")
+                .EqualTo(userId)
+                .OnceAsync<GymRegistration>();
+
+            foreach (var reg in gymRegistrations)
+            {
+                var gymMembershipId = reg.Object.GymMembershipId;
+                if (!string.IsNullOrEmpty(gymMembershipId))
+                {
+                    // 2. Lấy GymMembership chi tiết từ GymMemberships
+                    var gymMembership = await _firebaseClient
+                        .Child("GymMemberships")
+                        .Child(gymMembershipId)
+                        .OnceSingleAsync<GymMembership>();
+
+                    if (gymMembership != null)
+                    {
+                        // Lấy StartDate và EndDate từ GymRegistration (reg.Object)
+                        string formattedStartDate = ConvertDateFormat(reg.Object.StartDate);
+                        string formattedEndDate = ConvertDateFormat(reg.Object.EndDate);
+
+                        response.GymMemberships.Add(new GymMembershipDetail
+                        {
+                            GymMembershipId = gymMembershipId,
+                            Name = gymMembership.Name,
+                            StartDate = formattedStartDate,
+                            EndDate = formattedEndDate
+                        });
+                    }
+                }
+            }
+
+            // 3. Lấy BoxingRegistrations cho userId
+            var allBoxingRegistrations = await _firebaseClient
+                .Child("BoxingRegistrations")
+                .OnceAsync<BoxingRegistration>();
+
+            // Lọc các BoxingRegistrations mà UserIds chứa userId
+            var boxingRegistrations = allBoxingRegistrations
+                .Where(reg => !string.IsNullOrEmpty(reg.Object.UserIds) &&
+                              reg.Object.UserIds
+                                  .Split(',')
+                                  .Select(id => id.Trim())
+                                  .Contains(userId))
+                .ToList();
+
+            foreach (var boxingReg in boxingRegistrations)
+            {
+                var boxingMembershipPlanId = boxingReg.Object.BoxingMembershipPlanId;
+                if (!string.IsNullOrEmpty(boxingMembershipPlanId))
+                {
+                    // 4. Lấy BoxingMembershipPlan từ BoxingMembershipPlans
+                    var boxingMembershipPlan = await _firebaseClient
+                        .Child("BoxingMembershipPlans")
+                        .Child(boxingMembershipPlanId)
+                        .OnceSingleAsync<BoxingMembershipPlan>();
+
+                    if (boxingMembershipPlan != null)
+                    {
+                        var boxingOptionId = boxingMembershipPlan.BoxingOptionId;
+                        if (!string.IsNullOrEmpty(boxingOptionId))
+                        {
+                            // 5. Lấy BoxingOption từ BoxingOptions
+                            var boxingOption = await _firebaseClient
+                                .Child("BoxingOptions")
+                                .Child(boxingOptionId)
+                                .OnceSingleAsync<BoxingOption>();
+
+                            if (boxingOption != null)
+                            {
+                                // Lấy thời gian từ StartDate của BoxingRegistration
+                                string formattedStartDate = ConvertDateFormat(boxingReg.Object.StartDate);
+                                string formattedEndDate = ConvertDateFormat(boxingReg.Object.EndDate);
+
+                                response.BoxingOptions.Add(new BoxingOptionDetail
+                                {
+                                    BoxingMembershipPlanId = boxingMembershipPlanId,
+                                    Description = boxingOption.Description,
+                                    StartDate = formattedStartDate,
+                                    EndDate = formattedEndDate
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 6. Lấy TrainerRentalRegistrations cho userId
+            var allTrainerRentalRegistrations = await _firebaseClient
+                .Child("TrainerRentalRegistrations")
+                .OnceAsync<TrainerRentalRegistration>();
+
+            // Lọc các TrainerRentalRegistrations mà UserIds chứa userId
+            var trainerRentalRegistrations = allTrainerRentalRegistrations
+                .Where(reg => !string.IsNullOrEmpty(reg.Object.UserIds) &&
+                              reg.Object.UserIds
+                                  .Split(',')
+                                  .Select(id => id.Trim())
+                                  .Contains(userId))
+                .ToList();
+
+            foreach (var rentalReg in trainerRentalRegistrations)
+            {
+                var planId = rentalReg.Object.PlanId;
+                if (!string.IsNullOrEmpty(planId))
+                {
+                    // 7. Lấy TrainerRentalPlan từ TrainerRentalPlans
+                    var trainerRentalPlan = await _firebaseClient
+                        .Child("TrainerRentalPlans")
+                        .Child(planId)
+                        .OnceSingleAsync<TrainerRentalPlan>();
+
+                    if (trainerRentalPlan != null)
+                    {
+                        var rentalOptionId = trainerRentalPlan.RentalOptionId;
+                        if (!string.IsNullOrEmpty(rentalOptionId))
+                        {
+                            // 8. Lấy RentalOption từ RentalOptions
+                            var rentalOption = await _firebaseClient
+                                .Child("RentalOptions")
+                                .Child(rentalOptionId)
+                                .OnceSingleAsync<RentalOption>();
+
+                            if (rentalOption != null)
+                            {
+                                // Lấy thời gian từ StartDate của TrainerRentalRegistration
+                                string formattedStartDate = ConvertDateFormat(rentalReg.Object.StartDate);
+                                string formattedEndDate = ConvertDateFormat(rentalReg.Object.EndDate);
+
+                                response.RentalOptions.Add(new RentalOptionDetail
+                                {
+                                    RentalPlanId = planId,
+                                    Description = rentalOption.Description,
+                                    StartDate = formattedStartDate,
+                                    EndDate = formattedEndDate
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            return Ok(response);
+        }
+        catch (Exception)
+        {
+            // Trả về lỗi chung
+            return StatusCode(500, "Đã xảy ra lỗi phía máy chủ.");
+        }
+    }
+
+    private string ConvertDateFormat(DateTime dateTime)
+    {
+        return dateTime.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+    }
+
+    public class UserMembershipDetails
+    {
+        public List<GymMembershipDetail> GymMemberships { get; set; }
+        public List<BoxingOptionDetail> BoxingOptions { get; set; }
+        public List<RentalOptionDetail> RentalOptions { get; set; }
+    }
+
+    public class GymMembershipDetail
+    {
+        public string GymMembershipId { get; set; }
+        public string Name { get; set; }
+        public string StartDate { get; set; } // "dd/MM/yyyy"
+        public string EndDate { get; set; }   // "dd/MM/yyyy"
+    }
+
+    public class BoxingOptionDetail
+    {
+        public string BoxingMembershipPlanId { get; set; }
+        public string Description { get; set; }
+        public string StartDate { get; set; } // "dd/MM/yyyy"
+        public string EndDate { get; set; } // "HH:mm"
+    }
+
+    public class RentalOptionDetail
+    {
+        public string RentalPlanId { get; set; }
+        public string Description { get; set; }
+        public string StartDate { get; set; } // "dd/MM/yyyy"
+        public string EndDate { get; set; }  // "HH:mm"
+    }
 
 }
