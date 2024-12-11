@@ -25,9 +25,30 @@ namespace Alpha_API.Services
 
 			var hasActiveMembership = existingGymRegistrations
 				.Any(ex => ex.Object.IsActive &&
-				(ex.Object.EndDate >= DateTime.Now || ex.Object.SessionLeft > 0));
+				(ex.Object.EndDate >= DateTime.Now && ex.Object.SessionLeft > 0));
 
 			if (!hasActiveMembership)
+			{
+				return false;
+			}
+
+			return true;
+		}
+
+		public async Task<bool> CheckGymMembershipEndDate(string userId, DateOnly endDate)
+		{
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+			var existingGymRegistrations = await _firebaseClient
+				.Child("GymRegistrations")
+				.OrderBy("userId")
+				.EqualTo(userId)
+				.OnceAsync<GymRegistration>();
+
+			var hasValidMembership = existingGymRegistrations
+				.Any(ex => ex.Object.IsActive &&
+				(DateOnly.FromDateTime(ex.Object.EndDate) >= endDate && ex.Object.SessionLeft > 0));
+
+			if (!hasValidMembership)
 			{
 				return false;
 			}

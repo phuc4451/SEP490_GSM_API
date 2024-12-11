@@ -13,7 +13,7 @@ namespace Alpha_API.Services
 {
 	public interface IScheduleService
 	{
-		Task<string> CreateSchedule(RegisterScheduleRequest request, string userIdsString);
+		Task<(string, DateOnly)> CreateSchedule(RegisterScheduleRequest request, string userIdsString);
 		Task<bool> CheckTrainerAvailability(string trainerId, List<Slot> slots);
 	}
 
@@ -28,7 +28,7 @@ namespace Alpha_API.Services
 			_firebaseClientProvider = firebaseClientProvider;
 		}
 
-		public async Task<string> CreateSchedule(RegisterScheduleRequest request, string userIdsString)
+		public async Task<(string, DateOnly)> CreateSchedule(RegisterScheduleRequest request, string userIdsString)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 			int numberOfUsers = request.Emails.Count;
@@ -117,11 +117,11 @@ namespace Alpha_API.Services
 			}
 		}
 
-		private async Task<string> HandleRentalOptionForMonths(RegisterScheduleRequest request, TrainerRentalPlan plan, RentalOption option, int numberOfUsers, string trainerId, string rentalPlanId, string userIdsString)
+		private async Task<(string, DateOnly)> HandleRentalOptionForMonths(RegisterScheduleRequest request, TrainerRentalPlan plan, RentalOption option, int numberOfUsers, string trainerId, string rentalPlanId, string userIdsString)
 		{
 			int duration = request.Duration.Value;
 			var startDate = DateOnly.FromDateTime(DateTime.Now);
-			var endDate = startDate.AddDays(1).AddMonths(duration);
+			var endDate = startDate.AddMonths(duration);
 			var slotDates = GenerateSlotDates(startDate, endDate, request.IsMonWedFri, false, 0);
 
 			var scheduleId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
@@ -150,10 +150,10 @@ namespace Alpha_API.Services
 			};
 
 			await SaveScheduleAndSlotsToFirebase(scheduleId, slots, schedule);
-			return scheduleId;
+			return (scheduleId,schedule.LastSlot);
 		}
 
-		private async Task<string> HandleRentalOptionForSessions(RegisterScheduleRequest request, TrainerRentalPlan plan, RentalOption option, int numberOfUsers, string trainerId, string rentalPlanId, string userIdsString)
+		private async Task<(string, DateOnly)> HandleRentalOptionForSessions(RegisterScheduleRequest request, TrainerRentalPlan plan, RentalOption option, int numberOfUsers, string trainerId, string rentalPlanId, string userIdsString)
 		{
 			if (request.Duration > option.SessionCountMax || request.Duration < option.SessionCountMin)
 			{
@@ -191,10 +191,10 @@ namespace Alpha_API.Services
 			};
 
 			await SaveScheduleAndSlotsToFirebase(scheduleId, slots, schedule);
-			return scheduleId;
+			return (scheduleId, schedule.LastSlot);
 		}
 
-		private async Task<string> HandleBoxingMembershipPlan(RegisterScheduleRequest request, BoxingMembershipPlan plan, BoxingOption option, int numberOfUsers, string trainerId, string boxingMembershipPlanId, string userIdsString)
+		private async Task<(string, DateOnly)> HandleBoxingMembershipPlan(RegisterScheduleRequest request, BoxingMembershipPlan plan, BoxingOption option, int numberOfUsers, string trainerId, string boxingMembershipPlanId, string userIdsString)
 		{
 			int duration = option.Sessions;
 			var startDate = DateOnly.FromDateTime(DateTime.Now);
@@ -227,7 +227,7 @@ namespace Alpha_API.Services
 			};
 
 			await SaveScheduleAndSlotsToFirebase(scheduleId, slots, schedule);
-			return scheduleId;
+			return (scheduleId, schedule.LastSlot);
 		}
 
 		private async Task SaveScheduleAndSlotsToFirebase(string scheduleId, List<Slot> slots, object schedule)
