@@ -307,6 +307,14 @@ namespace Alpha_API.Services
 
 			var scheduleId = schedule.Item1;
 
+			var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembershipEndDate(userId, schedule.Item2));
+			var hasMembership = await Task.WhenAll(checkMembershipTask);
+
+			if (hasMembership.Any(membership => !membership))
+			{
+				throw new InvalidOperationException("User doesn't have an active gym membership");
+			}
+
 			int monthToAdd = 0;
 			int sessionToAdd = 0;
 
@@ -317,14 +325,6 @@ namespace Alpha_API.Services
 			else
 			{
 				sessionToAdd = request.Duration.Value;
-			}
-
-			var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembershipEndDate(userId, schedule.Item2));
-			var hasMembership = await Task.WhenAll(checkMembershipTask);
-
-			if (hasMembership.Any(membership => !membership))
-			{
-				throw new InvalidOperationException("User doesn't have an active gym membership");
 			}
 
 			// Prepare the request data
@@ -514,17 +514,6 @@ namespace Alpha_API.Services
 				throw new UnauthorizedAccessException("One or more users do not have the required 'customer' role.");
 			}
 
-			// Build comma-separated userIds for storage
-			var userIdsString = string.Join(",", userIds);
-
-			var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembershipEndDate(userId, schedule.Item2));
-			var hasMembership = await Task.WhenAll(checkMembershipTask);
-
-			if (hasMembership.Any(membership => !membership))
-			{
-				throw new InvalidOperationException("User doesn't have an active gym membership");
-			}
-
 			// Query for active registrations
 			var activeRegistrations = await _firebaseClient
 				.Child("BoxingRegistrations")
@@ -558,6 +547,17 @@ namespace Alpha_API.Services
 			};
 			var schedule = await _scheduleService.CreateSchedule(scheduleRequest, userIdsString);
 			var scheduleId = schedule.Item1;
+
+			// Build comma-separated userIds for storage
+			var userIdsString = string.Join(",", userIds);
+
+			var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembershipEndDate(userId, schedule.Item2));
+			var hasMembership = await Task.WhenAll(checkMembershipTask);
+
+			if (hasMembership.Any(membership => !membership))
+			{
+				throw new InvalidOperationException("User doesn't have an active gym membership");
+			}
 
 			// Prepare the request data
 			string info = "";
