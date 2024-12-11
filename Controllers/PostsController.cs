@@ -53,7 +53,7 @@ namespace Alpha_API.Controllers
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 			var posts = await _firebaseClient
-				.Child("posts")
+				.Child("Posts")
 				.OnceAsync<Post>();
 
 			var postList = posts.Select(p => new Post
@@ -74,7 +74,7 @@ namespace Alpha_API.Controllers
 		public async Task<ActionResult<IEnumerable<Post>>> GetLatestPosts()
 		{
 			var posts = await _firebaseClient
-				.Child("posts")
+				.Child("Posts")
 				.OnceAsync<Post>();
 
 			// Sắp xếp các bài viết theo Date giảm dần và lấy 5 bài viết mới nhất
@@ -104,7 +104,7 @@ namespace Alpha_API.Controllers
 			{
 				// Fetch the post by ID
 				var post = await _firebaseClient
-					.Child("posts")
+					.Child("Posts")
 					.Child(postId)
 					.OnceSingleAsync<Post>();
 
@@ -273,7 +273,7 @@ namespace Alpha_API.Controllers
 		public async Task<IActionResult> DeletePost(string postId)
 		{
 			var post = await _firebaseClient
-				.Child("posts")
+				.Child("Posts")
 				.Child(postId)
 				.OnceSingleAsync<Post>();
 
@@ -295,7 +295,7 @@ namespace Alpha_API.Controllers
 		public async Task<IActionResult> UpdatePost(string postId, [FromBody] Post updatedPost)
 		{
 			var post = await _firebaseClient
-				.Child("posts")
+				.Child("Posts")
 				.Child(postId)
 				.OnceSingleAsync<Post>();
 
@@ -320,7 +320,7 @@ namespace Alpha_API.Controllers
 		public async Task<ActionResult<IEnumerable<Post>>> GetPostsByCategory(string categoryId)
 		{
 			var posts = await _firebaseClient
-				.Child("posts")
+				.Child("Posts")
 				.OnceAsync<Post>();
 
 			// Filter posts by categoryId
@@ -348,7 +348,7 @@ namespace Alpha_API.Controllers
 			{
 				// Truy vấn Firebase để lấy tất cả bài viết
 				var posts = await _firebaseClient
-					.Child("posts")
+					.Child("Posts")
 					.OnceAsync<Post>();
 
 				// Lọc bài viết theo `UserId` và chọn các trường cần thiết
@@ -380,7 +380,7 @@ namespace Alpha_API.Controllers
 			}
 		}
 
-
+		//commet 12345
 
 	}
 }
