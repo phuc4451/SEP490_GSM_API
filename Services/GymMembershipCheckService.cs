@@ -25,7 +25,7 @@ namespace Alpha_API.Services
 
 			var hasActiveMembership = existingGymRegistrations
 				.Any(ex => ex.Object.IsActive &&
-				(ex.Object.EndDate >= DateTime.Now || ex.Object.SessionLeft > 0));
+				(ex.Object.EndDate >= DateTime.Now && ex.Object.SessionLeft > 0));
 
 			if (!hasActiveMembership)
 			{

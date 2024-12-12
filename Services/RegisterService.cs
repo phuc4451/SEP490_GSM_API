@@ -136,7 +136,7 @@ namespace Alpha_API.Services
 				StartDate = DateTime.Now,
 				EndDate = expiryDate,
                 //SessionLeft = membership.Result.SessionCount ?? (DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0) - DateTime.Now).Days,
-                SessionLeft = membership.Result.SessionCount ?? (membership.Result.SessionCount == 0 ? 999 : 0),
+                SessionLeft = membership.Result.SessionCount ?? (membership.Result.SessionCount.Value == 0 ? 999 : membership.Result.SessionCount.Value),
                 IsActive = false,
 				PaymentId = info,
 			};
@@ -159,6 +159,8 @@ namespace Alpha_API.Services
 				PaymentStatus = "Pending",
 				TransactionId = "Pending",
 			};
+
+			jsonString = JsonSerializer.Serialize(payment, options);
 			var paymentTask = _firebaseClient
 				.Child("Payments")
 				.Child(info)
