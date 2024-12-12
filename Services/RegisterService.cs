@@ -135,8 +135,8 @@ namespace Alpha_API.Services
 				GymMembershipId = request.GymMembershipId,
 				StartDate = DateTime.Now,
 				EndDate = expiryDate,
-                //SessionLeft = membership.Result.SessionCount ?? (DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0) - DateTime.Now).Days,
-                SessionLeft = membership.Result.SessionCount ?? (membership.Result.SessionCount.Value == 0 ? 999 : membership.Result.SessionCount.Value),
+				//SessionLeft = membership.Result.SessionCount ?? (DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0) - DateTime.Now).Days,
+				SessionLeft = membership.Result.SessionCount.Value == 0 ? 999 : membership.Result.SessionCount.Value,
                 IsActive = false,
 				PaymentId = info,
 			};
