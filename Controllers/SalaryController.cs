@@ -91,6 +91,26 @@ namespace Alpha_API.Controllers
 
 		}
 
+		[HttpGet("GetSalaryConfigs")]
+		[Authorize(Roles = "admin")]
+		public async Task<ActionResult> GetSalaryConfigs()
+		{
+			try
+			{
+				var configList = await _shiftService.GetSalaryConfigAsync();
+				return Ok(configList);
+
+			}
+			catch (InvalidOperationException ex)
+			{
+				return Conflict(ex.Message);
+			}
+			catch (Exception ex)
+			{
+				return Conflict(ex.Message);
+			}
+		}
+
 		[HttpPost("AssignShift")]
 		[Authorize(Roles = "admin")]
 

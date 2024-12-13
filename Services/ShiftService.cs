@@ -65,6 +65,36 @@ namespace Alpha_API.Services
 			}
 		}
 
+		public async Task<IEnumerable<SalaryConfiguration>> GetSalaryConfigAsync()
+		{
+			try
+			{
+				// Initialize Firebase client (assuming it's being injected)
+				_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+				// Retrieve shifts in Firebase
+				var configsSnapshot = await _firebaseClient.Child("SalaryConfigurations").OnceAsync<SalaryConfiguration>();
+
+				// Create a list to store updated shifts with their ShiftId set
+				var configs = configsSnapshot.Select(configSnapshot =>
+				{
+					var config = configSnapshot.Object;
+					config.ConfigurationId = configSnapshot.Key; // Set ShiftId to the Firebase key
+					return config;
+				}).ToList();
+
+				return configs;
+
+				//Console.WriteLine("Shift created successfully.");
+			}
+			catch (Exception ex)
+			{
+				// Log or handle the exception as needed
+				Console.WriteLine($"Error retrieving salary configs: {ex.Message}");
+				throw new InvalidOperationException("An error occurred while retrieving the salary configs.", ex);
+			}
+		}
+
 		public async Task<IEnumerable<Shift>> GetShiftAsync()
 		{
 			try
