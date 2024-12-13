@@ -18,14 +18,16 @@ namespace Alpha_API.Controllers
 		private readonly TrainerService _trainerService;
 		private readonly ShiftService _shiftService;
 		private readonly SalaryService _salaryService;
+		private readonly StaffService _staffService;
 		public SalaryController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, TrainerService trainerService,
-			ShiftService shiftService, SalaryService salaryService)
+			ShiftService shiftService, SalaryService salaryService, StaffService staffService)
 		{
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
 			_trainerService = trainerService;
 			_shiftService = shiftService;
 			_salaryService = salaryService;
+			_staffService = staffService;
 		}
 
 		[HttpPost("AddShift")]
@@ -131,6 +133,26 @@ namespace Alpha_API.Controllers
 				return Conflict(ex.Message);
 			}
 
+		}
+
+		[HttpGet("GetStaffs")]
+		[Authorize(Roles = "admin")]
+		public async Task<ActionResult> GetStaffs()
+		{
+			try
+			{
+				var staffList = await _staffService.GetStaffAsync();
+				return Ok(staffList);
+
+			}
+			catch (InvalidOperationException ex)
+			{
+				return Conflict(ex.Message);
+			}
+			catch (Exception ex)
+			{
+				return Conflict(ex.Message);
+			}
 		}
 
 		[HttpPost("AssignTrainerSalaryConfig")]
