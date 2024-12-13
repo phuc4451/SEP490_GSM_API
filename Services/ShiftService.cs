@@ -65,6 +65,36 @@ namespace Alpha_API.Services
 			}
 		}
 
+		public async Task<IEnumerable<Shift>> GetShiftAsync()
+		{
+			try
+			{
+				// Initialize Firebase client (assuming it's being injected)
+				_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+				// Retrieve shifts in Firebase
+				var shiftsSnapshot = await _firebaseClient.Child("Shifts").OnceAsync<Shift>();
+
+				// Create a list to store updated shifts with their ShiftId set
+				var shifts = shiftsSnapshot.Select(shiftSnapshot =>
+				{
+					var shift = shiftSnapshot.Object;
+					shift.ShiftId = shiftSnapshot.Key; // Set ShiftId to the Firebase key
+					return shift;
+				}).ToList();
+
+				return shifts;
+
+				//Console.WriteLine("Shift created successfully.");
+			}
+			catch (Exception ex)
+			{
+				// Log or handle the exception as needed
+				Console.WriteLine($"Error retrieving shifts: {ex.Message}");
+				throw new InvalidOperationException("An error occurred while retrieving the shifts.", ex);
+			}
+		}
+
 		private async Task<Shift> CheckIfShiftExistsAsync(Shift shift)
 		{
 			try

@@ -1,5 +1,6 @@
 ﻿using Alpha_API.Models;
 using Alpha_API.Services;
+using DocumentFormat.OpenXml.Spreadsheet;
 using Firebase.Database;
 using Firebase.Database.Query;
 using Microsoft.AspNetCore.Authorization;
@@ -46,6 +47,27 @@ namespace Alpha_API.Controllers
 				return Conflict(ex.Message);
 			}
 
+		}
+
+
+		[HttpGet("GetShifts")]
+		[Authorize(Roles = "admin")]
+		public async Task<ActionResult> GetShift()
+		{
+			try
+			{
+				var shiftList = await _shiftService.GetShiftAsync();
+				return Ok(shiftList);
+
+			}
+			catch (InvalidOperationException ex)
+			{
+				return Conflict(ex.Message);
+			}
+			catch (Exception ex)
+			{
+				return Conflict(ex.Message);
+			}
 		}
 
 		[HttpPost("AddSalaryConfig")]
