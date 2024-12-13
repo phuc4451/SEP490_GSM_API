@@ -283,7 +283,7 @@ namespace Alpha_API.Controllers
 			}
 
 			await _firebaseClient
-				.Child("posts")
+				.Child("Posts")
 				.Child(postId)
 				.DeleteAsync();
 
@@ -308,7 +308,7 @@ namespace Alpha_API.Controllers
 			updatedPost.Date = post.Date;  // Giữ nguyên ngày tạo ban đầu
 
 			await _firebaseClient
-				.Child("posts")
+				.Child("Posts")
 				.Child(postId)
 				.PutAsync(updatedPost);
 
