@@ -15,12 +15,11 @@ namespace Alpha_API.Controllers
 	[ApiController]
 	public class TrainerController : ControllerBase
 	{
-		private readonly FirebaseAuth _firebaseAuth;
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private readonly TrainerService _trainerService;
 
-		public TrainerController(FirebaseAuth firebaseAuth, FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, TrainerService trainerService)
+		public TrainerController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, TrainerService trainerService)
 		{
 			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;
