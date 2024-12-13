@@ -10,6 +10,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import Preloader from "../Preloader/Preloader";
+
 const ManageCourse = () => {
   const fileInputRef = useRef(null);
 
@@ -21,6 +23,7 @@ const ManageCourse = () => {
   const [customerData, setCustomerData] = useState([]);
   const errorModalRef = useRef(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   const [courses, setCourses] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -30,6 +33,15 @@ const ManageCourse = () => {
     sessionCount: "",
     price: "",
   });
+
+  const formatNumberWithCommas = (number) => {
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+  
+  // Helper function to remove commas from string
+  const removeCommas = (str) => {
+    return str.replace(/,/g, "");
+  };
 
   const openAddCustomerModal = () => {
     setFormData({
@@ -61,7 +73,24 @@ const ManageCourse = () => {
     document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
   };
 
+  const openDetailModal = (course) => {
+    setFormData({
+      name: course.name,
+      durationMonths: course.durationMonths,
+      sessionCount: course.sessionCount,
+      price: course.price.toLocaleString(),
+    });
+    setErrors({}); // Xóa lỗi trước đó
+    setErrorMessage(""); // Xóa thông báo lỗi trước đó
+    setCurrentCustomer(course); // Lưu thông tin gói tập để biết được ID của gói cần chỉnh sửa
+    detailModalRef.current.style.display = "block"; // Hiển thị modal
+    detailModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+  };
+
   const closeModal = () => {
+    detailModalRef.current.style.display = "none";
+    detailModalRef.current.classList.remove("active");
     customerModalRef.current.style.display = "none";
     customerModalRef.current.classList.remove("active");
     document.querySelector(".modal-overlay").style.display = "none";
@@ -114,6 +143,7 @@ const ManageCourse = () => {
   };
 
   const customerModalRef = useRef(null);
+  const detailModalRef = useRef(null);
   const successModalRef = useRef(null);
   const deleteModalRef = useRef(null);
 
@@ -127,22 +157,42 @@ const ManageCourse = () => {
         setCourses(response.data);
       } catch (error) {
         console.error("Error fetching course data:", error);
+      } finally {
+        setIsDataLoading(false);
       }
     };
 
     fetchCourses();
   }, []);
 
+  // Modified handleInputChange to handle price formatting
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    if (name === "price") {
+      // Remove existing commas and convert to number
+      const numericValue = removeCommas(value);
 
-    // Trigger validation for the specific field
-    validateField(name, value);
+      // Check if it's a valid positive number
+      if (!isNaN(numericValue) && parseFloat(numericValue) >= 0) {
+        setFormData({
+          ...formData,
+          [name]: formatNumberWithCommas(numericValue),
+        });
+        validateField(name, numericValue);
+      } else {
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          price: "Giá phải là số dương.",
+        }));
+      }
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+      validateField(name, value);
+    }
   };
 
   const validateField = (name, value) => {
@@ -212,9 +262,20 @@ const ManageCourse = () => {
     if (validateForm()) {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.post("http://localhost:5000/api/GymMembership", formData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // Create a new object with the price converted to number
+        const submitData = {
+          ...formData,
+          price: parseFloat(removeCommas(formData.price)),
+          sessionCount: 0
+        };
+
+        const response = await axios.post(
+          "http://localhost:5000/api/GymMembership",
+          submitData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         setCourses((prevCourses) => [...prevCourses, response.data]);
         setFormData({
           name: "",
@@ -272,7 +333,7 @@ const ManageCourse = () => {
   return (
     <>
       <Header />
-
+      {isDataLoading ? <Preloader /> : null}
       <section className="section" id="features">
         <div className="container">
           <div className="row">
@@ -305,7 +366,7 @@ const ManageCourse = () => {
                           </div>
                         </div>
 
-                        <a href="#" onClick={() => openEditCustomerModal(course)} className="btn-fix detail-button">
+                        <a href="#" onClick={() => openDetailModal(course)} className="btn-fix detail-button">
                           Chi tiết
                         </a>
                         {/* <a href="#" className="btn-fix edit-button">
@@ -425,13 +486,13 @@ const ManageCourse = () => {
                     {errors.price && <div className="error-message">{errors.price}</div>}
                   </div>
 
-                  <div className="form-group col">
+                  {/* <div className="form-group col">
                     <label>
                       Số buổi <span className="icon-input">(*)</span>
                     </label>
                     <input type="number" className={`form-control ${errors.sessionCount ? "is-invalid" : ""}`} name="sessionCount" value={formData.sessionCount} onChange={handleInputChange} required />
                     {errors.sessionCount && <div className="error-message">{errors.sessionCount}</div>}
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="row"></div>
@@ -448,6 +509,79 @@ const ManageCourse = () => {
                   Lưu
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+
+      <div ref={detailModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <form id="employeeForm" onSubmit={handleSubmit}>
+              <div className="modal-header">
+                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Chi tiết gói tập gym" : "Thêm gói Gym"}</h4>
+                <a type="button" className="close" onClick={closeModal}>
+                  <CloseIcon />
+                </a>
+              </div>
+              <div className="modal-body">
+                {/* First row of input fields */}
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Tên gói tập <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className={`form-control ${errors.name ? "is-invalid" : ""}`} name="name" value={formData.name} onChange={handleInputChange} required disabled/>
+                    {errors.name && <div className="error-message">{errors.name}</div>}
+                  </div>
+
+                  <div className="form-group col">
+                    <label>
+                      Số tháng <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="number" className={`form-control ${errors.durationMonths ? "is-invalid" : ""}`} name="durationMonths" value={formData.durationMonths} onChange={handleInputChange} required disabled/>
+                    {errors.durationMonths && <div className="error-message">{errors.durationMonths}</div>}
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Giá <span className="icon-input">(*)</span>
+                    </label>
+                    <div className="input-group">
+                      <input type="text" className={`form-control ${errors.price ? "is-invalid" : ""}`} name="price" value={formData.price} onChange={handleInputChange} required disabled/>
+
+                      <span className="input-readonly">VNĐ</span>
+                    </div>
+
+                    {errors.price && <div className="error-message">{errors.price}</div>}
+                  </div>
+
+                  {/* <div className="form-group col">
+                    <label>
+                      Số buổi <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="number" className={`form-control ${errors.sessionCount ? "is-invalid" : ""}`} name="sessionCount" value={formData.sessionCount} onChange={handleInputChange} required disabled/>
+                    {errors.sessionCount && <div className="error-message">{errors.sessionCount}</div>}
+                  </div> */}
+                </div>
+
+                <div className="row"></div>
+
+                {/* Conditionally render the password input only if adding a new customer */}
+              </div>
+
+              {/* <div className="modal-footer">
+                <button type="button" className="btn btn-default" onClick={closeModal} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
+                  Hủy
+                </button>
+
+                <button type="submit" className="btn btn-success">
+                  Lưu
+                </button>
+              </div> */}
             </form>
           </div>
         </div>

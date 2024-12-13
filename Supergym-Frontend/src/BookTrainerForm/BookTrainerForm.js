@@ -160,12 +160,43 @@ const ManageSchedule = () => {
     }
   };
 
+  // const handlePackageChange = (e) => {
+  //   const selectedPackageId = e.target.value;
+  //   setSelectedOption(selectedPackageId); // Update selected package state
+
+  //   // Reset related states when package changes
+  //   setTrainerToAddCourse(null); // Reset selected trainer
+  //   setFormData((prevData) => ({
+  //     ...prevData,
+  //     trainerRentalPlanId: null,
+  //     boxingMembershipPlanId: null,
+  //     timeSlot: "", // Reset time slot
+  //     sessionCount: "", // Reset session count if applicable
+  //   }));
+
+  //   // Reset checkDetailPack
+  //   setCheckDetailPack(null);
+
+  //   if (selectedPackageId) {
+  //     // Only fetch trainers if a package is actually selected
+  //     fetchTrainersByPackage(selectedPackageId);
+  //   } else {
+  //     // Clear trainers if no package is selected
+  //     setTrainers([]);
+  //     setTrainersData([]);
+  //   }
+  // };
+
   const handlePackageChange = (e) => {
     const selectedPackageId = e.target.value;
     setSelectedOption(selectedPackageId); // Update selected package state
 
-    // Reset related states when package changes
+    // Reset trainer-related states
     setTrainerToAddCourse(null); // Reset selected trainer
+    setTrainers([]); // Clear the trainers list
+    setTrainersData([]); // Clear the full trainer data
+
+    // Reset form data related to trainers
     setFormData((prevData) => ({
       ...prevData,
       trainerRentalPlanId: null,
@@ -180,10 +211,6 @@ const ManageSchedule = () => {
     if (selectedPackageId) {
       // Only fetch trainers if a package is actually selected
       fetchTrainersByPackage(selectedPackageId);
-    } else {
-      // Clear trainers if no package is selected
-      setTrainers([]);
-      setTrainersData([]);
     }
   };
 
@@ -307,45 +334,37 @@ const ManageSchedule = () => {
 
   const handleBookTrainer = async (e) => {
     e.preventDefault();
-
-    // Collect form data Gym
-    const emailInputs = Array.from(document.querySelectorAll('input[type="email"]')).map((input) => input.value);
-    const selectedTimeSlot = formData.timeSlot; // Assuming timeSlot is captured in formData
-    const trainerRentalPlanId = formData.trainerRentalPlanId; // Make sure this value is set
-    const duration = formData.sessionCount; // sessionCount for Gym
-    const qrPayment = formData.qrPayment;
+    // Collect and filter out empty emails
+    const emailInputs = Array.from(document.querySelectorAll('input[type="email"]'))
+      .map((input) => input.value)
+      .filter((email) => email.trim() !== ""); // Thêm filter để loại bỏ email rỗng
+    const selectedTimeSlot = formData.timeSlot;
+    const trainerRentalPlanId = formData.trainerRentalPlanId;
+    const duration = formData.sessionCount;
     const gymDuration = duration ? duration : null;
 
     // Prepare data for Gym
     const gymData = {
-      emails: emailInputs, // Emails from input fields
+      emails: emailInputs, // Now using filtered emails
       boxingMembershipPlanId: null,
       gymMembershipId: null,
-      trainerRentalPlanId: trainerRentalPlanId, // Ensure this is included
+      trainerRentalPlanId: trainerRentalPlanId,
       qrPayment: true,
-      duration: gymDuration, // Use the value of gymDuration
+      duration: gymDuration,
       selectedTimeSlot: selectedTimeSlot,
-      isMonWedFri: trainerType === "TrainerRental" ? true : false, // Only true for Gym
+      isMonWedFri: trainerType === "TrainerRental" ? true : false,
     };
 
-    // Collect form data BOXING
-    const BOXINGemailInputs = Array.from(document.querySelectorAll('input[type="email"]')).map((input) => input.value);
-    const BOXINGselectedTimeSlot = formData.timeSlot; // Assuming timeSlot is captured in formData
-    const BOXINGboxingMembershipPlanId = formData.boxingMembershipPlanId; // Make sure this value is set
-    const BOXINGduration = formData.sessionCount; // sessionCount for Gym
-    const BOXINGqrPayment = formData.qrPayment;
-    const BOXINGisMonWedFri = formData.isMonWedFri;
-
-    // Prepare data for Boxing
+    // For Boxing data, use the same filtered emails
     const boxingData = {
-      emails: BOXINGemailInputs, // Emails from input fields
-      boxingMembershipPlanId: BOXINGboxingMembershipPlanId,
+      emails: emailInputs, // Now using filtered emails
+      boxingMembershipPlanId: formData.boxingMembershipPlanId,
       gymMembershipId: null,
-      trainerRentalPlanId: null, // Ensure this is included
+      trainerRentalPlanId: null,
       qrPayment: true,
       duration: 1,
-      selectedTimeSlot: BOXINGselectedTimeSlot,
-      isMonWedFri: BOXINGisMonWedFri, // Set true or false based on the radio selection
+      selectedTimeSlot: formData.timeSlot,
+      isMonWedFri: formData.isMonWedFri,
     };
 
     // Send the request based on the trainer type

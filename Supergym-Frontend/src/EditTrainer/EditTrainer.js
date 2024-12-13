@@ -14,6 +14,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import { Delete } from "@mui/icons-material";
+import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 
 const EditTrainer = () => {
   const [trainerDataList, setTrainerDataList] = useState([]);
@@ -62,6 +63,7 @@ const EditTrainer = () => {
   const successModalRef = useRef(null);
   const deleteModalRef = useRef(null);
   const errorModalRef = useRef(null);
+  const salaryModalRef = useRef(null);
 
   //FETCH DATA AND PRELOAD
   useEffect(() => {
@@ -188,21 +190,21 @@ const EditTrainer = () => {
     const formattedDob = `${dob.year || "----"}-${String(dob.month || "01").padStart(2, "0")}-${String(dob.date || "01").padStart(2, "0")}`;
 
     setFormData({
-        name: trainer.name,
-        gender: trainer.gender,
-        dob: formattedDob,
-        email: trainer.email,
-        phone: trainer.phone,
-        address: trainer.address,
-        userId: trainer.userId,
-        idCard: trainer.idCard,
-        userAvatar: trainer.userAvatar,
-      });
-      if (trainer.userAvatar) {
-        setPreviewImage(trainer.userAvatar); // Set the current avatar to preview image
-      } else {
-        setPreviewImage(null); // No avatar, clear the preview
-      }
+      name: trainer.name,
+      gender: trainer.gender,
+      dob: formattedDob,
+      email: trainer.email,
+      phone: trainer.phone,
+      address: trainer.address,
+      userId: trainer.userId,
+      idCard: trainer.idCard,
+      userAvatar: trainer.userAvatar,
+    });
+    if (trainer.userAvatar) {
+      setPreviewImage(trainer.userAvatar); // Set the current avatar to preview image
+    } else {
+      setPreviewImage(null); // No avatar, clear the preview
+    }
     setCurrentTrainer(trainer);
     trainerModalRef.current.style.display = "block";
     trainerModalRef.current.classList.add("active");
@@ -210,6 +212,8 @@ const EditTrainer = () => {
   };
 
   const closeModal = () => {
+    salaryModalRef.current.style.display = "none";
+    salaryModalRef.current.classList.remove("active");
     addTrainToCourseModalRef.current.style.display = "none";
     addTrainToCourseModalRef.current.classList.remove("active");
     trainerModalRef.current.style.display = "none";
@@ -410,20 +414,20 @@ const EditTrainer = () => {
 
       try {
         if (currentTrainer) {
-            const trainerDataEdit = {
-                userId: currentTrainer.userId,
-                name: formData.name,
-                email: formData.email,
-                gender: formData.gender,
-                dob: dobData,
-                address: formData.address,
-                phone: formData.phone,
-                roleId: "string",
-                userAvatar: formData.userAvatar,
-                idCard: formData.idCard,
-              };
+          const trainerDataEdit = {
+            userId: currentTrainer.userId,
+            name: formData.name,
+            email: formData.email,
+            gender: formData.gender,
+            dob: dobData,
+            address: formData.address,
+            phone: formData.phone,
+            roleId: "string",
+            userAvatar: formData.userAvatar,
+            idCard: formData.idCard,
+          };
           // Update trainer
-          await axios.patch(`http://localhost:5000/api/Users/${currentTrainer.trainerId}`, trainerDataEdit, {
+          await axios.patch(`http://localhost:5000/api/Users/updatetrainer/${currentTrainer.userId}`, trainerDataEdit, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
@@ -638,6 +642,29 @@ const EditTrainer = () => {
     (Trainer) => Trainer.name.toLowerCase().includes(searchQuery.toLowerCase()) // Tìm kiếm theo email
   );
 
+  // const openViewSalaryModal = async (feedback) => {
+  const openViewSalaryModal = () => {
+    // setIsLoadingUser(true);
+    // const token = localStorage.getItem("token");
+
+    // try {
+    //   const userResponse = await axios.get(
+    //     `http://localhost:5000/api/Users/GetUserById/${feedback.userId}`,
+    //     { headers: { Authorization: `Bearer ${token}` } }
+    //   );
+    //   setCurrentUserData(userResponse.data);
+    //   setCurrentFeedback(feedback);
+    // } catch (error) {
+    //   console.error(`Error fetching user data:`, error);
+    //   setCurrentUserData({ name: "Unknown", email: "Unknown" });
+    // } finally {
+    // setIsLoadingUser(false);
+    salaryModalRef.current.style.display = "block";
+    salaryModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block";
+    // }
+  };
+
   return (
     <>
       <Header />
@@ -682,7 +709,7 @@ const EditTrainer = () => {
           </div>
 
           <table className="table table-hover table-fixed">
-          <thead>
+            <thead>
               <tr>
                 <th className="name-el">Họ tên</th>
                 <th>Giới tính</th>
@@ -696,7 +723,7 @@ const EditTrainer = () => {
               </tr>
             </thead>
             <tbody>
-            {filteredTrainerData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((trainer, index) => (
+              {filteredTrainerData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((trainer, index) => (
                 <tr key={index}>
                   <td>
                     <img src={`data:image/jpeg;base64,${trainer.userAvatar}`} className="customer-avatar" />
@@ -714,9 +741,9 @@ const EditTrainer = () => {
                     <a href="#" onClick={() => openEditTrainerModal(trainer)} className="edit">
                       <EditIcon />
                     </a>
-                    {/* <a href="#" onClick={() => openDeleteModal(trainer)} className="delete">
-                      <DeleteIcon />
-                    </a> */}
+                    <a href="#" onClick={() => openViewSalaryModal(trainer)} className="view">
+                      <MonetizationOnIcon />
+                    </a>
                   </td>
                 </tr>
               ))}
@@ -787,7 +814,7 @@ const EditTrainer = () => {
                     <label>
                       Email <span className="icon-input">(*)</span>
                     </label>
-                    <input type="email" className={`form-control ${errors.email ? "is-invalid" : ""}`} name="email" value={formData.email} onChange={handleInputChange} required />
+                    <input type="email" className={`form-control ${errors.email ? "is-invalid" : ""}`} name="email" value={formData.email} onChange={handleInputChange} required disabled />
                     {errors.email && <div className="error-message">{errors.email}</div>}
                   </div>
 
@@ -968,6 +995,57 @@ const EditTrainer = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      </div>
+
+      <div ref={salaryModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Lương trainer</h4>
+              <a type="button" className="close" onClick={closeModal}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body">
+              {/* {isLoadingUser ? (
+                <div className="text-center">
+                  <div className="spinner-border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : (
+                currentFeedback &&
+                currentUserData && (
+                  <> */}
+              <p>
+                <strong>Email:</strong>
+              </p>
+              <p>
+                <strong>Tên:</strong>
+              </p>
+              <p>
+                <strong>Số ngày checkin trong tháng:</strong>
+              </p>
+              <p>
+                <strong>Lương cơ bản:</strong>
+              </p>
+              <p>
+                <strong>Số ngày đã checkin trong tháng:</strong>
+              </p>
+              <p>
+                <strong>Lương được nhận:</strong>
+              </p>
+              {/* </>
+                )
+              )} */}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={closeModal}>
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       </div>

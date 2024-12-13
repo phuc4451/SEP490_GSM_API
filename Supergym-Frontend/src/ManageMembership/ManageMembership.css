@@ -1,0 +1,23 @@
+.membership-section {
+    margin-bottom: 20px;
+  }
+  
+  .membership-section h5 {
+    color: #333;
+    margin-bottom: 15px;
+  }
+  
+  .membership-item {
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    margin-bottom: 10px;
+  }
+  
+  .membership-item p {
+    margin-bottom: 5px;
+  }
+  
+  .membership-item hr {
+    margin: 10px 0;
+  }

@@ -28,7 +28,7 @@ const ManageEquipment = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState(null);
 
-  const itemsPerPage = 5;
+  const itemsPerPage = 13;
 
   const equipmentModalRef = useRef(null);
   const deleteModalRef = useRef(null);
@@ -193,7 +193,7 @@ const ManageEquipment = () => {
 
   const handleFileUpload = async () => {
     if (!file) {
-      showErrorModal("Vui lòng chọn một file trước khi tải lên.");
+      alert("Vui lòng chọn một file trước khi tải lên.");
       return;
     }
 
@@ -346,6 +346,7 @@ const ManageEquipment = () => {
 
   const openEditEquipmentModal = (equipment) => {
     setFormData({
+      equipmentId: equipment.equipmentId,
       equipmentName: equipment.equipmentName,
       equipmentCode: equipment.equipmentCode,
       equipmentImportPrice: equipment.equipmentImportPrice.toLocaleString(),
@@ -544,29 +545,39 @@ const ManageEquipment = () => {
   // Hàm xác nhận chỉnh sửa mã thiết bị
   const handleConfirmCodeClick = async (e) => {
     e.preventDefault();
-
+  
     if (!isFormValid()) {
       showErrorModal("Vui lòng điền đầy đủ và đúng các trường thông tin.");
       return;
     }
-
+  
     const token = localStorage.getItem("token");
-
-    // Bảo đảm formData có trường equipmentId, nếu không có thì để trống
+  
+    // Create the data object with the current equipment ID
     const updatedData = {
       ...formData,
-      equipmentId: formData.equipmentId || "", // Thêm equipmentId nếu chưa có
+      equipmentId: currentEquipment.equipmentId, // Use currentEquipment.equipmentId
+      equipmentImportPrice: parseFloat(formData.equipmentImportPrice.replace(/,/g, "")), // Convert price to number
     };
-
+  
     try {
       // Gọi API cập nhật thiết bị
       await axios.put(`http://localhost:5000/api/Equipment/${currentEquipment.equipmentId}`, updatedData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
+  
       // Cập nhật danh sách thiết bị với dữ liệu đã chỉnh sửa
-      setEquipmentList((prev) => prev.map((eq) => (eq.equipmentId === currentEquipment.equipmentId ? updatedData : eq)));
-
+      setEquipmentList((prev) =>
+        prev.map((eq) =>
+          eq.equipmentId === currentEquipment.equipmentId
+            ? {
+                ...eq,
+                ...updatedData,
+              }
+            : eq
+        )
+      );
+  
       // Đặt lại chế độ chỉnh sửa và đóng modal
       setIsEditingCode(false);
       setIsSubmitDisabled(false);
@@ -577,6 +588,7 @@ const ManageEquipment = () => {
         showErrorModal("Mã thiết bị đã tồn tại. Vui lòng nhập mã khác.");
       } else {
         console.error("Error saving equipment:", error);
+        showErrorModal("Có lỗi xảy ra khi cập nhật thiết bị.");
       }
     }
   };

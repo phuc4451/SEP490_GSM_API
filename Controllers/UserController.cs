@@ -518,6 +518,64 @@ public class UsersController : ControllerBase
 		return NoContent();
 	}
 
+    // PUT: api/users/updatecustomer/{id}
+    [Authorize(Roles = "admin,staff")]
+    [HttpPatch("updateTrainer/{id}")]
+    public async Task<ActionResult> UpdateTrainer(string id, [FromBody] User u)
+    {
+        _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+        var existingUser = await _firebaseClient
+            .Child("users")
+            .Child(id)
+            .OnceSingleAsync<User>();
+
+        if (existingUser == null)
+        {
+            return NotFound("User not found");
+        }
+
+        if (string.IsNullOrEmpty(existingUser.Email) || string.IsNullOrEmpty(existingUser.RoleId))
+        {
+            return BadRequest("User is missing required fields: Email, RoleId");
+        }
+
+        // Call GetRoleName method to get the role name
+        string roleName = await _roleService.GetRoleName(existingUser.RoleId);
+
+        if (roleName != "pt")
+        {
+            return Forbid();
+        }
+
+        User user = new User()
+        {
+            Address = u.Address,
+            Dob = u.Dob,
+            Email = u.Email,
+            Gender = u.Gender,
+            IdCard = u.IdCard,
+            Name = u.Name,
+            Phone = u.Phone,
+            UserAvatar = u.UserAvatar,
+        };
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+
+        var jsonString = JsonSerializer.Serialize(user, options);
+
+        await _firebaseClient
+            .Child("users")
+            .Child(id)
+            .PatchAsync(jsonString);
+
+        return NoContent();
+    }
+
     // POST: api/users/addstaff
     [Authorize(Roles = "admin")]
     [HttpPost("addStaff")]
@@ -865,16 +923,24 @@ public class UsersController : ControllerBase
 			return NotFound();
 		}
 
-		//// Update fields selectively
-		//if (!string.IsNullOrEmpty(user.UserEmail))
-		//{
-		//	existingUser.UserEmail = user.UserEmail;
-		//}
+        //// Update fields selectively
+        //if (!string.IsNullOrEmpty(user.UserEmail))
+        //{
+        //	existingUser.UserEmail = user.UserEmail;
+        //}
 
-		await _firebaseClient
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+
+        var jsonString = JsonSerializer.Serialize(user, options);
+
+        await _firebaseClient
 			.Child("users")
 			.Child(id)
-			.PutAsync(existingUser);
+			.PatchAsync(jsonString);
 
 		return NoContent(); // 204 No Content
 	}

@@ -48,7 +48,7 @@ function Signin() {
         const role = response.data.role;
         localStorage.setItem("token", token);
         localStorage.setItem("role", role);
-        navigate("/");
+        navigate("/manageMembership");
       }
     } catch (err) {
       //setError("Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản và mật khẩu.");

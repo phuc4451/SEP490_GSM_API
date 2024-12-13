@@ -29,26 +29,28 @@ const ManageBoxingCourse = () => {
     sessions: 0,
     months: 0,
     memberCount: 0,
-    totalPrice: 0,
+    totalPrice: "",
   });
+
+  
 
   const openAddCustomerModal = () => {
     setFormData({
       boxingOptionId: "string",
       description: "",
-      sessions: 0,
-      months: 0,
-      memberCount: 0,
-      totalPrice: 0,
+      sessions: "",
+      months: "",
+      memberCount: "",
+      totalPrice: "", // Đặt là chuỗi rỗng
     });
-    setPreviewImage(null); // Đặt lại ảnh xem trước
+    setPreviewImage(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = null; // Đặt lại giá trị input file
+      fileInputRef.current.value = null;
     }
-    setCurrentCustomer(null); // Đặt lại khách hàng hiện tại để thêm mới
-    customerModalRef.current.style.display = "block"; // Hiển thị modal
-    customerModalRef.current.classList.add("active"); // Thêm class 'active'
-    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+    setCurrentCustomer(null);
+    customerModalRef.current.style.display = "block";
+    customerModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block";
   };
 
   const openEditCustomerModal = (course) => {
@@ -66,7 +68,24 @@ const ManageBoxingCourse = () => {
     document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
   };
 
+  const openDetailrModal = (course) => {
+    setFormData({
+      boxingOptionId: "string",
+      description: course.description,
+      sessions: course.sessions,
+      months: course.months,
+      memberCount: course.memberCount,
+      totalPrice: course.totalPrice,
+    });
+    setCurrentCustomer(course); // Lưu thông tin gói tập để biết được ID của gói cần chỉnh sửa
+    detailModalRef.current.style.display = "block"; // Hiển thị modal
+    detailModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+  };
+
   const closeModal = () => {
+    detailModalRef.current.style.display = "none";
+    detailModalRef.current.classList.remove("active");
     customerModalRef.current.style.display = "none";
     customerModalRef.current.classList.remove("active");
     document.querySelector(".modal-overlay").style.display = "none";
@@ -105,6 +124,7 @@ const ManageBoxingCourse = () => {
   };
 
   const customerModalRef = useRef(null);
+  const detailModalRef = useRef(null);
   const successModalRef = useRef(null);
   const deleteModalRef = useRef(null);
 
@@ -123,30 +143,117 @@ const ManageBoxingCourse = () => {
 
     fetchCourses();
   }, []);
+  const formatNumberWithCommas = (number) => {
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+  
+  // Helper function to remove commas from string
+  const removeCommas = (str) => {
+    return str.replace(/,/g, "");
+  };
 
-  const handleInputChange = (e) => {
+const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value, // Cập nhật giá trị tương ứng trong formData
-    }));
+
+    if (name === "totalPrice") {
+      // Remove existing commas and convert to number
+      const numericValue = removeCommas(value);
+
+      // Check if it's a valid positive number
+      if (!isNaN(numericValue) && parseFloat(numericValue) >= 0) {
+        setFormData(prevData => ({
+          ...prevData,
+          [name]: formatNumberWithCommas(numericValue),
+        }));
+        validateField(name, numericValue);
+      } else {
+        setErrors(prevErrors => ({
+          ...prevErrors,
+          totalPrice: "Giá phải là số dương.",
+        }));
+      }
+    } else {
+      setFormData(prevData => ({
+        ...prevData,
+        [name]: value,
+      }));
+      validateField(name, value);
+    }
+  };
+
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+
+    switch (name) {
+      case "description":
+        if (!value.trim()) {
+          newErrors.description = "Vui lòng nhập tên gói Boxing";
+        } else {
+          delete newErrors.description;
+        }
+        break;
+      case "totalPrice":
+        if (!value || parseFloat(removeCommas(value)) <= 0) {
+          newErrors.totalPrice = "Giá phải lớn hơn 0";
+        } else {
+          delete newErrors.totalPrice;
+        }
+        break;
+      case "sessions":
+        if (!value || parseInt(value) <= 0) {
+          newErrors.sessions = "Số buổi phải lớn hơn 0";
+        } else {
+          delete newErrors.sessions;
+        }
+        break;
+      case "months":
+        if (!value || parseInt(value) <= 0) {
+          newErrors.months = "Thời hạn phải lớn hơn 0";
+        } else {
+          delete newErrors.months;
+        }
+        break;
+      case "memberCount":
+        if (!value || parseInt(value) <= 0) {
+          newErrors.memberCount = "Số thành viên phải lớn hơn 0";
+        } else {
+          delete newErrors.memberCount;
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const formattedData = {
+      ...formData,
+      totalPrice: parseFloat(removeCommas(formData.totalPrice)),
+      sessions: parseInt(formData.sessions),
+      months: 0,
+      memberCount: parseInt(formData.memberCount),
+    };
+
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.post("http://localhost:5000/api/BoxingOption", formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCourses((prevCourses) => [...prevCourses, response.data]);
+      const response = await axios.post(
+        "http://localhost:5000/api/BoxingOption",
+        formattedData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setCourses(prevCourses => [...prevCourses, response.data]);
       setFormData({
         boxingOptionId: "string",
-        description: "string",
+        description: "",
         sessions: 0,
         months: 0,
         memberCount: 0,
-        totalPrice: 0,
+        totalPrice: "",
       });
       closeModal();
       showSuccessModal("Gói Boxing được lưu thành công");
@@ -155,7 +262,7 @@ const ManageBoxingCourse = () => {
         showErrorModal("Gói Boxing đã tồn tại, vui lòng thêm gói Boxing khác!");
       } else {
         showErrorModal("Lỗi khi tạo gói Boxing");
-        console.error("Error saving equipment:", error);
+        console.error("Error saving boxing course:", error);
       }
     }
   };
@@ -227,29 +334,29 @@ const ManageBoxingCourse = () => {
                         <div className="row row-course">
                           <div className="col-6">
                             <p>Số buổi: {course.sessions}</p>
-                            <p>Thời hạn: {course.months}</p>
+                            {/* <p>Thời hạn: {course.months}</p> */}
                           </div>
                           <div className="col-6">
                             <p>Lượng thành viên: {course.memberCount}</p>
                           </div>
                         </div>
-                        <a href="#" onClick={() => openEditCustomerModal(course)} className="btn-fix detail-button">
+                        <a href="#" onClick={() => openDetailrModal(course)} className="btn-fix detail-button">
                           Chi tiết
                         </a>
-                        <a href="#" className="btn-fix edit-button">
+                        {/* <a href="#" className="btn-fix edit-button">
                           Sửa
                         </a>
                         <a href="#" className="btn-fix delete-button">
                           Xóa
-                        </a>
+                        </a> */}
                       </div>
 
                       <div className="sale-price-section">
-                        <button id="add-sale-button" className="btn btn-primary sale-btn">
+                        {/* <button id="add-sale-button" className="btn btn-primary sale-btn">
                           Áp dụng giảm giá
                           <LocalOfferIcon />
-                        </button>
-                        <p className="price">Giá: {course.totalPrice} VND</p>
+                        </button> */}
+                        <p className="price">Giá: {course.totalPrice.toLocaleString()} VND</p>
                       </div>
                     </div>
                   </li>
@@ -328,11 +435,19 @@ const ManageBoxingCourse = () => {
 
                   <div className="form-group col">
                     <label>
+                      Thành viên trong gói <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required />
+                    {errors.name && <div className="error-message">{errors.name}</div>}
+                  </div>
+
+                  {/* <div className="form-group col">
+                    <label>
                       Thời hạn <span className="icon-input">(*)</span>
                     </label>
                     <input type="number" className="form-control" name="months" value={formData.months} onChange={handleInputChange} required />
                     {errors.name && <div className="error-message">{errors.name}</div>}
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="row">
@@ -340,7 +455,11 @@ const ManageBoxingCourse = () => {
                     <label>
                       Giá <span className="icon-input">(*)</span>
                     </label>
-                    <input type="text" className="form-control" name="totalPrice" value={formData.totalPrice} onChange={handleInputChange} required />
+
+                    <div className="input-group">
+                      <input type="text" className="form-control" name="totalPrice" value={formData.totalPrice} onChange={handleInputChange} required />
+                      <span className="input-readonly">VNĐ</span>
+                    </div>
                     {errors.name && <div className="error-message">{errors.name}</div>}
                   </div>
 
@@ -353,15 +472,7 @@ const ManageBoxingCourse = () => {
                   </div>
                 </div>
 
-                <div className="row">
-                  <div className="form-group col">
-                    <label>
-                      Thành viên trong gói <span className="icon-input">(*)</span>
-                    </label>
-                    <input type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
-                  </div>
-                </div>
+                  
               </div>
 
               <div className="modal-footer">
@@ -373,6 +484,75 @@ const ManageBoxingCourse = () => {
                   Lưu
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div ref={detailModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <form id="employeeForm" onSubmit={handleSubmit}>
+              <div className="modal-header">
+                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Chi tiết gói Boxing" : "Thêm gói Boxing"}</h4>
+                <a type="button" className="close" onClick={closeModal}>
+                  <CloseIcon />
+                </a>
+              </div>
+              <div className="modal-body">
+                {/* First row of input fields */}
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Tên gói Boxing <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className="form-control" name="description" value={formData.description} onChange={handleInputChange} required disabled/>
+                    {errors.description && <div className="error-message">{errors.description}</div>}
+                  </div>
+
+                  <div className="form-group col">
+                    <label>
+                      Thành viên trong gói <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required disabled/>
+                    {errors.name && <div className="error-message">{errors.name}</div>}
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Giá <span className="icon-input">(*)</span>
+                    </label>
+
+                    <div className="input-group">
+                      <input type="text" className="form-control" name="totalPrice" value={formData.totalPrice} onChange={handleInputChange} required disabled/>
+                      <span className="input-readonly">VNĐ</span>
+                    </div>
+                    {errors.name && <div className="error-message">{errors.name}</div>}
+                  </div>
+
+                  <div className="form-group col">
+                    <label>
+                      Số buổi <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="number" className="form-control" name="sessions" value={formData.sessions} onChange={handleInputChange} required disabled/>
+                    {errors.name && <div className="error-message">{errors.name}</div>}
+                  </div>
+                </div>
+
+                  
+              </div>
+
+              {/* <div className="modal-footer">
+                <button type="button" className="btn btn-default" onClick={closeModal} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
+                  Hủy
+                </button>
+
+                <button type="submit" className="btn btn-success">
+                  Lưu
+                </button>
+              </div> */}
             </form>
           </div>
         </div>

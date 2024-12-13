@@ -373,7 +373,7 @@ const ManageSchedule = () => {
     try {
       const token = localStorage.getItem("token");
       const slotData = {
-        userId: courseData[0].userId,
+        userId: courseDetail.userId,
         trainerId: courseDetail.trainerId,
         oldSlotId: courseDetail.currentSlot.timeSlotId,
         newSlotId: selectedTimeslotId,

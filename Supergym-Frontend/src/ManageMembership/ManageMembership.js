@@ -15,6 +15,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Delete } from "@mui/icons-material";
+import LoadingSpinner from "../utils/LoadingOverlay";
 
 const ManageMembership = () => {
   const [membershipDataList, setMembershipDataList] = useState([]); // renamed variable
@@ -37,6 +38,14 @@ const ManageMembership = () => {
   const [previewImage, setPreviewImage] = useState(null); // To store preview image
   const fileInputRef = useRef(null);
   const [successMessage, setSuccessMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const detailModalRef = useRef(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(false);
+  const [membershipDetails, setMembershipDetails] = useState({
+    gymMemberships: [],
+    boxingOptions: [],
+    rentalOptions: [],
+  });
 
   const [formData, setFormData] = useState({
     name: "",
@@ -88,7 +97,7 @@ const ManageMembership = () => {
         setSelectedPackages(response.data); // updated variable
       } catch (error) {
         console.error("Error fetching memberships:", error); // renamed error message
-      } 
+      }
     };
     fetchPackage(); // renamed function call
   }, []);
@@ -163,24 +172,36 @@ const ManageMembership = () => {
     document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
   };
 
-  const openViewDetail = (membership) => {
-    // renamed function
-    const dob = membership.user.dob || {}; // renamed variable
-    const formattedDob = `${dob.year || "----"}-${String(dob.month || "01").padStart(2, "0")}-${String(dob.date || "01").padStart(2, "0")}`;
+  const openDetailModal = async (membership) => {
+    setIsLoadingUser(true); // Start loading
+    const token = localStorage.getItem("token");
+  
+    try {
+      const response = await axios.get(
+        `http://localhost:5000/api/Users/membershipDetails/${membership.user.userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMembershipDetails(response.data);
+    } catch (error) {
+      console.error(`Error fetching membership details:`, error);
+      showErrorModal("Có lỗi khi tải thông tin chi tiết");
+    } finally {
+      setIsLoadingUser(false); // Stop loading
+      detailModalRef.current.style.display = "block";
+      detailModalRef.current.classList.add("active");
+      document.querySelector(".modal-overlay").style.display = "block";
+    }
+  };
 
-    setFormData({
-      name: membership.user.name,
-      gender: membership.user.gender.toLowerCase() === "nam" ? "male" : "female",
-      dob: formattedDob,
-      email: membership.user.email,
-      phone: membership.user.phone,
-      address: membership.user.address,
-      userId: membership.user.userId,
+  const closeDetailModal = () => {
+    detailModalRef.current.style.display = "none";
+    detailModalRef.current.classList.remove("active");
+    document.querySelector(".modal-overlay").style.display = "none";
+    setMembershipDetails({
+      gymMemberships: [],
+      boxingOptions: [],
+      rentalOptions: [],
     });
-    setCurrentMembership(membership); // renamed variable
-    membershipModalRef.current.style.display = "block"; // renamed modal ref
-    membershipModalRef.current.classList.add("active");
-    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
   };
 
   const closeModal = () => {
@@ -202,12 +223,12 @@ const ManageMembership = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-  
+
     setFormData({
       ...formData,
       [name]: value,
     });
-  
+
     // Trigger validation for the specific field
     validateField(name, value);
   };
@@ -272,7 +293,6 @@ const ManageMembership = () => {
     document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
     window.close();
     window.location.reload();
-
   };
 
   // Hàm để mở modal thông báo
@@ -311,16 +331,16 @@ const ManageMembership = () => {
 
     // Prepare data for Gym
     const gymData = {
-      emails: emailInputs, // Emails from input fields
+      emails: [formData.email], // Chỉ lấy email từ formData
       boxingMembershipPlanId: null,
       gymMembershipId: packageInput,
-      trainerRentalPlanId: null, // Ensure this is included
+      trainerRentalPlanId: null,
       qrPayment: qrPaymentInput,
-      duration: 0, // Use the value of gymDuration
+      duration: 0,
       selectedTimeSlot: "",
-      isMonWedFri: true, // Only true for Gym
+      isMonWedFri: true,
     };
-
+    setIsSubmitting(true);
     // Send the request based on the trainer type
     try {
       const token = localStorage.getItem("token");
@@ -349,6 +369,8 @@ const ManageMembership = () => {
     } catch (error) {
       console.error("Error during trainer registration:", error);
       showErrorModal("Có lỗi khi đăng ký đăng ký thành viên. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false); // Stop loading spinner
     }
   };
 
@@ -387,7 +409,8 @@ const ManageMembership = () => {
 
       {isLoading ? <Preloader /> : <div>{/* Nội dung khác của ManageMembership */}</div>}
       {/* <!-- ***** Preloader End ***** --> */}
-
+      {isSubmitting && <LoadingSpinner isLoading={true} />}
+      {isLoadingUser && <LoadingSpinner isLoading={true} />}
       <div className="user-select">
         <h1>Quản lý người dùng đăng kí gói trong hệ thống super gym</h1>
 
@@ -433,7 +456,7 @@ const ManageMembership = () => {
                 <th>Email</th>
                 <th>Số điện thoại</th>
                 <th>Địa chỉ</th>
-                {/* <th className="action-el">Hành động</th> */}
+                <th className="action-el">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -451,14 +474,24 @@ const ManageMembership = () => {
                   <td>{membership.user.address}</td>
                   {/* <td className={customer.status === "Hoạt động" ? "status-el-active" : "status-el-inactive"}>{customer.status}</td> */}
                   {/* <td>{customer.role}</td> */}
-                  {/* <td>
-                    <a href="#" onClick={() => openEditMembershipModal(membership.user)} className="edit">
+                  <td>
+                    {/* <a href="#" onClick={() => openEditMembershipModal(membership.user)} className="edit">
                       <EditIcon />
                     </a>
                     <a href="#" onClick={() => openDeleteModal(membership.user)} className="delete">
                       <DeleteIcon />
+                    </a> */}
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openDetailModal(membership);
+                      }}
+                      className="view"
+                    >
+                      <VisibilityIcon />
                     </a>
-                  </td> */}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -514,7 +547,9 @@ const ManageMembership = () => {
 
                 <div className="row">
                   <div className="form-group col">
-                    <label>Gói đăng kí <span className="icon-input">(*)</span></label>
+                    <label>
+                      Gói đăng kí <span className="icon-input">(*)</span>
+                    </label>
                     <select className="form-control form-select" name="option" value={selectedOption} onChange={handlePackageChange} required>
                       <option value="">Chọn gói</option>
                       {selectedPackages.map((option, index) => (
@@ -528,7 +563,9 @@ const ManageMembership = () => {
 
                 <div className="row">
                   <div className="form-group col">
-                    <label>Chọn kiểu thanh toán <span className="icon-input">(*)</span></label>
+                    <label>
+                      Chọn kiểu thanh toán <span className="icon-input">(*)</span>
+                    </label>
                     <div className="radio-group">
                       <label>
                         <input type="radio" name="qrPayment" value="true" checked={formData.qrPayment === "true"} onChange={handleInputChange} />
@@ -544,11 +581,11 @@ const ManageMembership = () => {
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-default" onClick={closeModal} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
+                <button type="button" className="btn btn-default" onClick={closeModal} disabled={isSubmitting} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
                   Hủy
                 </button>
 
-                <button type="submit" className="btn btn-success">
+                <button type="submit" className="btn btn-success" disabled={isSubmitting}>
                   Lưu
                 </button>
               </div>
@@ -601,6 +638,7 @@ const ManageMembership = () => {
             </div>
             <div className="modal-body">
               <p>{successMessage}</p>
+              <p>Vui lòng xác nhận email vừa đăng kí</p>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeSuccessModal}>
@@ -657,6 +695,101 @@ const ManageMembership = () => {
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeErrorModal}>
                 OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* View detail Membership Modal */}
+      <div ref={detailModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Thông tin chi tiết đăng ký gói tập</h4>
+              <a type="button" className="close" onClick={closeDetailModal}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body">
+              {isLoadingUser ? (
+                <div className="text-center">
+                  <div className="spinner-border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Gym Memberships */}
+                  {membershipDetails.gymMemberships.length > 0 && (
+                    <div className="membership-section">
+                      <h5>Gói thành viên</h5>
+                      {membershipDetails.gymMemberships.map((gym, index) => (
+                        <div key={index} className="membership-item">
+                          <p>
+                            <strong>Tên gói:</strong> {gym.name}
+                          </p>
+                          <p>
+                            <strong>Ngày bắt đầu:</strong> {gym.startDate}
+                          </p>
+                          <p>
+                            <strong>Ngày kết thúc:</strong> {gym.endDate}
+                          </p>
+                          <hr />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Boxing Options */}
+                  {membershipDetails.boxingOptions.length > 0 && (
+                    <div className="membership-section">
+                      <h5>Gói Boxing</h5>
+                      {membershipDetails.boxingOptions.map((boxing, index) => (
+                        <div key={index} className="membership-item">
+                          <p>
+                            <strong>Mô tả:</strong> {boxing.description}
+                          </p>
+                          <p>
+                            <strong>Ngày bắt đầu:</strong> {boxing.startDate}
+                          </p>
+                          <p>
+                            <strong>Ngày kết thúc:</strong> {boxing.endDate}
+                          </p>
+                          <hr />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Rental Options */}
+                  {membershipDetails.rentalOptions.length > 0 && (
+                    <div className="membership-section">
+                      <h5>Gói trainer gym</h5>
+                      {membershipDetails.rentalOptions.map((rental, index) => (
+                        <div key={index} className="membership-item">
+                          <p>
+                            <strong>Chi tiết:</strong> {rental.description}
+                          </p>
+                          <p>
+                            <strong>Ngày bắt đầu:</strong> {rental.startDate}
+                          </p>
+                          <p>
+                            <strong>Ngày kết thúc:</strong> {rental.endDate}
+                          </p>
+                          <hr />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {membershipDetails.gymMemberships.length === 0 && membershipDetails.boxingOptions.length === 0 && membershipDetails.rentalOptions.length === 0 && <p className="text-center">Không có gói tập nào được đăng ký</p>}
+                </>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={closeDetailModal}>
+                Đóng
               </button>
             </div>
           </div>

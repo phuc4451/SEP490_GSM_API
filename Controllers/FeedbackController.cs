@@ -8,6 +8,7 @@ using Alpha_API.Models;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Alpha_API.ViewModel;
+using Microsoft.AspNetCore.OData.Results;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -49,27 +50,22 @@ public class FeedbackController : ControllerBase
             var feedbacks = await _firebaseClient
                 .Child("Feedback")
                 .OnceAsync<Feedback>();
-
             // Tạo danh sách để lưu kết quả
             var feedbackWithUserList = new List<FeedbackWithUserInfoDTO>();
-
             // Với mỗi feedback, lấy thông tin user tương ứng
             foreach (var f in feedbacks)
             {
                 var feedback = f.Object;
                 feedback.FeedbackId = f.Key;
-
                 // Lấy thông tin user từ userId trong feedback
                 var user = await _firebaseClient
                     .Child("users")
                     .Child(feedback.UserId)
                     .OnceSingleAsync<User>();
-
                 if (user != null)
                 {
                     user.UserId = feedback.UserId;
                 }
-
                 // Tạo đối tượng mới kết hợp feedback và user
                 var feedbackWithUser = new FeedbackWithUserInfoDTO
                 {
@@ -80,10 +76,8 @@ public class FeedbackController : ControllerBase
                     SubmittedAt = feedback.SubmittedAt,
                     User = user
                 };
-
                 feedbackWithUserList.Add(feedbackWithUser);
             }
-
             return Ok(feedbackWithUserList);
         }
         catch (Exception ex)
@@ -91,6 +85,89 @@ public class FeedbackController : ControllerBase
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
+
+    [HttpGet("search")]
+    [Authorize(Roles = "admin")]
+    public async Task<ActionResult<IEnumerable<FeedbackWithUserInfoDTO>>> SearchFeedbackByEmail([FromQuery] string email)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new { Message = "Email không được để trống" });
+            }
+
+            // Lấy tất cả user để tìm user có email phù hợp
+            var users = await _firebaseClient
+                .Child("users")
+                .OnceAsync<User>();
+
+            // Tìm user có email chứa chuỗi tìm kiếm (case-insensitive)
+            var matchedUsers = users
+                .Where(u => u.Object.Email.ToLower().Contains(email.ToLower()))
+                .Select(u =>
+                {
+                    var user = u.Object;
+                    user.UserId = u.Key;
+                    return user;
+                })
+                .ToList();
+
+            if (!matchedUsers.Any())
+            {
+                return NotFound(new { Message = $"Không tìm thấy feedback nào với email chứa '{email}'" });
+            }
+
+            // Lấy tất cả feedback
+            var feedbacks = await _firebaseClient
+                .Child("Feedback")
+                .OnceAsync<Feedback>();
+
+            // Tạo danh sách kết quả
+            var result = new List<FeedbackWithUserInfoDTO>();
+
+            // Lọc feedback của các user tìm được
+            foreach (var user in matchedUsers)
+            {
+                var userFeedbacks = feedbacks
+                    .Where(f => f.Object.UserId == user.UserId)
+                    .Select(f =>
+                    {
+                        var feedback = f.Object;
+                        feedback.FeedbackId = f.Key;
+                        return new FeedbackWithUserInfoDTO
+                        {
+                            FeedbackId = feedback.FeedbackId,
+                            UserId = feedback.UserId,
+                            Message = feedback.Message,
+                            Rating = feedback.Rating,
+                            SubmittedAt = feedback.SubmittedAt,
+                            User = user
+                        };
+                    });
+
+                result.AddRange(userFeedbacks);
+            }
+
+            var orderedResult = result.OrderByDescending(f => f.SubmittedAt).ToList();
+
+            if (!orderedResult.Any())
+            {
+                return NotFound(new { Message = $"Người dùng với email chứa '{email}' chưa có feedback nào" });
+            }
+
+            return Ok(new
+            {
+                Message = $"Tìm thấy {orderedResult.Count} feedback",
+                Data = orderedResult
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Message = $"Lỗi server: {ex.Message}" });
+        }
+    }
+
 
     // POST: api/feedback
     [HttpPost]

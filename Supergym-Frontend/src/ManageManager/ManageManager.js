@@ -7,7 +7,7 @@ import "../assets/css/common.css";
 import "./ManageManager.css";
 
 // require('dotenv').config()
-
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import SearchIcon from "@mui/icons-material/Search";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import EditIcon from "@mui/icons-material/Edit";
@@ -17,14 +17,16 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import { Delete } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { getRole,Logout } from '../utils/authUtils';
+import { getRole, Logout } from "../utils/authUtils";
+import LoadingSpinner from "../utils/LoadingOverlay";
+
 const ManageCustomer = () => {
   const navigate = useNavigate();
   useEffect(() => {
     const userRole = getRole();
-    if (userRole !== 'admin') {
+    if (userRole !== "admin") {
       Logout();
-      navigate('/login'); // or redirect to login
+      navigate("/login"); // or redirect to login
       return;
     }
   }, [navigate]);
@@ -60,6 +62,8 @@ const ManageCustomer = () => {
   const successModalRef = useRef(null);
   const errorModalRef = useRef(null);
   const deleteModalRef = useRef(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const salaryModalRef = useRef(null);
 
   //FETCH DATA AND PRELOAD
   useEffect(() => {
@@ -108,13 +112,20 @@ const ManageCustomer = () => {
       phone: "",
       userEnabled: "active",
       role: "staff",
+      address: "",
+      idCard: "",
+      userAvatar: "",
     });
-    setCurrentStaff(null); // Adding a new Staff
-    StaffModalRef.current.style.display = "block"; // Hiển thị modal
-    StaffModalRef.current.classList.add("active"); // Thêm class 'active'
-    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+    setCurrentStaff(null);
+    setPreviewImage(null); // Reset preview image
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Reset file input
+    }
+    setErrors({}); 
+    StaffModalRef.current.style.display = "block";
+    StaffModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block";
   };
-
   const openEditStaffModal = (Staff) => {
     // Convert DOB object to a date string compatible with the input field
     const formattedDob = `${Staff.dob.year}-${String(Staff.dob.month).padStart(2, "0")}-${String(Staff.dob.date).padStart(2, "0")}`;
@@ -145,27 +156,36 @@ const ManageCustomer = () => {
   };
 
   const closeModal = () => {
+    salaryModalRef.current.style.display = "none";
+    salaryModalRef.current.classList.remove("active");
     StaffModalRef.current.style.display = "none";
     StaffModalRef.current.classList.remove("active");
     document.querySelector(".modal-overlay").style.display = "none";
     setCurrentStaff(null); // Reset current Staff to null when closing modal
+    
+    // Thêm các dòng này để reset ảnh
+    setPreviewImage(null); // Reset preview image
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Reset file input
+    }
+    setErrors({}); 
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-  
+
     setFormData({
       ...formData,
       [name]: value,
     });
-  
+
     // Trigger validation for the specific field
     validateField(name, value);
   };
-  
+
   const validateField = (name, value) => {
     const newErrors = { ...errors };
-  
+
     switch (name) {
       case "name":
         if (value.length < 5 || value.length > 30) {
@@ -205,13 +225,14 @@ const ManageCustomer = () => {
           delete newErrors.address; // Clear error if valid
         }
         break;
-      case "idCard":
-        if (!value) {
-          newErrors.idCard = "Số căn cước không được để trống.";
-        } else {
-          delete newErrors.idCard; // Clear error if valid
-        }
-        break;
+        case "idCard":
+          // Kiểm tra nếu không phải là số hoặc không đúng 12 chữ số
+          if (!value || !/^\d+$/.test(value) || value.length !== 12) {
+            newErrors.idCard = "Số căn cước phải là số và có 12 chữ số.";
+          } else {
+            delete newErrors.idCard;
+          }
+          break;
       case "gender":
         if (!value) {
           newErrors.gender = "Vui lòng chọn giới tính.";
@@ -222,11 +243,9 @@ const ManageCustomer = () => {
       default:
         break;
     }
-  
+
     setErrors(newErrors);
   };
-  
-  
 
   // Hàm để mở modal thông báo
   const showSuccessModal = (message) => {
@@ -269,39 +288,39 @@ const ManageCustomer = () => {
 
   const validateForm = () => {
     const newErrors = {};
-  
+
     // Check all fields here
     if (formData.name.length < 5 || formData.name.length > 30) {
       newErrors.name = "Họ tên phải từ 5 đến 30 ký tự.";
     }
-  
+
     const dob = new Date(formData.dob);
     const currentDate = new Date();
     if (dob >= currentDate) {
       newErrors.dob = "Ngày tháng năm sinh phải nhỏ hơn ngày hiện tại.";
     }
-  
+
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(formData.email)) {
       newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
     }
-  
+
     if (formData.phone.length < 9 || formData.phone.length > 11 || !/^\d+$/.test(formData.phone)) {
       newErrors.phone = "Số điện thoại phải từ 9 đến 11 chữ số.";
     }
-  
+
     if (!formData.address) {
       newErrors.address = "Địa chỉ không được để trống.";
     }
-  
-    if (!formData.idCard) {
-      newErrors.idCard = "Số căn cước không được để trống.";
+
+    if (!formData.idCard || !/^\d+$/.test(formData.idCard) || formData.idCard.length !== 12) {
+      newErrors.idCard = "Số căn cước phải là số và có đúng 12 chữ số.";
     }
-  
+
     if (!formData.gender) {
       newErrors.gender = "Vui lòng chọn giới tính.";
     }
-  
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0; // If no errors, form is valid
   };
@@ -310,6 +329,7 @@ const ManageCustomer = () => {
     e.preventDefault();
     if (validateForm()) {
       const token = localStorage.getItem("token");
+      setIsSaving(true); 
 
       // Format date to the required format
       const dob = new Date(formData.dob);
@@ -349,7 +369,7 @@ const ManageCustomer = () => {
           // Update Staff
           await axios.patch(`http://localhost:5000/api/Users/updateStaff/${currentStaff.userId}`, StaffDataEdit, {
             headers: {
-              Authorization: `Bearer ${token}`
+              Authorization: `Bearer ${token}`,
             },
           });
 
@@ -360,7 +380,7 @@ const ManageCustomer = () => {
           console.log(StaffData);
           const response = await axios.post("http://localhost:5000/api/Users/addStaff", StaffData, {
             headers: {
-              Authorization: `Bearer ${token}`
+              Authorization: `Bearer ${token}`,
             },
           });
 
@@ -382,6 +402,8 @@ const ManageCustomer = () => {
       } catch (error) {
         console.error("Error saving Staff:", error);
         showErrorModal(error.message);
+      } finally {
+        setIsSaving(false); // Stop loading
       }
     }
   };
@@ -414,27 +436,24 @@ const ManageCustomer = () => {
     if (file) {
       // Use FileReader to convert image to base64
       const reader = new FileReader();
-  
+
       reader.onloadend = () => {
         // Extract base64 data without the "data:image/jpeg;base64," prefix
-        const base64String = reader.result.split(',')[1]; // Remove the prefix
-  
+        const base64String = reader.result.split(",")[1]; // Remove the prefix
+
         // Set preview image for display (include the full base64 string with prefix)
-        setPreviewImage(reader.result.split(',')[1]); // Set only the image data for preview
-  
+        setPreviewImage(reader.result.split(",")[1]); // Set only the image data for preview
+
         // Store base64 image without the prefix in formData
         setFormData({
           ...formData,
           userAvatar: base64String, // Store base64 image without the prefix in formData
         });
       };
-  
+
       reader.readAsDataURL(file); // Convert the file to base64
     }
   };
-  
-  
-  
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value); // Cập nhật nội dung tìm kiếm khi người dùng nhập
@@ -442,28 +461,36 @@ const ManageCustomer = () => {
   const filteredStaffData = StaffData.filter(
     (Staff) => Staff.email.toLowerCase().includes(searchQuery.toLowerCase()) // Tìm kiếm theo email
   );
+
+  // const openViewSalaryModal = async (feedback) => {
+    const openViewSalaryModal = () => {
+    // setIsLoadingUser(true);
+    // const token = localStorage.getItem("token");
+
+    // try {
+    //   const userResponse = await axios.get(
+    //     `http://localhost:5000/api/Users/GetUserById/${feedback.userId}`,
+    //     { headers: { Authorization: `Bearer ${token}` } }
+    //   );
+    //   setCurrentUserData(userResponse.data);
+    //   setCurrentFeedback(feedback);
+    // } catch (error) {
+    //   console.error(`Error fetching user data:`, error);
+    //   setCurrentUserData({ name: "Unknown", email: "Unknown" });
+    // } finally {
+      // setIsLoadingUser(false);
+      salaryModalRef.current.style.display = "block";
+      salaryModalRef.current.classList.add("active");
+      document.querySelector(".modal-overlay").style.display = "block";
+    // }
+  };
   return (
     <>
       <Header />
 
-      {/* <!-- ***** Preloader Start ***** --> */}
-      {/* {isLoading ? (
-        <div id="js-preloader" className="js-preloader">
-          <div className="preloader-inner">
-            <span className="dot"></span>
-            <div className="dots">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div></div>
-      )} */}
-
       {isLoading ? <Preloader /> : <div>{/* Nội dung khác của ManageCustomer */}</div>}
       {/* <!-- ***** Preloader End ***** --> */}
+      {isSaving && <LoadingSpinner isLoading={true} />}
 
       <div className="user-select">
         <h1>Quản lí nhân viên trong hệ thống SUPER GYM</h1>
@@ -531,9 +558,9 @@ const ManageCustomer = () => {
                     <a href="#" onClick={() => openEditStaffModal(Staff)} className="edit">
                       <EditIcon />
                     </a>
-                    {/* <a href="#" onClick={() => openDeleteModal(Staff)} className="delete">
-                      <DeleteIcon />
-                    </a> */}
+                    <a href="#" onClick={() => openViewSalaryModal(Staff)} className="view">
+                      <MonetizationOnIcon />
+                    </a>
                   </td>
                 </tr>
               ))}
@@ -604,7 +631,7 @@ const ManageCustomer = () => {
                     <label>
                       Email <span className="icon-input">(*)</span>
                     </label>
-                    <input type="email" className={`form-control ${errors.email ? "is-invalid" : ""}`} name="email" value={formData.email} onChange={handleInputChange} required />
+                    <input type="email" className={`form-control ${errors.email ? "is-invalid" : ""}`} name="email" value={formData.email} onChange={handleInputChange} required disabled={currentStaff !== null} />
                     {errors.email && <div className="error-message">{errors.email}</div>}
                   </div>
 
@@ -670,14 +697,65 @@ const ManageCustomer = () => {
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-default" onClick={closeModal}>
+                <button type="button" className="btn btn-default" onClick={closeModal} disabled={isSaving}>
                   Hủy
                 </button>
-                <button type="submit" className="btn btn-success">
+                <button type="submit" className="btn btn-success" disabled={isSaving}>
                   Lưu
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      </div>
+
+      <div ref={salaryModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Lương nhân viên</h4>
+              <a type="button" className="close" onClick={closeModal}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body">
+              {/* {isLoadingUser ? (
+                <div className="text-center">
+                  <div className="spinner-border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : (
+                currentFeedback &&
+                currentUserData && (
+                  <> */}
+                    <p>
+                      <strong>Email:</strong> 
+                    </p>
+                    <p>
+                      <strong>Tên:</strong> 
+                    </p>
+                    <p>
+                      <strong>Số ngày checkin trong tháng:</strong>
+                    </p>
+                    <p>
+                      <strong>Lương cơ bản:</strong>
+                    </p>
+                    <p>
+                      <strong>Số ngày đã checkin trong tháng:</strong>
+                    </p>
+                    <p>
+                      <strong>Lương được nhận:</strong> 
+                    </p>
+                  {/* </>
+                )
+              )} */}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={closeModal}>
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       </div>

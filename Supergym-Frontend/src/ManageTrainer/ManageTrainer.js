@@ -497,82 +497,87 @@ const ManageTrainer = () => {
   };
 
   const handleSubmitAddTrainerToCourse = async (e) => {
-    e.preventDefault(); // Ngăn hành vi mặc định của form
-    // Chuẩn bị dữ liệu gửi tới API
-    const dataGym = {
-      trainerRentalPlanId: "string", // Bạn cần gán ID hợp lệ tại đây nếu cần
-      trainerId: trainerToAddCourse.trainerId, // ID của huấn luyện viên đã chọn
-      rentalOptionId: gymPackageId, // rentalOptionId là giá trị ID của gói đã chọn
-    };
-
-    const dataBoxing = {
-      boxingMembershipPlanId: "string",
-      boxingTrainerId: trainerToAddCourse.trainerId,
-      boxingOptionId: boxingPackageId,
-    };
-
-    if ((gymPackageId != null && gymPackageId !== "") || (boxingPackageId != null && boxingPackageId !== "")) {
-      const token = localStorage.getItem("token");
-      if (selectedOptionType === "gym") {
-        try {
-          // Gửi yêu cầu API để thêm huấn luyện viên vào khóa học
-          const response = await axios.post(
-            "http://localhost:5000/api/trainerRentalPlan",
-            dataGym, // Gửi payload
-            {
-              headers: { Authorization: `Bearer ${token}` }, // Thêm token vào header
-            }
-          );
-
-          // Cập nhật dữ liệu khi thành công
-          setTrainerData((prevData) =>
-            prevData.map((trainer) =>
-              trainer.trainerId === trainerToAddCourse.trainerId
-                ? { ...trainer, isAssignedToCourse: true } // Đánh dấu huấn luyện viên đã được thêm vào khóa học
-                : trainer
-            )
-          );
-
-          // Hiển thị thông báo thành công và đóng modal
-          closeModal(); // Đóng modal
-          showSuccessModal("Huấn luyện viên đã được thêm vào khóa học thành công!");
-        } catch (error) {
-          console.error("Error adding trainer to course:", error);
-          showSuccessModal("Có lỗi khi thêm huấn luyện viên vào khóa học.");
-        }
-      } else {
-        try {
-          // Gửi yêu cầu API để thêm huấn luyện viên vào khóa học
-          const response = await axios.post(
-            "http://localhost:5000/api/boxingMembershipPlan",
-            dataBoxing, // Gửi payload
-            {
-              headers: { Authorization: `Bearer ${token}` }, // Thêm token vào header
-            }
-          );
-
-          // Cập nhật dữ liệu khi thành công
-          setTrainerData((prevData) =>
-            prevData.map((trainer) =>
-              trainer.trainerId === trainerToAddCourse.trainerId
-                ? { ...trainer, isAssignedToCourse: true } // Đánh dấu huấn luyện viên đã được thêm vào khóa học
-                : trainer
-            )
-          );
-
-          // Hiển thị thông báo thành công và đóng modal
-          closeModal(); // Đóng modal
-          showSuccessModal("Huấn luyện viên đã được thêm vào khóa học thành công!");
-        } catch (error) {
-          console.error("Error adding trainer to course:", error);
-          showErrorModal(error.message);
-        }
-      }
-    } else {
-      // Nếu không chọn huấn luyện viên hoặc gói, hiển thị thông báo lỗi
-      showSuccessModal("Vui lòng chọn và gói!");
+    e.preventDefault();
+    
+    // Validate package selection first
+    if (!gymPackageId && !boxingPackageId) {
+      showErrorModal("Vui lòng chọn gói tập!");
+      return;
     }
-  };
+
+    const token = localStorage.getItem("token");
+    
+    try {
+      let response;
+      
+      if (selectedOptionType === "gym") {
+        const dataGym = {
+          trainerRentalPlanId: "string",
+          trainerId: trainerToAddCourse.trainerId,
+          rentalOptionId: gymPackageId,
+        };
+
+        response = await axios.post(
+          "http://localhost:5000/api/trainerRentalPlan",
+          dataGym,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      } else {
+        const dataBoxing = {
+          boxingMembershipPlanId: "string",
+          boxingTrainerId: trainerToAddCourse.trainerId,
+          boxingOptionId: boxingPackageId,
+        };
+
+        response = await axios.post(
+          "http://localhost:5000/api/boxingMembershipPlan",
+          dataBoxing,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      }
+
+      // Nếu thành công
+      setTrainerData((prevData) =>
+        prevData.map((trainer) =>
+          trainer.trainerId === trainerToAddCourse.trainerId
+            ? { ...trainer, isAssignedToCourse: true }
+            : trainer
+        )
+      );
+
+      closeModal();
+      showSuccessModal("Huấn luyện viên đã được thêm vào khóa học thành công!");
+
+    } catch (error) {
+      console.error("Chi tiết lỗi:", error);
+      
+      // Xử lý các loại lỗi khác nhau
+      if (error.response) {
+        // Server trả về response với status code nằm ngoài range 2xx
+        const errorMessage = error.response.data.message || error.response.data || "Có lỗi xảy ra từ server";
+        showErrorModal(`Lỗi: ${error.response.status} - ${errorMessage}`);
+        
+        console.log("Status:", error.response.status);
+        console.log("Data:", error.response.data);
+        console.log("Headers:", error.response.headers);
+      } else if (error.request) {
+        // Request được gửi nhưng không nhận được response
+        showErrorModal("Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.");
+        console.log("Request error:", error.request);
+      } else {
+        // Có lỗi khi setting up request
+        showErrorModal(`Lỗi: ${error.message}`);
+        console.log("Error:", error.message);
+      }
+      
+      // Log thêm config nếu cần debug
+      console.log("Config:", error.config);
+    }
+};
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];

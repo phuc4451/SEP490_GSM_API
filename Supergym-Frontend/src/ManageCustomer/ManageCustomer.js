@@ -14,6 +14,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import { Delete } from "@mui/icons-material";
+import LoadingSpinner from "../utils/LoadingOverlay";
 
 const ManageCustomer = () => {
   const [customerDataList, setCustomerDataList] = useState([]);
@@ -31,7 +32,7 @@ const ManageCustomer = () => {
   const [previewImage, setPreviewImage] = useState(null); // To store preview image
   const fileInputRef = useRef(null);
   const [successMessage, setSuccessMessage] = useState("");
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -161,19 +162,19 @@ const ManageCustomer = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-  
+
     setFormData({
       ...formData,
       [name]: value,
     });
-  
+
     // Trigger validation for the specific field
     validateField(name, value);
   };
-  
+
   const validateField = (name, value) => {
     const newErrors = { ...errors };
-  
+
     switch (name) {
       case "name":
         if (value.length < 5 || value.length > 30) {
@@ -230,49 +231,48 @@ const ManageCustomer = () => {
       default:
         break;
     }
-  
+
     setErrors(newErrors);
   };
 
   const validateForm = () => {
     const newErrors = {};
-  
+
     // Check all fields here
     if (formData.name.length < 5 || formData.name.length > 30) {
       newErrors.name = "Họ tên phải từ 5 đến 30 ký tự.";
     }
-  
+
     const dob = new Date(formData.dob);
     const currentDate = new Date();
     if (dob >= currentDate) {
       newErrors.dob = "Ngày tháng năm sinh phải nhỏ hơn ngày hiện tại.";
     }
-  
+
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(formData.email)) {
       newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
     }
-  
+
     if (formData.phone.length < 9 || formData.phone.length > 11 || !/^\d+$/.test(formData.phone)) {
       newErrors.phone = "Số điện thoại phải từ 9 đến 11 chữ số.";
     }
-  
+
     if (!formData.address) {
       newErrors.address = "Địa chỉ không được để trống.";
     }
-  
+
     if (!formData.idCard) {
       newErrors.idCard = "Số căn cước không được để trống.";
     }
-  
+
     if (!formData.gender) {
       newErrors.gender = "Vui lòng chọn giới tính.";
     }
-  
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0; // If no errors, form is valid
   };
-
 
   const showSuccessModal = (message) => {
     setSuccessMessage(message); // Cập nhật thông báo
@@ -316,7 +316,7 @@ const ManageCustomer = () => {
     e.preventDefault();
     if (validateForm()) {
       const token = localStorage.getItem("token");
-  
+
       // Format date to the required format
       const dob = new Date(formData.dob);
       const dobData = {
@@ -324,7 +324,7 @@ const ManageCustomer = () => {
         month: dob.getMonth() + 1,
         year: dob.getFullYear(),
       };
-  
+      setIsSubmitting(true);
       try {
         if (currentCustomer) {
           const customerDataEdit = {
@@ -339,12 +339,12 @@ const ManageCustomer = () => {
             userAvatar: formData.userAvatar,
             idCard: formData.idCard,
           };
-      
+
           // Update customer
           await axios.patch(`http://localhost:5000/api/Users/updateCustomer/${currentCustomer.userId}`, customerDataEdit, {
             headers: { Authorization: `Bearer ${token}` },
           });
-  
+
           // Update customer data in the list
           setCustomerDataList((prevData) => prevData.map((customer) => (customer.userId === currentCustomer.userId ? { ...customer, ...customerData } : customer)));
         } else {
@@ -362,10 +362,10 @@ const ManageCustomer = () => {
           const response = await axios.post("http://localhost:5000/api/Users/addcustomer", customerDataAdd, {
             headers: { Authorization: `Bearer ${token}` },
           });
-  
+
           setCustomerDataList([...customerDataList, response.data]);
         }
-  
+
         // Reset form and close modal
         setFormData({
           email: "",
@@ -381,11 +381,11 @@ const ManageCustomer = () => {
       } catch (error) {
         console.error("Error saving customer:", error);
         showErrorModal(error.message);
-
+      } finally {
+        setIsSubmitting(false); // After API call completes
       }
     }
   };
-  
 
   const deleteCustomer = async () => {
     if (customerToDelete) {
@@ -414,21 +414,21 @@ const ManageCustomer = () => {
     if (file) {
       // Use FileReader to convert image to base64
       const reader = new FileReader();
-  
+
       reader.onloadend = () => {
         // Extract base64 data without the "data:image/jpeg;base64," prefix
-        const base64String = reader.result.split(',')[1]; // Remove the prefix
-  
+        const base64String = reader.result.split(",")[1]; // Remove the prefix
+
         // Set preview image for display (include the full base64 string with prefix)
-        setPreviewImage(reader.result.split(',')[1]); // Set only the image data for preview
-  
+        setPreviewImage(reader.result.split(",")[1]); // Set only the image data for preview
+
         // Store base64 image without the prefix in formData
         setFormData({
           ...formData,
           userAvatar: base64String, // Store base64 image without the prefix in formData
         });
       };
-  
+
       reader.readAsDataURL(file); // Convert the file to base64
     }
   };
@@ -446,6 +446,7 @@ const ManageCustomer = () => {
 
       {isLoading ? <Preloader /> : <div>{/* Nội dung khác của ManageCustomer */}</div>}
       {/* <!-- ***** Preloader End ***** --> */}
+      {isSubmitting && <LoadingSpinner isLoading={true} />}
 
       <div className="user-select">
         <h1>Quản lý khách hàng trong hệ thống super gym</h1>
@@ -496,7 +497,7 @@ const ManageCustomer = () => {
               </tr>
             </thead>
             <tbody>
-            {filteredCustomerData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((customer, index) => (
+              {filteredCustomerData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((customer, index) => (
                 <tr key={index}>
                   <td>
                     <img src={`data:image/jpeg;base64,${customer.userAvatar}`} className="customer-avatar" />
@@ -514,9 +515,9 @@ const ManageCustomer = () => {
                     <a href="#" onClick={() => openEditCustomerModal(customer)} className="edit">
                       <EditIcon />
                     </a>
-                    <a href="#" onClick={() => openDeleteModal(customer)} className="delete">
+                    {/* <a href="#" onClick={() => openDeleteModal(customer)} className="delete">
                       <DeleteIcon />
-                    </a>
+                    </a> */}
                   </td>
                 </tr>
               ))}
@@ -587,7 +588,7 @@ const ManageCustomer = () => {
                     <label>
                       Email <span className="icon-input">(*)</span>
                     </label>
-                    <input type="email" className={`form-control ${errors.email ? "is-invalid" : ""}`} name="email" value={formData.email} onChange={handleInputChange} required />
+                    <input type="email" className={`form-control ${errors.email ? "is-invalid" : ""}`} name="email" value={formData.email} onChange={handleInputChange} required disabled={currentCustomer !== null}/>
                     {errors.email && <div className="error-message">{errors.email}</div>}
                   </div>
 
@@ -612,7 +613,6 @@ const ManageCustomer = () => {
                     </div>
                   )}
                 </div>
-
 
                 <div className="row">
                   <div className="form-group col">
@@ -655,7 +655,7 @@ const ManageCustomer = () => {
                   Hủy
                 </button>
 
-                <button type="submit" className="btn btn-success" >
+                <button type="submit" className="btn btn-success" disabled={isSubmitting}>
                   Lưu
                 </button>
               </div>
@@ -674,7 +674,7 @@ const ManageCustomer = () => {
               <div className="modal-header">
                 <h4 className="modal-title text-center mx-auto">Xóa người dùng</h4>
                 <a type="button" className="close" onClick={closeDeleteModal}>
-                <CloseIcon />
+                  <CloseIcon />
                 </a>
               </div>
               <div className="modal-body">
@@ -703,13 +703,11 @@ const ManageCustomer = () => {
             <div className="modal-header">
               <h4 className="modal-title text-center mx-auto">Thông báo</h4>
               <a type="button" className="close" onClick={closeSuccessModal}>
-              <CloseIcon />
-
+                <CloseIcon />
               </a>
             </div>
             <div className="modal-body">
-            <p>{successMessage}</p>
-
+              <p>{successMessage}</p>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeSuccessModal}>

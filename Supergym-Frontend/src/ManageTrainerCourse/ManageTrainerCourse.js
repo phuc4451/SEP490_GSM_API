@@ -53,6 +53,25 @@ const ManageTrainerCourse = () => {
     document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
   };
 
+  const openAddCustomerModalByMonth = () => {
+    setFormData({
+      description: "",
+      sessionCountMin: "",
+      sessionCountMax: "",
+      memberCount: "",
+      pricePerPersonPerSession: "",
+      pricePerPersonPerMonth: "",
+    });
+    setPreviewImage(null); // Đặt lại ảnh xem trước
+    if (fileInputRef.current) {
+      fileInputRef.current.value = null; // Đặt lại giá trị input file
+    }
+    setCurrentCustomer(null); // Đặt lại khách hàng hiện tại để thêm mới
+    customerByMonthModalRef.current.style.display = "block"; // Hiển thị modal
+    customerByMonthModalRef.current.classList.add("active"); // Thêm class 'active'
+    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+  };
+
   const openEditCustomerModal = (course) => {
     setFormData({
       description: course.description || "", // Add default values in case of missing data
@@ -63,12 +82,16 @@ const ManageTrainerCourse = () => {
       pricePerPersonPerMonth: course.pricePerPersonPerMonth || "",
     });
     setCurrentCustomer(course); // Set current customer for editing
-    customerModalRef.current.style.display = "block"; // Show modal
-    customerModalRef.current.classList.add("active"); // Add active class for styling
+    detailPackageModalRef.current.style.display = "block"; // Show modal
+    detailPackageModalRef.current.classList.add("active"); // Add active class for styling
     document.querySelector(".modal-overlay").style.display = "block"; // Show overlay
   };
 
   const closeModal = () => {
+    detailPackageModalRef.current.style.display = "none";
+    detailPackageModalRef.current.classList.remove("active");
+    customerByMonthModalRef.current.style.display = "none";
+    customerByMonthModalRef.current.classList.remove("active");
     customerModalRef.current.style.display = "none";
     customerModalRef.current.classList.remove("active");
     document.querySelector(".modal-overlay").style.display = "none";
@@ -107,6 +130,8 @@ const ManageTrainerCourse = () => {
   };
 
   const customerModalRef = useRef(null);
+  const customerByMonthModalRef = useRef(null);
+  const detailPackageModalRef = useRef(null);
   const successModalRef = useRef(null);
   const deleteModalRef = useRef(null);
 
@@ -137,11 +162,19 @@ const ManageTrainerCourse = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmitPackageSession = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.post("http://localhost:5000/api/RentalOption", formData, {
+      const packageSession = {
+        description: formData.description,
+        sessionCountMin: formData.sessionCountMin,
+        sessionCountMax: formData.sessionCountMax,
+        memberCount: formData.memberCount,
+        pricePerPersonPerSession: formData.pricePerPersonPerSession,
+        pricePerPersonPerMonth: 0,
+      };
+      const response = await axios.post("http://localhost:5000/api/RentalOption", packageSession, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCourses((prevCourses) => [...prevCourses, response.data]);
@@ -155,12 +188,49 @@ const ManageTrainerCourse = () => {
         pricePerPersonPerMonth: 0,
       });
       closeModal();
-      showSuccessModal("Gói Boxing được lưu thành công");
+      showSuccessModal(`Gói Trainer Gym ${formData.description} được lưu thành công`);
     } catch (error) {
       if (error.response && error.response.status === 409) {
-        showErrorModal("Gói Trainer đã tồn tại, vui lòng thêm gói Trainer khác!");
+        showErrorModal(`Gói Trainer Gym ${formData.description} đã tồn tại, vui lòng thêm gói Trainer khác!`);
       } else {
-        showErrorModal("Lỗi khi tạo gói Trainer");
+        showErrorModal(`Lỗi khi tạo gói Trainer Gym ${formData.description}`);
+        console.error("Error saving equipment:", error);
+      }
+    }
+  };
+
+  const handleSubmitPackageMonth = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem("token");
+      const packageMonth = {
+        description: formData.description,
+        sessionCountMin: 0,
+        sessionCountMax: 0,
+        memberCount: formData.memberCount,
+        pricePerPersonPerSession: 0,
+        pricePerPersonPerMonth: formData.pricePerPersonPerMonth,
+      };
+      const response = await axios.post("http://localhost:5000/api/RentalOption", packageMonth, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCourses((prevCourses) => [...prevCourses, response.data]);
+      setShowForm(false);
+      setFormData({
+        description: "string",
+        sessionCountMin: 0,
+        sessionCountMax: 0,
+        memberCount: 0,
+        pricePerPersonPerSession: 0,
+        pricePerPersonPerMonth: 0,
+      });
+      closeModal();
+      showSuccessModal(`Gói Trainer Gym ${formData.description} được lưu thành công`);
+    } catch (error) {
+      if (error.response && error.response.status === 409) {
+        showErrorModal(`Gói Trainer Gym ${formData.description} đã tồn tại, vui lòng thêm gói Trainer khác!`);
+      } else {
+        showErrorModal(`Lỗi khi tạo gói Trainer Gym ${formData.description}`);
         console.error("Error saving equipment:", error);
       }
     }
@@ -207,13 +277,18 @@ const ManageTrainerCourse = () => {
 
       <section className="section" id="features">
         <div className="container">
-          <div className="row">
-            <div className="col-lg-6 offset-lg-3">
-              <div className="section-heading">
-                <h2>Danh sách các gói tập</h2>
+          <div className="row mt-5 mb-4">
+            <div className="col-lg-6 offset-lg-3 text-center">
+              <h2 className="mb-3">Danh sách các gói tập</h2>
+              <div className="d-flex justify-content-center gap-3">
                 <button onClick={openAddCustomerModal} className="btn btn-success">
                   <AddCircleOutlineIcon />
-                  <span>Thêm gói Trainer</span>
+                  <span className="ms-2">Thêm gói Trainer theo buổi</span>
+                </button>
+
+                <button onClick={openAddCustomerModalByMonth} className="btn btn-success">
+                  <AddCircleOutlineIcon />
+                  <span className="ms-2">Thêm gói Trainer theo tháng</span>
                 </button>
               </div>
             </div>
@@ -244,21 +319,12 @@ const ManageTrainerCourse = () => {
                         <a href="#" onClick={() => openEditCustomerModal(course)} className="btn-fix detail-button">
                           Chi tiết
                         </a>
-                        {/* <a href="#" className="btn-fix edit-button">
-                          Sửa
-                        </a>
-                        <a href="#" className="btn-fix delete-button">
-                          Xóa
-                        </a> */}
                       </div>
 
                       <div className="sale-price-section">
-                        {/* <button id="add-sale-button" className="btn btn-primary sale-btn">
-                          Áp dụng giảm giá
-                          <LocalOfferIcon />
-                        </button> */}
-                        {course.pricePerPersonPerSession > 0 && <p className="price">Giá 1 người/buổi: {course.pricePerPersonPerSession} VND</p>}
-                        {course.pricePerPersonPerMonth > 0 && <p className="price">Giá 1 người/tháng: {course.pricePerPersonPerMonth} VND</p>}
+
+                        {course.pricePerPersonPerSession > 0 && <p className="price">Giá 1 người/buổi: {course.pricePerPersonPerSession.toLocaleString()} VND</p>}
+                        {course.pricePerPersonPerMonth > 0 && <p className="price">Giá 1 người/tháng: {course.pricePerPersonPerMonth.toLocaleString()} VND</p>}
                       </div>
                     </div>
                   </li>
@@ -273,7 +339,7 @@ const ManageTrainerCourse = () => {
         <div className="modal">
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmitPackageSession}>
                 <div className="modal-header">
                   <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Sửa gói tập" : "Thêm gói tập"}</h4>
                   <button type="button" className="close" onClick={() => setShowForm(false)}>
@@ -317,9 +383,9 @@ const ManageTrainerCourse = () => {
       <div ref={customerModalRef} className="modal">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
-            <form id="employeeForm" onSubmit={handleSubmit}>
+            <form id="employeeForm" onSubmit={handleSubmitPackageSession}>
               <div className="modal-header">
-                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Chi tiết gói tập Trainer" : "Thêm gói Trainer"}</h4>
+                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Chi tiết gói tập Trainer" : "Thêm gói Trainer theo buổi"}</h4>
                 <a type="button" className="close" onClick={closeModal}>
                   <CloseIcon />
                 </a>
@@ -370,14 +436,168 @@ const ManageTrainerCourse = () => {
                     <label>
                       Giá 1 người/buổi <span className="icon-input">(*)</span>
                     </label>
+
+                    <div className="input-group">
+                    <input type="text" className="form-control" name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} required />
+                    <span className="input-readonly">VNĐ</span>
+                    </div>
+
+                  </div>
+
+                  {/* <div className="form-group col">
+                    <label>
+                      Giá 1 người/tháng <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="number" className="form-control" name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} required />
+                  </div> */}
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-default" onClick={closeModal} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-success">
+                  Lưu
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div ref={customerByMonthModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <form id="employeeForm" onSubmit={handleSubmitPackageMonth}>
+              <div className="modal-header">
+                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Chi tiết gói tập Trainer" : "Thêm gói Trainer theo tháng"}</h4>
+                <a type="button" className="close" onClick={closeModal}>
+                  <CloseIcon />
+                </a>
+              </div>
+              <div className="modal-body">
+                {/* Input Fields */}
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Tên gói tập <span className="icon-input">(*)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      name="description" // binding với 'description' trong formData
+                      value={formData.description} // binding với formData
+                      onChange={handleInputChange} // Hàm thay đổi
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group col">
+                    <label>
+                      Thành viên trong gói <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required />
+                  </div>
+                </div>
+
+                <div className="row">
+                  {/* <div className="form-group col">
+                    <label>
+                      Giá 1 người/buổi <span className="icon-input">(*)</span>
+                    </label>
                     <input type="number" className="form-control" name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} required />
+                  </div> */}
+
+                  <div className="form-group col">
+                    <label>
+                      Giá 1 người/tháng <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="text" className="form-control" name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} required />
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-default" onClick={closeModal} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-success">
+                  Lưu
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+
+
+      <div ref={detailPackageModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <form id="employeeForm" onSubmit={handleSubmitPackageSession}>
+              <div className="modal-header">
+                <h4 className="modal-title text-center mx-auto">{currentCustomer ? "Chi tiết gói tập Trainer" : "Thêm gói Trainer theo buổi"}</h4>
+                <a type="button" className="close" onClick={closeModal}>
+                  <CloseIcon />
+                </a>
+              </div>
+              <div className="modal-body">
+                {/* Input Fields */}
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Tên gói tập <span className="icon-input">(*)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      name="description" // binding với 'description' trong formData
+                      value={formData.description} // binding với formData
+                      onChange={handleInputChange} // Hàm thay đổi
+                      required
+                      disabled
+                    />
+                  </div>
+
+                  <div className="form-group col">
+                    <label>
+                      Số buổi tối thiểu <span className="icon-input">(*)</span>
+                    </label>
+                    <input disabled type="number" className="form-control" name="sessionCountMin" value={formData.sessionCountMin} onChange={handleInputChange} required />
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Số buổi tối đa <span className="icon-input">(*)</span>
+                    </label>
+                    <input disabled type="number" className="form-control" name="sessionCountMax" value={formData.sessionCountMax} onChange={handleInputChange} required />
+                  </div>
+
+                  <div className="form-group col">
+                    <label>
+                      Thành viên trong gói <span className="icon-input">(*)</span>
+                    </label>
+                    <input disabled type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required />
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Giá 1 người/buổi <span className="icon-input">(*)</span>
+                    </label>
+                    <input disabled type="number" className="form-control" name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} required />
                   </div>
 
                   <div className="form-group col">
                     <label>
                       Giá 1 người/tháng <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} required />
+                    <input disabled type="number" className="form-control" name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} required />
                   </div>
                 </div>
               </div>
@@ -398,36 +618,6 @@ const ManageTrainerCourse = () => {
       {/* Modal Overlay */}
       <div className="modal-overlay"></div>
 
-      {/* Delete Modal */}
-      <div ref={deleteModalRef} className="modal">
-        <div className="modal-dialog modal-dialog-notify">
-          <div className="modal-content">
-            <form id="deleteEmployeeForm" onSubmit={handleDeleteEmployee}>
-              <div className="modal-header">
-                <h4 className="modal-title text-center mx-auto">Xóa người dùng</h4>
-                <a type="button" className="close" onClick={closeDeleteModal}>
-                  <CloseIcon />
-                </a>
-              </div>
-              <div className="modal-body">
-                <p>Bạn có chắc chắn muốn xóa {customerToDelete?.name}?</p>
-                <p className="text-warning">
-                  <small>Hành động này sẽ không được hoàn tác.</small>
-                </p>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-default" onClick={closeModal} style={{ backgroundColor: "white", color: "black", borderColor: "lightgray" }}>
-                  Hủy
-                </button>
-
-                <button type="submit" className="btn btn-success">
-                  Lưu
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
 
       {/* Success Modal */}
       <div ref={successModalRef} className="modal">

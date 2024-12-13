@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
 import { getRole, Logout, hasRequiredRole } from "../utils/authUtils";
+import CloseIcon from "@mui/icons-material/Close";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBackward } from "@fortawesome/free-solid-svg-icons";
+import { faBackward, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { faTwitter, faFacebook, faSquareInstagram } from "@fortawesome/free-brands-svg-icons";
 import "./home.css";
 import autoplayVideo from "../assets/images/gym-video.mp4";
 import supergym from "../assets/images/super-gym-logo.jpg";
 import lineDec from "../assets/images/line-dec.png";
+import apkApp from "../assets/images/apkAppfix.png";
 import featureFirstIcon from "../assets/images/features-first-icon.png";
 import tabFirstIcon from "../assets/images/tabs-first-icon.png";
 import trainingClass1 from "../assets/images/training-image-01.jpg";
@@ -127,21 +129,24 @@ const Home = () => {
   // };
   // =================================================================
   //FIX STICKY HEADER
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 600) {
-        setIsSticky(true);
-      } else {
-        setIsSticky(false);
-      }
-    };
 
-    window.addEventListener("scroll", handleScroll);
+  // OPEN QR
+  const showQrPicture = useRef(null);
+  const [qrDataUrl, setQrDataUrl] = useState(""); // State to store the QR code data URL
 
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
+  const showQr = () => {
+    showQrPicture.current.style.display = "block";
+    document.querySelector(".modal-overlay").style.display = "block";
+  };
+
+  // Hàm để đóng modal thông báo
+  const closeQr = () => {
+    showQrPicture.current.style.display = "none"; // Ẩn modal
+    document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
+    window.close();
+  };
+
+  // END QR
 
   //FIX PRELOADER
   useEffect(() => {
@@ -182,13 +187,13 @@ const Home = () => {
             <div className="col-12">
               <nav className="main-nav">
                 <div className="back-dashboard">
-                  {hasRequiredRole(["admin", "staff"]) && (
-                    <div className="main-button manage-button pe-4">
-                      <a href="/manageCustomer">
-                        <FontAwesomeIcon icon={faBackward} /> quản lí
-                      </a>
-                    </div>
-                  )}
+                  {/* {hasRequiredRole(["admin", "staff"]) && ( */}
+                  <div className="main-button manage-button pe-4">
+                    <a href="/login">
+                      <FontAwesomeIcon icon={faBackward} /> quản lí
+                    </a>
+                  </div>
+                  {/* )} */}
 
                   <a href="index.html" className="logo">
                     <em>Super Gym </em>
@@ -253,8 +258,11 @@ const Home = () => {
               Đồng hành cùng với <em>Super gym</em>
             </h2>
             <div className="main-button scroll-to-section">
-              <a href="#features">Đăng kí thành viên</a>
+              <a href="#features">
+                Đăng kí thành viên <FontAwesomeIcon icon={faDownload} />
+              </a>
             </div>
+            <img src={apkApp} className="img-fluid w-10 mt-4" style={{ maxWidth: "10%" }} alt="Super Gym App" />
           </div>
         </div>
       </div>
@@ -835,6 +843,37 @@ const Home = () => {
           </div>
         </div>
       </footer>
+
+      <div ref={showQrPicture} className="modal">
+        <div className="modal-dialog modal-dialog-notify">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Thông báo</h4>
+              <a type="button" className="close" onClick={closeQr}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body">
+              {/* Check if qrDataUrl exists and render the QR code */}
+              {qrDataUrl ? (
+                <div className="qr-code-container">
+                  <img src={qrDataUrl} alt="QR Code" className="qr-code-image" />
+                </div>
+              ) : (
+                <p>Không có mã QR để hiển thị.</p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" onClick={closeQr}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Overlay */}
+      <div className="modal-overlay"></div>
     </>
   );
 };
