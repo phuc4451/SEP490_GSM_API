@@ -16,8 +16,21 @@ namespace Alpha_API.Controllers
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private readonly StaffService _staffService;
 		private readonly RoleService _roleService;
+		private readonly SalaryService _salaryService;
 
-		// GET: api/trainer/GetAllTrainers
+		public StaffController(FirebaseClient firebaseClient,
+			FirebaseClientProvider firebaseClientProvider,
+			StaffService staffService, RoleService roleService, SalaryService salaryService)
+		{
+			_firebaseClient = firebaseClient;
+			_firebaseClientProvider = firebaseClientProvider;
+			_staffService = staffService;
+			_roleService = roleService;
+			_salaryService = salaryService;
+		}
+
+
+		// GET: api/staff/GetAllStaffs
 		[Authorize(Roles = "admin")]
 		[HttpGet("GetAllStaffs")]
 		public async Task<ActionResult<List<Object>>> GetAllStaffs()
@@ -66,6 +79,28 @@ namespace Alpha_API.Controllers
 				}
 
 				return Ok(list);
+			}
+			catch (InvalidOperationException ex)
+			{
+				return Conflict(ex.Message);
+			}
+			catch (Exception ex)
+			{
+				return Conflict(ex.Message);
+			}
+		}
+
+
+		// GET: api/staff/GetStaffAssignments
+		[HttpGet("GetStaffAssignments")]
+		[Authorize(Roles = "admin")]
+		public async Task<ActionResult> GetStaffAssignments()
+		{
+			try
+			{
+				var assignments = await _salaryService.GetStaffAssignments();
+				return Ok(assignments);
+
 			}
 			catch (InvalidOperationException ex)
 			{

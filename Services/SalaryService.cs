@@ -374,6 +374,34 @@ namespace Alpha_API.Services
 			}
 		}
 
+		public async Task<IEnumerable<StaffShiftAssignment>> GetStaffAssignments()
+		{
+			try
+			{
+				// Initialize Firebase client (assuming it's being injected)
+				_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+				// Retrieve shifts in Firebase
+				var staffsSnapshot = await _firebaseClient.Child("StaffShiftAssignments").OnceAsync<StaffShiftAssignment>();
+
+				// Create a list to store updated shifts with their ShiftId set
+				var staffs = staffsSnapshot.Select(staffSnapshot =>	
+				{
+					var staff = staffSnapshot.Object;
+					staff.AssignmentId = staffSnapshot.Key; // Set ShiftId to the Firebase key
+					return staff;
+				}).ToList();
+
+				return staffs;
+			}
+			catch (Exception ex)
+			{
+				// Log or handle the exception as needed
+				Console.WriteLine($"Error retrieving staff assignments: {ex.Message}");
+				throw new InvalidOperationException("An error occurred while retrieving the staff assignments.", ex);
+			}
+		}
+
 		//public async Task<List<SalaryReport>> CalculateAllSalariesAsync(DateTime startDate, DateTime endDate)
 		//{
 		//	_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
@@ -394,8 +422,5 @@ namespace Alpha_API.Services
 
 		//	return salaryReports.ToList();
 		//}
-
-
-
 	}
 }
