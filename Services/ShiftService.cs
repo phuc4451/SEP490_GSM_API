@@ -61,7 +61,7 @@ namespace Alpha_API.Services
 			{
 				// Log or handle the exception as needed
 				Console.WriteLine($"Error creating shift: {ex.Message}");
-				throw new InvalidOperationException("An error occurred while creating the shift.", ex);
+				throw;
 			}
 		}
 
@@ -204,7 +204,7 @@ namespace Alpha_API.Services
 			{
 				// Log or handle the exception as needed
 				Console.WriteLine($"Error assigning staff to shift: {ex.Message}");
-				throw new InvalidOperationException("An error occurred while assigning staff to the shift.", ex);
+				throw;
 			}
 		}
 
@@ -318,7 +318,7 @@ namespace Alpha_API.Services
 			{
 				// Handle exceptions (e.g., logging or rethrowing)
 				Console.WriteLine($"Error checking staff shift: {ex.Message}");
-				throw new InvalidOperationException("An error occurred while checking the staff's shift.", ex);
+				throw;
 			}
 		}
 

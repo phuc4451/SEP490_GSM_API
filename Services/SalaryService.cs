@@ -53,8 +53,8 @@ namespace Alpha_API.Services
 
 			// Filter relevant shift assignments locally
 			var relevantAssignments = shiftAssignments
-				.Where(assignment => assignment.Object.AssignedDate >= reportInput.FromDate &&
-									 assignment.Object.EndDate <= reportInput.ToDate)
+				.Where(assignment => assignment.Object.AssignedDate.Date >= reportInput.FromDate.Date &&
+									 assignment.Object.EndDate.Date <= reportInput.ToDate.Date)
 				.ToList();
 
 			if (!relevantAssignments.Any())
@@ -385,7 +385,7 @@ namespace Alpha_API.Services
 				var staffsSnapshot = await _firebaseClient.Child("StaffShiftAssignments").OnceAsync<StaffShiftAssignment>();
 
 				// Create a list to store updated shifts with their ShiftId set
-				var staffs = staffsSnapshot.Select(staffSnapshot =>	
+				var staffs = staffsSnapshot.Where(x => x.Object.EndDate >= DateTime.Now).Select(staffSnapshot =>
 				{
 					var staff = staffSnapshot.Object;
 					staff.AssignmentId = staffSnapshot.Key; // Set ShiftId to the Firebase key
