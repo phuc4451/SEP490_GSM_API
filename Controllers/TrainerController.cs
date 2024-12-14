@@ -21,7 +21,6 @@ namespace Alpha_API.Controllers
 
 		public TrainerController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, TrainerService trainerService)
 		{
-			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
 			_trainerService = trainerService;
