@@ -73,6 +73,7 @@ namespace Alpha_API.Controllers
 						user.Address,
 						user.UserAvatar,
 						user.Dob,
+						user.Gender
 					};
 
 					list.Add(staffWithInfo);
