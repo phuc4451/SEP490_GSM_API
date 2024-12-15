@@ -152,171 +152,120 @@ namespace Alpha_API.Controllers
 		}
 
 
+        [HttpPost("posts")]
+        public async Task<ActionResult<Post>> CreatePost([FromForm] string title, [FromForm] string content, [FromForm] string categoryId)
+        {
+            try
+            {
+                // Kiểm tra các tham số bắt buộc
+                if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(content) || string.IsNullOrWhiteSpace(categoryId))
+                {
+                    return BadRequest("Title, content, and categoryId are required fields.");
+                }
+
+                // Tạo bài viết mới với thông tin nhận được
+                var post = new Post
+                {
+                    Title = title,
+                    ThumbnailUrl = null, // Không có ảnh, để trống URL ảnh
+                    Date = DateTime.UtcNow, // Lưu trữ dưới dạng DateTime
+                    UserId = HttpContext.User.Identity.Name, // Lấy UserId từ người dùng đang đăng nhập
+                    Content = content,
+                    CategoryId = categoryId
+                };
+
+                // Lưu bài viết vào Firebase Realtime Database
+                var result = await _firebaseClient
+                    .Child("posts")
+                    .PostAsync(post);
+
+                // Thiết lập PostId cho bài viết mới tạo
+                post.PostId = result.Key;
+
+                // Trả về thông báo thành công và thông tin bài viết vừa tạo
+                return CreatedAtAction(nameof(GetPostById), new { postId = post.PostId }, post);
+            }
+            catch (Exception ex)
+            {
+                // Trả về thông báo lỗi chi tiết nếu có lỗi
+                return StatusCode(500, $"Error creating post: {ex.Message}");
+            }
+        }
 
 
-		//// 4. Đăng bài viết mới
-		//[HttpPost("posts")]
-		//public async Task<ActionResult<Post>> CreatePostWithImage([FromForm] IFormFile image, [FromForm] string title, [FromForm] string content, [FromForm] string categoryId)
-		//{
-		//    // Validate input parameters
-		//    if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(content) || string.IsNullOrEmpty(categoryId))
-		//    {
-		//        return BadRequest("Title, content, and categoryId are required.");
-		//    }
-
-		//    if (image == null || image.Length == 0)
-		//    {
-		//        return BadRequest("Image file is required.");
-		//    }
-
-		//    // Initialize Firebase Storage URL variable
-		//    string imageUrl;
-
-		//    try
-		//    {
-		//        // Upload image to Firebase Storage
-		//        using (var stream = image.OpenReadStream())
-		//        {
-		//            var storageTask = new FirebaseStorage("sgm-management-c98cd.appspot.com")
-		//                .Child("post_images")           // Directory for post images
-		//                .Child(Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15) + "_" + image.FileName) // Unique file name
-		//                .PutAsync(stream);
-
-		//            imageUrl = await storageTask; // Retrieve image URL
-		//        }
-		//    }
-		//    catch (Exception ex)
-		//    {
-		//        return BadRequest($"Failed to upload image: {ex.Message}");
-		//    }
-
-		//    // Get user ID from the authenticated user (assumes Firebase Authentication)
-		//    var userId = HttpContext.User.Identity.Name;
-		//    if (string.IsNullOrEmpty(userId))
-		//    {
-		//        return Unauthorized("User must be logged in to create a post.");
-		//    }
-
-		//    // Create a new Post object
-		//    var post = new Post
-		//    {
-		//        Title = title,
-		//        ThumbnailUrl = imageUrl,
-		//        Date = DateTime.UtcNow,
-		//        UserId = userId,
-		//        Content = content,
-		//        CategoryId = categoryId
-		//    };
-
-		//    try
-		//    {
-		//        // Save post to Firebase Database
-		//        var result = await _firebaseClient
-		//            .Child("posts")
-		//            .PostAsync(post);
-
-		//        // Retrieve and set the generated post ID
-		//        post.PostId = result.Key;
-		//    }
-		//    catch (Exception ex)
-		//    {
-		//        return BadRequest($"Failed to save post: {ex.Message}");
-		//    }
-
-		//    // Return the created post with the new ID
-		//    return CreatedAtAction(nameof(GetPostById), new { postId = post.PostId }, post);
-		//}
-
-		[HttpPost("posts")]
-		public async Task<ActionResult<Post>> CreatePost([FromForm] string title, [FromForm] string content, [FromForm] string categoryId)
-		{
-			try
-			{
-				// Kiểm tra các tham số bắt buộc
-				if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(content) || string.IsNullOrWhiteSpace(categoryId))
-				{
-					return BadRequest("Title, content, and categoryId are required fields.");
-				}
-
-				// Tạo bài viết mới với thông tin nhận được
-				var post = new Post
-				{
-					Title = title,
-					ThumbnailUrl = null, // Không có ảnh, để trống URL ảnh
-					Date = DateTime.UtcNow,
-					UserId = HttpContext.User.Identity.Name, // Lấy UserId từ người dùng đang đăng nhập
-					Content = content,
-					CategoryId = categoryId
-				};
-
-				// Lưu bài viết vào Firebase Realtime Database
-				var result = await _firebaseClient
-					.Child("posts")
-					.PostAsync(post);
-
-				// Thiết lập PostId cho bài viết mới tạo
-				post.PostId = result.Key;
-
-				// Trả về thông báo thành công và thông tin bài viết vừa tạo
-				return CreatedAtAction(nameof(GetPostById), new { postId = post.PostId }, post);
-			}
-			catch (Exception ex)
-			{
-				// Trả về thông báo lỗi chi tiết nếu có lỗi
-				return StatusCode(500, $"Error creating post: {ex.Message}");
-			}
-		}
 
 
-		// 5. Xóa bài viết
-		[HttpDelete("posts/{postId}")]
-		public async Task<IActionResult> DeletePost(string postId)
-		{
-			var post = await _firebaseClient
-				.Child("Posts")
-				.Child(postId)
-				.OnceSingleAsync<Post>();
+        [HttpDelete("posts/{postId}")]
+        public async Task<IActionResult> DeletePost(string postId)
+        {
+            var post = await _firebaseClient
+                .Child("Posts")
+                .Child(postId)
+                .OnceSingleAsync<Post>();
 
-			if (post == null)
-			{
-				return NotFound();
-			}
+            if (post == null)
+            {
+                return NotFound(new { message = "Post not found" });
+            }
 
-			await _firebaseClient
-				.Child("Posts")
-				.Child(postId)
-				.DeleteAsync();
+            try
+            {
+                await _firebaseClient
+                    .Child("Posts")
+                    .Child(postId)
+                    .DeleteAsync();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while deleting the post", error = ex.Message });
+            }
 
-			return NoContent(); // 204 No Content
-		}
+            return Ok(new { message = "Post deleted successfully", postId = postId });
+        }
 
-		// 6. Cập nhật bài viết
-		[HttpPut("posts/{postId}")]
-		public async Task<IActionResult> UpdatePost(string postId, [FromBody] Post updatedPost)
-		{
-			var post = await _firebaseClient
-				.Child("Posts")
-				.Child(postId)
-				.OnceSingleAsync<Post>();
 
-			if (post == null)
-			{
-				return NotFound();
-			}
 
-			updatedPost.PostId = postId;
-			updatedPost.Date = post.Date;  // Giữ nguyên ngày tạo ban đầu
+        // 6. Cập nhật bài viết
+        [HttpPut("posts/{postId}")]
+        public async Task<IActionResult> UpdatePost(string postId, [FromBody] Post updatedPost)
+        {
+            // Lấy thông tin bài đăng từ Firebase
+            var post = await _firebaseClient
+                .Child("Posts")
+                .Child(postId)
+                .OnceSingleAsync<Post>();
 
-			await _firebaseClient
-				.Child("Posts")
-				.Child(postId)
-				.PutAsync(updatedPost);
+            // Nếu không tìm thấy bài đăng, trả về 404
+            if (post == null)
+            {
+                return NotFound(new { message = "Post not found" });
+            }
 
-			return NoContent(); // 204 No Content
-		}
+            // Cập nhật thông tin bài đăng
+            updatedPost.PostId = postId; // Giữ nguyên PostId
+            updatedPost.Date = post.Date; // Giữ nguyên ngày tạo ban đầu
 
-		// 7. Search posts by category
-		[HttpGet("posts/category/{categoryId}")]
+            try
+            {
+                // Cập nhật bài đăng vào Firebase
+                await _firebaseClient
+                    .Child("Posts")
+                    .Child(postId)
+                    .PutAsync(updatedPost);
+            }
+            catch (Exception ex)
+            {
+                // Nếu có lỗi khi cập nhật, trả về lỗi 500
+                return StatusCode(500, new { message = "An error occurred while updating the post", error = ex.Message });
+            }
+
+            // Trả về thông tin bài đăng đã cập nhật
+            return Ok(new { message = "Post updated successfully", updatedPost });
+        }
+
+
+        // 7. Search posts by category
+        [HttpGet("posts/category/{categoryId}")]
 		public async Task<ActionResult<IEnumerable<Post>>> GetPostsByCategory(string categoryId)
 		{
 			var posts = await _firebaseClient
