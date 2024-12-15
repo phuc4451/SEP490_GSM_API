@@ -440,6 +440,24 @@ namespace Alpha_API.Services
 			}
 		}
 
+		public async Task CompleteSalary(string reportId)
+		{
+			try
+			{
+				_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+
+				await _firebaseClient.Child("SalaryReports").Child(reportId).PatchAsync(new
+				{
+					isBilled = true,
+				});
+			}
+
+			catch (Exception ex)
+			{
+				throw new InvalidOperationException(ex.Message);
+			}
+		}
+
 		//public async Task<List<SalaryReport>> CalculateAllSalariesAsync(DateTime startDate, DateTime endDate)
 		//{
 		//	_firebaseClient = _firebaseClientProvider.GetFirebaseClient();

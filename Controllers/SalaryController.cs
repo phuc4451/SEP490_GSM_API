@@ -177,7 +177,7 @@ namespace Alpha_API.Controllers
 
 		}
 
-		[HttpPost("CalculateStaffSalary")]
+		[HttpPost("CalculateStaffSalary/{staffId}")]
 		[Authorize(Roles = "admin")]
 
 		public async Task<ActionResult> CalculateStaffSalary(string staffId)
@@ -193,14 +193,14 @@ namespace Alpha_API.Controllers
 			}
 		}
 
-		[HttpPost("CompleteStaffSalary/{reportId}")]
+		[HttpPost("CompleteSalary/{reportId}")]
 		[Authorize(Roles = "admin")]
 
-		public async Task<ActionResult> CompleteStaffSalary(string reportId)
+		public async Task<ActionResult> CompleteSalary(string reportId)
 		{
 			try
 			{
-				await _salaryService.CompleteStaffSalary(reportId);
+				await _salaryService.CompleteSalary(reportId);
 				return Ok();
 			}
 			catch (InvalidOperationException ex)
