@@ -19,6 +19,9 @@ namespace Alpha_API.Controllers
 	[Route("api/[controller]")]
 	public class CheckInController : ControllerBase
 	{
+		private const int CheckInLateIflaterThanMinutes = 15;
+		private const int StaffIsAbsenceIfWorkLessThanHours = 4;
+		private const int TrainerIsAbsenceIfWorkLessThanMinutes = 30;
 		private readonly TimeSlotService _timeSlotService;
 		private readonly TrainerService _trainerService;
 		private readonly RoleService _roleService;
@@ -236,8 +239,8 @@ namespace Alpha_API.Controllers
 						var shiftEndTime = TimeOnly.FromDateTime(currentShift.EndTime);
 
 						// Determine lateness
-						var isLate = (checkTime - shiftStartTime) > TimeSpan.FromMinutes(15);
-						var isPresent = (shiftEndTime - checkTime) >= TimeSpan.FromMinutes(0);
+						var isLate = (checkTime - shiftStartTime) > TimeSpan.FromMinutes(CheckInLateIflaterThanMinutes); //staff has x minutes to checkin after start time of shift
+						var isPresent = (shiftEndTime - checkTime) >= TimeSpan.FromHours(StaffIsAbsenceIfWorkLessThanHours);
 
 						var attendance = new AttendanceRecord()
 						{
@@ -286,8 +289,8 @@ namespace Alpha_API.Controllers
 						var slotEndTime = TimeOnly.ParseExact(timeSlot[1], "H:mm");
 
 						// Determine lateness
-						var isLate = (checkTime - slotStartTime) > TimeSpan.FromMinutes(15);
-						var isPresent = (slotEndTime - checkTime) >= TimeSpan.FromMinutes(0);
+						var isLate = (checkTime - slotStartTime) > TimeSpan.FromMinutes(CheckInLateIflaterThanMinutes);
+						var isPresent = (slotEndTime - checkTime) >= TimeSpan.FromMinutes(TrainerIsAbsenceIfWorkLessThanMinutes);
 
 						var attendance = new AttendanceRecord()
 						{

@@ -187,6 +187,30 @@ namespace Alpha_API.Services
 					ConfigurationId = shiftAssignment.ConfigurationId,
 				};
 
+				string reportId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+
+				var salaryReport = new SalaryReport
+				{
+					ReportId = reportId,
+					StaffId = shiftAssignment.StaffId,
+					AssignmentId = shiftAssignment.AssignmentId,
+					FullName = "",
+					ShiftName = shift.ShiftName,
+					ShiftId = shiftAssignment.ShiftId,
+					ConfigId = shiftAssignment.ConfigurationId,
+					TotalShifts = 0,
+					TotalPresent = 0,
+					LateCount = 0,
+					AbsenceCount = 0,
+					TotalFines = 0,
+					FinalSalary = 0,
+					IsBilled = false,
+					FromDate = shiftAssignment.AssignedDate,
+					ToDate = shiftAssignment.EndDate,
+					TotalSlots = 0,
+					TrainerId = ""
+				};
+
 				var options = new JsonSerializerOptions
 				{
 					PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -196,7 +220,13 @@ namespace Alpha_API.Services
 				var jsonString = JsonSerializer.Serialize(staffShiftAssignment, options);
 
 				// Assign the staff to the shift
-				await _firebaseClient.Child("StaffShiftAssignments").Child(id).PutAsync(jsonString);
+				var assignmentTask = _firebaseClient.Child("StaffShiftAssignments").Child(id).PutAsync(jsonString);
+
+				jsonString = JsonSerializer.Serialize(salaryReport, options);
+
+				var reportTask = _firebaseClient.Child("SalaryReports").Child(reportId).PutAsync(jsonString);
+
+				await Task.WhenAll(assignmentTask, reportTask);
 
 				Console.WriteLine("Staff assigned to shift successfully.");
 			}

@@ -180,12 +180,12 @@ namespace Alpha_API.Controllers
 		[HttpPost("CalculateStaffSalary")]
 		[Authorize(Roles = "admin")]
 
-		public async Task<ActionResult> CalculateStaffSalary(SalaryReport report)
+		public async Task<ActionResult> CalculateStaffSalary(string staffId)
 		{
 			try
 			{
-				var salaryReport = await _salaryService.CalculateStaffSalaryAsync(report);
-				return Ok(salaryReport);
+				var salaryReport = await _salaryService.CalculateStaffSalaryAsync(staffId);
+				return Ok(new { unpaidSalaries = salaryReport.Item1, paidSalaries = salaryReport.Item2 });
 			}
 			catch (Exception ex)
 			{

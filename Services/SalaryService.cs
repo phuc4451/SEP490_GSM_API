@@ -28,41 +28,64 @@ namespace Alpha_API.Services
 			_staffService = staffService;
 			_timeSlotService = timeSlotService;
 		}
-		public async Task<SalaryReport> CalculateStaffSalaryAsync(SalaryReport reportInput)
+		public async Task<(IEnumerable<SalaryReport>, IEnumerable<SalaryReport>)> CalculateStaffSalaryAsync(string staffId)
 		{
 			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
-			// Fetch shift assignments and attendance records concurrently
-			var fetchShiftAssignmentsTask = _firebaseClient
-				.Child("StaffShiftAssignments")
-				.OrderBy("staffId")
-				.EqualTo(reportInput.StaffId)
-				.OnceAsync<StaffShiftAssignment>();
+			//// Fetch shift assignments and attendance records concurrently
+			//var fetchShiftAssignmentsTask = _firebaseClient
+			//	.Child("StaffShiftAssignments")
+			//	.OrderBy("staffId")
+			//	.EqualTo(staffId)
+			//	.OnceAsync<StaffShiftAssignment>();
 
 			var fetchAttendanceRecordsTask = _firebaseClient
 				.Child("AttendanceRecords")
 				.OrderBy("staffId")
-				.EqualTo(reportInput.StaffId)
+				.EqualTo(staffId)
 				.OnceAsync<AttendanceRecord>();
-			var staffNameTask = _staffService.GetStaffName(reportInput.StaffId);
 
-			await Task.WhenAll(fetchShiftAssignmentsTask, fetchAttendanceRecordsTask, staffNameTask);
+			var fetchSalaryReportsTask = _firebaseClient
+				.Child("SalaryReports")
+				.OrderBy("staffId")
+				.EqualTo(staffId)
+				.OnceAsync<SalaryReport>();
 
-			var shiftAssignments = fetchShiftAssignmentsTask.Result;
+			var staffNameTask = _staffService.GetStaffName(staffId);
+
+			await Task.WhenAll(staffNameTask, fetchSalaryReportsTask, fetchAttendanceRecordsTask);
+
+			//var shiftAssignments = fetchShiftAssignmentsTask.Result;
 			var attendanceRecords = fetchAttendanceRecordsTask.Result;
+			var existedSalaryReports = fetchSalaryReportsTask.Result;
 
 			// Filter relevant shift assignments locally
-			var relevantAssignments = shiftAssignments
-				.Where(assignment => assignment.Object.AssignedDate.Date >= reportInput.FromDate.Date &&
-									 assignment.Object.EndDate.Date <= reportInput.ToDate.Date)
+			var unpaidSalaryReports = existedSalaryReports
+				.Where(report => !report.Object.IsBilled)
 				.ToList();
 
-			if (!relevantAssignments.Any())
-				throw new Exception("No relevant shift assignments found.");
+			var paidSalaryReports = existedSalaryReports
+				.Where(report => report.Object.IsBilled)
+				.ToList();
+
+			//// Filter relevant shift assignments locally
+			//var relevantAssignments = shiftAssignments
+			//	.Where(assignment => assignment.Object.AssignedDate.Date >= staffId.FromDate.Date &&
+			//						 assignment.Object.EndDate.Date <= staffId.ToDate.Date)
+			//	.ToList();
+
+			if (!unpaidSalaryReports.Any())
+				throw new Exception("No unpaid salary found.");
+
+			var options = new JsonSerializerOptions
+			{
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+			};
 
 			// Pre-fetch all shifts and salary configurations in parallel
-			var shiftIds = relevantAssignments.Select(a => a.Object.ShiftId).Distinct().ToList();
-			var configIds = relevantAssignments.Select(a => a.Object.ConfigurationId).Distinct().ToList();
+			var shiftIds = unpaidSalaryReports.Select(a => a.Object.ShiftId).Distinct().ToList();
+			var configIds = unpaidSalaryReports.Select(a => a.Object.ConfigId).Distinct().ToList();
 
 			//var fetchShiftsTask = Task.WhenAll(shiftIds.Select(id =>
 			//	_firebaseClient.Child("Shifts").Child(id).OnceSingleAsync<Shift>()));
@@ -77,11 +100,6 @@ namespace Alpha_API.Services
 				}
 				return shift;
 			}));
-
-
-
-
-
 
 			//var fetchConfigsTask = Task.WhenAll(configIds.Select(id =>
 			//	_firebaseClient.Child("SalaryConfigurations").Child(id).OnceSingleAsync<SalaryConfiguration>()));
@@ -110,76 +128,96 @@ namespace Alpha_API.Services
 
 
 			// Aggregate results
-			var reportData = relevantAssignments.Select(assignment =>
+			var unpaidSalaryReportsList = unpaidSalaryReports.Select(report =>
 			{
-				var shift = shifts.GetValueOrDefault(assignment.Object.ShiftId)
-					?? throw new Exception($"Shift not found for ID {assignment.Object.ShiftId}");
+				var shift = shifts.GetValueOrDefault(report.Object.ShiftId)
+					?? throw new Exception($"Shift not found for ID {report.Object.ShiftId}");
 
-				var salaryConfig = salaryConfigs.GetValueOrDefault(assignment.Object.ConfigurationId)
-					?? throw new Exception($"Salary configuration not found for ID {assignment.Object.ConfigurationId}");
+				var salaryConfig = salaryConfigs.GetValueOrDefault(report.Object.ConfigId)
+					?? throw new Exception($"Salary configuration not found for ID {report.Object.ConfigId}");
 
-				int totalShifts = (assignment.Object.EndDate - assignment.Object.AssignedDate).Days;
+				int totalShifts = (report.Object.ToDate - report.Object.FromDate).Days;
 
 				var relevantRecords = attendanceRecords
-					.Where(record => record.Object.Time.Date >= assignment.Object.AssignedDate &&
-									 record.Object.Time.Date <= assignment.Object.EndDate &&
+					.Where(record => record.Object.Time.Date >= report.Object.FromDate &&
+									 record.Object.Time.Date <= report.Object.ToDate &&
 									 TimeOnly.FromDateTime(record.Object.Time) >= TimeOnly.FromDateTime(shift.StartTime) &&
 									 TimeOnly.FromDateTime(record.Object.Time) <= TimeOnly.FromDateTime(shift.EndTime))
 					.Select(record => record.Object);
 
-				int lateCount = relevantRecords.Count(record => record.IsLate);
-				int absenceCount = totalShifts - relevantRecords.Count(record => record.IsPresent);
-				decimal totalFines = (lateCount * salaryConfig.FinePerLate) + (absenceCount * salaryConfig.FinePerAbsence);
-				decimal totalShiftSalary = totalShifts * salaryConfig.PerShiftSalary;
-				decimal finalSalary = salaryConfig.BaseSalary + totalShiftSalary - totalFines;
+				report.Object.LateCount = relevantRecords.Count(record => record.IsLate);
+				report.Object.TotalPresent = relevantRecords.Count(record => record.IsPresent);
+				report.Object.AbsenceCount = totalShifts - report.Object.TotalPresent;
+				report.Object.TotalFines = (report.Object.LateCount * salaryConfig.FinePerLate) + (report.Object.AbsenceCount * salaryConfig.FinePerAbsence);
+				report.Object.TotalShiftsSalary = report.Object.TotalPresent * salaryConfig.PerShiftSalary;
+				report.Object.FinalSalary = salaryConfig.BaseSalary + report.Object.TotalShiftsSalary - report.Object.TotalFines;
 
-				return new
-				{
-					TotalShifts = totalShifts,
-					LateCount = lateCount,
-					AbsenceCount = absenceCount,
-					TotalFines = totalFines,
-					FinalSalary = finalSalary
-				};
+				return report.Object;
 			}).ToList();
 
-			// Combine aggregated results
-			var aggregatedReport = new
+			var updateTasks = unpaidSalaryReportsList.Select(async report =>
 			{
-				TotalShifts = reportData.Sum(data => data.TotalShifts),
-				LateCount = reportData.Sum(data => data.LateCount),
-				AbsenceCount = reportData.Sum(data => data.AbsenceCount),
-				TotalFines = reportData.Sum(data => data.TotalFines),
-				FinalSalary = reportData.Sum(data => data.FinalSalary)
-			};
+				try
+				{
+					var jsonString = JsonSerializer.Serialize(report, options);
 
-			// Prepare and save the salary report
-			string id = string.IsNullOrEmpty(reportInput.ReportId) ? Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15) : reportInput.ReportId;
-			var salaryReport = new SalaryReport
-			{
-				ReportId = id,
-				StaffId = reportInput.StaffId,
-				FullName = staffNameTask.Result,
-				TotalShifts = aggregatedReport.TotalShifts,
-				LateCount = aggregatedReport.LateCount,
-				AbsenceCount = aggregatedReport.AbsenceCount,
-				TotalFines = aggregatedReport.TotalFines,
-				FinalSalary = aggregatedReport.FinalSalary,
-				IsBilled = false,
-				FromDate = reportInput.FromDate,
-				ToDate = reportInput.ToDate,
-				TotalSlots = 0,
-				TrainerId = ""
-			};
+					// Update the object in Firebase asynchronously
+					await _firebaseClient.Child("SalaryReports").Child(report.ReportId).PatchAsync(jsonString);
 
-			var options = new JsonSerializerOptions
-			{
-				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-				DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-			};
-			await _firebaseClient.Child("SalaryReports").Child(id).PatchAsync(JsonSerializer.Serialize(salaryReport, options));
+					//Console.WriteLine($"Successfully updated report ID: {report.Id}");
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"Error updating report ID: {report.ReportId}. Details: {ex.Message}");
+					// Handle the error or log it as needed
+				}
+			});
 
-			return salaryReport;
+			// Execute all tasks asynchronously
+			await Task.WhenAll(updateTasks);
+
+			//Console.WriteLine("All reports updated successfully.");
+
+
+			var paidSalaryReportsList = paidSalaryReports.Select(report => report.Object).ToList();
+
+			//// Combine aggregated results
+			//var aggregatedReport = new
+			//{
+			//	TotalShifts = reportData.Sum(data => data.TotalShifts),
+			//	LateCount = reportData.Sum(data => data.LateCount),
+			//	AbsenceCount = reportData.Sum(data => data.AbsenceCount),
+			//	TotalFines = reportData.Sum(data => data.TotalFines),
+			//	FinalSalary = reportData.Sum(data => data.FinalSalary)
+			//};
+
+			//// Prepare and save the salary report
+			//string id = string.IsNullOrEmpty(staffId.ReportId) ? Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15) : staffId.ReportId;
+			//var salaryReport = new SalaryReport
+			//{
+			//	ReportId = id,
+			//	StaffId = staffId.StaffId,
+			//	FullName = staffNameTask.Result,
+			//	TotalShifts = aggregatedReport.TotalShifts,
+			//	LateCount = aggregatedReport.LateCount,
+			//	AbsenceCount = aggregatedReport.AbsenceCount,
+			//	TotalFines = aggregatedReport.TotalFines,
+			//	FinalSalary = aggregatedReport.FinalSalary,
+			//	IsBilled = false,
+			//	FromDate = staffId.FromDate,
+			//	ToDate = staffId.ToDate,
+			//	TotalSlots = 0,
+			//	TrainerId = ""
+			//};
+
+			//var options = new JsonSerializerOptions
+			//{
+			//	PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+			//	DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+			//};
+			//await _firebaseClient.Child("SalaryReports").Child(id).PatchAsync(JsonSerializer.Serialize(salaryReport, options));
+
+			return (unpaidSalaryReportsList, paidSalaryReportsList);
 
 		}
 
