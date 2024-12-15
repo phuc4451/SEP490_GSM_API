@@ -193,6 +193,26 @@ namespace Alpha_API.Controllers
 			}
 		}
 
+		[HttpPost("CompleteStaffSalary/{reportId}")]
+		[Authorize(Roles = "admin")]
+
+		public async Task<ActionResult> CompleteStaffSalary(string reportId)
+		{
+			try
+			{
+				await _salaryService.CompleteStaffSalary(reportId);
+				return Ok();
+			}
+			catch (InvalidOperationException ex)
+			{
+				return Conflict(ex.Message);
+			}
+			catch (Exception ex)
+			{
+				return Conflict(ex.Message);
+			}
+		}
+
 		[HttpPost("CalculateTrainerSalary")]
 		[Authorize(Roles = "admin")]
 
