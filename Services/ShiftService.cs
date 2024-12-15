@@ -296,7 +296,7 @@ namespace Alpha_API.Services
 				// Get all the staff's shift assignments
 				var staffAssignments = await _firebaseClient
 					.Child("StaffShiftAssignments")
-					.OrderBy("StaffId")
+					.OrderBy("staffId")
 					.EqualTo(staffId)
 					.OnceAsync<StaffShiftAssignment>();
 

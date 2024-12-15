@@ -229,9 +229,12 @@ namespace Alpha_API.Controllers
 			{
 				try
 				{
-					var currentShift = await _shiftService.ShiftAtTimeAsync(request.UserId, (DateTime)request.Time);
+                    var staff = await _firebaseClient.Child("Staffs").OrderBy("userId").EqualTo(request.UserId).OnceAsync<Staff>();
+                    var staffId = staff.FirstOrDefault().Key;
 
-					if (currentShift != null)
+                    var currentShift = await _shiftService.ShiftAtTimeAsync(staffId, (DateTime)request.Time);
+
+                    if (currentShift != null)
 					{
 						// Calculate if the staff is late
 						var checkTime = TimeOnly.FromDateTime((DateTime)request.Time);
@@ -245,7 +248,7 @@ namespace Alpha_API.Controllers
 						var attendance = new AttendanceRecord()
 						{
 							TrainerId = "",
-							StaffId = request.UserId,
+							StaffId = staffId,
 							Time = (DateTime)request.Time,
 							IsLate = isPresent ? isLate : false,
 							IsPresent = isPresent,

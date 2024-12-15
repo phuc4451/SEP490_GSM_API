@@ -112,13 +112,13 @@ namespace Alpha_API.Services
 
 			//string qrPaymentMethodId = methods.FirstOrDefault(method => method.MethodName == paymentMethod)?.PaymentMethodId;
 
-			var regisId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+			var regisId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).ToUpper();
 
 			string info = "";
 
 			if (qrPayment)
 			{
-				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).ToUpper();
 			}
 			else
 			{
@@ -349,11 +349,11 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).ToUpper();
 			}
 			else
 			{
-				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).ToUpper();
 			}
 
 			var regisId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
@@ -592,11 +592,11 @@ namespace Alpha_API.Services
 
 			if (qrPayment)
 			{
-				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).ToUpper();
 			}
 			else
 			{
-				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).ToUpper();
 			}
 
 			var regisId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
