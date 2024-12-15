@@ -74,8 +74,8 @@ namespace Alpha_API.Services
 			//						 assignment.Object.EndDate.Date <= staffId.ToDate.Date)
 			//	.ToList();
 
-			if (!unpaidSalaryReports.Any())
-				throw new Exception("No unpaid salary found.");
+			if (!unpaidSalaryReports.Any() && !paidSalaryReports.Any())
+				throw new Exception("No salary found.");
 
 			var options = new JsonSerializerOptions
 			{
