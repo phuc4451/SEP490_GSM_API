@@ -177,7 +177,7 @@ namespace Alpha_API.Controllers
 
 		}
 
-		[HttpPost("CalculateStaffSalary/{staffId}")]
+		[HttpGet("CalculateStaffSalary/{staffId}")]
 		[Authorize(Roles = "admin")]
 
 		public async Task<ActionResult> CalculateStaffSalary(string staffId)
