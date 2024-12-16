@@ -216,11 +216,11 @@ namespace Alpha_API.Controllers
 		[HttpPost("CalculateTrainerSalary")]
 		[Authorize(Roles = "admin")]
 
-		public async Task<ActionResult> CalculateTrainerSalary(SalaryReport report)
+		public async Task<ActionResult> CalculateTrainerSalary(string trainerId)
 		{
 			try
 			{
-				var salaryReport = await _salaryService.CalculateTrainerSalaryAsync(report);
+				var salaryReport = await _salaryService.CalculateTrainerSalaryAsync(trainerId);
 				return Ok(salaryReport);
 			}
 			catch (Exception ex)

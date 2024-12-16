@@ -20,8 +20,8 @@ namespace Alpha_API.Controllers
 	public class CheckInController : ControllerBase
 	{
 		private const int CheckInLateIflaterThanMinutes = 15;
-		private const int StaffIsAbsenceIfWorkLessThanHours = 4;
-		private const int TrainerIsAbsenceIfWorkLessThanMinutes = 30;
+		private const int StaffIsAbsenceIfWorkLessThanHours = 0;
+		private const int TrainerIsAbsenceIfWorkLessThanMinutes = 0;
 		private readonly TimeSlotService _timeSlotService;
 		private readonly TrainerService _trainerService;
 		private readonly RoleService _roleService;
@@ -280,8 +280,10 @@ namespace Alpha_API.Controllers
 			{
 				try
 				{
+					var trainer = await _firebaseClient.Child("Trainers").OrderBy("userId").EqualTo(request.UserId).OnceAsync<Trainer>();
+					var trainerId = trainer.FirstOrDefault().Key;
 					// Check if any slot is available now
-					var currentSlot = await _trainerService.SlotAtTimeAsync(request.UserId, (DateTime)request.Time);
+					var currentSlot = await _trainerService.SlotAtTimeAsync(trainerId, (DateTime)request.Time);
 
 					if (currentSlot != null)
 					{
@@ -297,7 +299,7 @@ namespace Alpha_API.Controllers
 
 						var attendance = new AttendanceRecord()
 						{
-							TrainerId = request.UserId,
+							TrainerId = trainerId,
 							StaffId = "",
 							Time = (DateTime)request.Time,
 							IsLate = isPresent ? isLate : false,
