@@ -116,7 +116,7 @@ namespace Alpha_API.Controllers
 
 		// POST: api/TrainerRentalRegistration
 		[HttpPost]
-		[Authorize(Roles = "admin,staff,customer")] 
+		[Authorize(Roles = "admin,staff,customer")]
 		public async Task<ActionResult<TrainerRentalRegistration>> CreateRegistration(RegisterPackageRequest request)
 		{
 			// Retrieve the uid claim
@@ -150,8 +150,8 @@ namespace Alpha_API.Controllers
 				}
 				else if (!request.QRPayment)
 				{
-					await _registerService.RegisterTrainerRental(request, request.QRPayment, userId);
-					return Ok();
+					var result = await _registerService.RegisterTrainerRental(request, request.QRPayment, userId);
+					return Ok(result.MoneyToPay);
 				}
 				else { return BadRequest("QR Payment is required but was not provided."); }
 			}

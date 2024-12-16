@@ -151,7 +151,7 @@ namespace Alpha_API.Controllers
 				else if (!request.QRPayment)
 				{
 					var registerService = await _registerService.RegisterBoxing(request, request.QRPayment, userId);
-					return Ok();
+					return Ok(registerService.MoneyToPay);
 				}
 				else { return BadRequest("QR Payment is required but was not provided."); }
 			}

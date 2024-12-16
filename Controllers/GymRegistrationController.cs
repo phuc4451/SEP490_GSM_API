@@ -206,8 +206,8 @@ namespace Alpha_API.Controllers
 				}
 				else if (!request.QRPayment)
 				{
-					await _registerService.RegisterGym(request, request.QRPayment, userId);
-					return Ok();
+					var result=await _registerService.RegisterGym(request, request.QRPayment, userId);
+					return Ok(result.MoneyToPay);
 				}
 				else { return BadRequest("QR Payment is required but was not provided."); }
 			}
