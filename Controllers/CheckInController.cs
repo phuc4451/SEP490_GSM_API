@@ -245,7 +245,7 @@ namespace Alpha_API.Controllers
                 }
 
                 var checkInTask = _firebaseClient.Child("CheckIns").PostAsync(newCheckIn);
-                var gymTask = _firebaseClient.Child("GymRegistrations").Child(gymMembership.Object.RegistrationId).PatchAsync(new
+                var gymTask = _firebaseClient.Child("GymRegistrations").Child(gymMembership.Key).PatchAsync(new
                 {
                     sessionLeft = gymMembership.Object.SessionLeft - 1
                 });
