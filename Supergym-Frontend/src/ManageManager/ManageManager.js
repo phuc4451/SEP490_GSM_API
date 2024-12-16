@@ -7,7 +7,7 @@ import "../assets/css/common.css";
 import "./ManageManager.css";
 
 // require('dotenv').config()
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import SearchIcon from "@mui/icons-material/Search";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import EditIcon from "@mui/icons-material/Edit";
@@ -19,6 +19,7 @@ import { Delete } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { getRole, Logout } from "../utils/authUtils";
 import LoadingSpinner from "../utils/LoadingOverlay";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 const ManageCustomer = () => {
   const navigate = useNavigate();
@@ -54,23 +55,67 @@ const ManageCustomer = () => {
     // userEnabled: "active",
     // role: "staff",
   });
+
+  const [formSalary, setFormSalary] = useState({
+    assignmentId: "string",
+    staffId: "",
+    shiftId: "",
+    configurationId: "",
+    assignedDate: "",
+    endDate: "",
+  });
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8; // Maximum 2 employees per page
 
   const StaffModalRef = useRef(null);
+  const AssignSalaryAndShiftModalRef = useRef(null);
   const successModalRef = useRef(null);
   const errorModalRef = useRef(null);
   const deleteModalRef = useRef(null);
   const [isSaving, setIsSaving] = useState(false);
   const salaryModalRef = useRef(null);
+  const [shifts, setShifts] = useState([]);
+  const [salaryConfigs, setSalaryConfigs] = useState([]);
+  const [currentStaffForSalary, setCurrentStaffForSalary] = useState(null);
 
+  const [salaryReport, setSalaryReport] = useState(null);
+  const [isCalculating, setIsCalculating] = useState(false);
   //FETCH DATA AND PRELOAD
+  useEffect(() => {
+    const fetchShifts = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const response = await axios.get("http://localhost:5000/api/Salary/GetShifts", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setShifts(response.data);
+      } catch (error) {
+        console.error("Error fetching shifts:", error);
+      }
+    };
+
+    const fetchSalaryConfigs = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const response = await axios.get("http://localhost:5000/api/Salary/GetSalaryConfigs", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSalaryConfigs(response.data);
+      } catch (error) {
+        console.error("Error fetching salary configurations:", error);
+      }
+    };
+
+    fetchShifts();
+    fetchSalaryConfigs();
+  }, []);
+
   useEffect(() => {
     const fetchStaffs = async () => {
       const token = localStorage.getItem("token");
       try {
-        const response = await axios.get("http://localhost:5000/api/Users/getStaffAccounts", {
+        const response = await axios.get("http://localhost:5000/api/Staff/GetAllStaffs", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setStaffData(response.data);
@@ -121,11 +166,28 @@ const ManageCustomer = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; // Reset file input
     }
-    setErrors({}); 
+    setErrors({});
     StaffModalRef.current.style.display = "block";
     StaffModalRef.current.classList.add("active");
     document.querySelector(".modal-overlay").style.display = "block";
   };
+
+  const openAddShiftAndSalaryModal = (staff) => {
+    setFormSalary({
+      assignmentId: "string",
+      staffId: staff.staffId, // Lưu staffId khi mở modal
+      shiftId: "",
+      configurationId: "",
+      assignedDate: "",
+      endDate: "",
+    });
+    setCurrentStaffForSalary(staff); // Lưu thông tin staff hiện tại
+    setErrors({});
+    AssignSalaryAndShiftModalRef.current.style.display = "block";
+    AssignSalaryAndShiftModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block";
+  };
+
   const openEditStaffModal = (Staff) => {
     // Convert DOB object to a date string compatible with the input field
     const formattedDob = `${Staff.dob.year}-${String(Staff.dob.month).padStart(2, "0")}-${String(Staff.dob.date).padStart(2, "0")}`;
@@ -156,19 +218,21 @@ const ManageCustomer = () => {
   };
 
   const closeModal = () => {
+    AssignSalaryAndShiftModalRef.current.style.display = "none";
+    AssignSalaryAndShiftModalRef.current.classList.remove("active");
     salaryModalRef.current.style.display = "none";
     salaryModalRef.current.classList.remove("active");
     StaffModalRef.current.style.display = "none";
     StaffModalRef.current.classList.remove("active");
     document.querySelector(".modal-overlay").style.display = "none";
     setCurrentStaff(null); // Reset current Staff to null when closing modal
-    
+    setCurrentStaffForSalary(null);
     // Thêm các dòng này để reset ảnh
     setPreviewImage(null); // Reset preview image
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; // Reset file input
     }
-    setErrors({}); 
+    setErrors({});
   };
 
   const handleInputChange = (e) => {
@@ -225,14 +289,14 @@ const ManageCustomer = () => {
           delete newErrors.address; // Clear error if valid
         }
         break;
-        case "idCard":
-          // Kiểm tra nếu không phải là số hoặc không đúng 12 chữ số
-          if (!value || !/^\d+$/.test(value) || value.length !== 12) {
-            newErrors.idCard = "Số căn cước phải là số và có 12 chữ số.";
-          } else {
-            delete newErrors.idCard;
-          }
-          break;
+      case "idCard":
+        // Kiểm tra nếu không phải là số hoặc không đúng 12 chữ số
+        if (!value || !/^\d+$/.test(value) || value.length !== 12) {
+          newErrors.idCard = "Số căn cước phải là số và có 12 chữ số.";
+        } else {
+          delete newErrors.idCard;
+        }
+        break;
       case "gender":
         if (!value) {
           newErrors.gender = "Vui lòng chọn giới tính.";
@@ -325,11 +389,56 @@ const ManageCustomer = () => {
     return Object.keys(newErrors).length === 0; // If no errors, form is valid
   };
 
+  const handleAssign = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    setIsSaving(true);
+
+    try {
+      // Lấy ngày hiện tại và cộng thêm timezone offset để bù trừ
+      const assignedDate = new Date();
+      assignedDate.setHours(0, 0, 0, 0);
+      assignedDate.setMinutes(assignedDate.getMinutes() - assignedDate.getTimezoneOffset());
+
+      // Tương tự với ngày kết thúc
+      const endDate = new Date(formSalary.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      endDate.setMinutes(endDate.getMinutes() - endDate.getTimezoneOffset());
+
+      const assignmentData = {
+        assignmentId: "string",
+        staffId: currentStaffForSalary.staffId,
+        shiftId: formSalary.shiftId,
+        configurationId: formSalary.configurationId,
+        assignedDate: assignedDate.toISOString(),
+        endDate: endDate.toISOString(),
+      };
+
+      console.log("Assignment data:", assignmentData); // Log để kiểm tra
+
+      const response = await axios.post("http://localhost:5000/api/Salary/AssignShift", assignmentData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      closeModal();
+      showSuccessModal("thêm ca làm việc và mức lương thành công");
+    } catch (error) {
+      if (error.response && error.response.status === 409) {
+        showErrorModal(error.response.data);
+      } else {
+        console.error("Error assigning shift and salary:", error);
+        showErrorModal("Có lỗi xảy ra khi thêm ca làm việc");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
       const token = localStorage.getItem("token");
-      setIsSaving(true); 
+      setIsSaving(true);
 
       // Format date to the required format
       const dob = new Date(formData.dob);
@@ -462,28 +571,87 @@ const ManageCustomer = () => {
     (Staff) => Staff.email.toLowerCase().includes(searchQuery.toLowerCase()) // Tìm kiếm theo email
   );
 
-  // const openViewSalaryModal = async (feedback) => {
-    const openViewSalaryModal = () => {
-    // setIsLoadingUser(true);
-    // const token = localStorage.getItem("token");
-
-    // try {
-    //   const userResponse = await axios.get(
-    //     `http://localhost:5000/api/Users/GetUserById/${feedback.userId}`,
-    //     { headers: { Authorization: `Bearer ${token}` } }
-    //   );
-    //   setCurrentUserData(userResponse.data);
-    //   setCurrentFeedback(feedback);
-    // } catch (error) {
-    //   console.error(`Error fetching user data:`, error);
-    //   setCurrentUserData({ name: "Unknown", email: "Unknown" });
-    // } finally {
-      // setIsLoadingUser(false);
-      salaryModalRef.current.style.display = "block";
-      salaryModalRef.current.classList.add("active");
-      document.querySelector(".modal-overlay").style.display = "block";
-    // }
+  const handleSalaryInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormSalary({
+      ...formSalary,
+      [name]: value,
+    });
+    // validateSalaryField(name, value);
   };
+
+  const openViewSalaryModal = async (staff) => {
+    setCurrentStaffForSalary(staff);
+    setSalaryReport(null);
+    salaryModalRef.current.style.display = "block";
+    salaryModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block";
+
+    setIsCalculating(true);
+    const token = localStorage.getItem("token");
+
+    // Log để kiểm tra staffId và token
+    console.log("Staff ID:", staff?.staffId);
+    console.log("Token:", token);
+
+    try {
+      const url = `http://localhost:5000/api/Salary/CalculateStaffSalary/${staff?.staffId}`;
+      console.log("Request URL:", url);
+
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("Response data:", response.data);
+      setSalaryReport(response.data);
+    } catch (error) {
+      console.error("Full error object:", error);
+      
+      if (error.response) {
+        // Lỗi từ server (status code không phải 2xx)
+        console.error("Error status:", error.response.status);
+        console.error("Error data:", error.response.data);
+        showErrorModal(error.response.data || "Có lỗi xảy ra khi tính lương");
+      } else if (error.request) {
+        // Không nhận được response
+        console.error("No response received:", error.request);
+        showErrorModal("Không thể kết nối đến server");
+      } else {
+        // Lỗi khi set up request
+        console.error("Error setup:", error.message);
+        showErrorModal("Có lỗi xảy ra khi thiết lập yêu cầu");
+      }
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  // const handleSalaryPeriodChange = (e) => {
+  //   const { name, value } = e.target;
+  //   setSalaryPeriod((prev) => ({
+  //     ...prev,
+  //     [name]: value,
+  //   }));
+  // };
+
+  const calculateSalary = async (e) => {
+    e.preventDefault();
+    setIsCalculating(true);
+    const token = localStorage.getItem("token");
+
+    try {
+      const response = await axios.get(`http://localhost:5000/api/Salary/CalculateStaffSalary?staffId=${currentStaffForSalary?.staffId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSalaryReport(response.data); // Giờ salaryReport sẽ có cấu trúc { unpaidSalaries: [], paidSalaries: [] }
+    } catch (error) {
+      console.error("Error calculating salary:", error);
+      showErrorModal("Có lỗi xảy ra khi tính lương");
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
   return (
     <>
       <Header />
@@ -491,6 +659,7 @@ const ManageCustomer = () => {
       {isLoading ? <Preloader /> : <div>{/* Nội dung khác của ManageCustomer */}</div>}
       {/* <!-- ***** Preloader End ***** --> */}
       {isSaving && <LoadingSpinner isLoading={true} />}
+      {isCalculating && <LoadingSpinner isLoading={true} />}
 
       <div className="user-select">
         <h1>Quản lí nhân viên trong hệ thống SUPER GYM</h1>
@@ -559,6 +728,9 @@ const ManageCustomer = () => {
                       <EditIcon />
                     </a>
                     <a href="#" onClick={() => openViewSalaryModal(Staff)} className="view">
+                      <VisibilityIcon />
+                    </a>
+                    <a href="#" onClick={() => openAddShiftAndSalaryModal(Staff)} className="money-icon">
                       <MonetizationOnIcon />
                     </a>
                   </td>
@@ -681,12 +853,12 @@ const ManageCustomer = () => {
                     <label>
                       Giới tính <span className="icon-input">(*)</span>
                     </label>
-                    <div className="radio-group">
+                    <div>
                       <label>
                         <input type="radio" name="gender" value="male" checked={formData.gender === "male"} onChange={handleInputChange} />
                         Nam
                       </label>
-                      <label>
+                      <label className="ms-3">
                         <input type="radio" name="gender" value="female" checked={formData.gender === "female"} onChange={handleInputChange} />
                         Nữ
                       </label>
@@ -709,47 +881,170 @@ const ManageCustomer = () => {
         </div>
       </div>
 
+      <div ref={AssignSalaryAndShiftModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <form id="salaryForm" onSubmit={handleAssign}>
+              <div className="modal-header">
+                <h4 className="modal-title text-center mx-auto">Thêm ca làm việc và mức lương</h4>
+                <a type="button" className="close" onClick={closeModal}>
+                  <CloseIcon />
+                </a>
+              </div>
+              <div className="modal-body">
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Chọn ngày kết thúc <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="date" className={`form-control ${errors.endDate ? "is-invalid" : ""}`} name="endDate" value={formSalary.endDate} onChange={handleSalaryInputChange} min={new Date().toISOString().split("T")[0]} required />
+                    {errors.endDate && <div className="error-message">{errors.endDate}</div>}
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Chọn ca làm việc <span className="icon-input">(*)</span>
+                    </label>
+                    <select className={`form-control ${errors.shiftId ? "is-invalid" : ""}`} name="shiftId" value={formSalary.shiftId} onChange={handleSalaryInputChange} required>
+                      <option value="">-- Chọn ca làm việc --</option>
+                      {shifts.map((shift) => (
+                        <option key={shift.shiftId} value={shift.shiftId}>
+                          {shift.shiftName} ({new Date(shift.startTime).toLocaleTimeString("en-US", { timeZone: "UTC", hour: "2-digit", minute: "2-digit" })} - {new Date(shift.endTime).toLocaleTimeString("en-US", { timeZone: "UTC", hour: "2-digit", minute: "2-digit" })}) - {shift.location}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.shiftId && <div className="error-message">{errors.shiftId}</div>}
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Chọn mức lương <span className="icon-input">(*)</span>
+                    </label>
+                    <select className={`form-control ${errors.configurationId ? "is-invalid" : ""}`} name="configurationId" value={formSalary.configurationId} onChange={handleSalaryInputChange} required>
+                      <option value="">-- Chọn mức lương --</option>
+                      {salaryConfigs
+                        .filter((config) => config.perShiftSalary > 0) // Lọc ra các config có perShiftSalary > 0
+                        .map((config) => (
+                          <option key={config.configurationId} value={config.configurationId}>
+                            Lương cơ bản: {config.baseSalary.toLocaleString()}đ/tháng - Lương theo ca: {config.perShiftSalary.toLocaleString()}đ/ca - Phạt đi muộn: {config.finePerLate.toLocaleString()}đ
+                          </option>
+                        ))}
+                    </select>
+                    {errors.configurationId && <div className="error-message">{errors.configurationId}</div>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-default" onClick={closeModal} disabled={isSaving}>
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-success" disabled={isSaving}>
+                  {isSaving ? "Đang lưu..." : "Lưu"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
       <div ref={salaryModalRef} className="modal">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header">
-              <h4 className="modal-title text-center mx-auto">Lương nhân viên</h4>
+              <h4 className="modal-title text-center mx-auto">Thông tin lương nhân viên</h4>
               <a type="button" className="close" onClick={closeModal}>
                 <CloseIcon />
               </a>
             </div>
             <div className="modal-body">
-              {/* {isLoadingUser ? (
-                <div className="text-center">
-                  <div className="spinner-border" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
+              {isCalculating ? (
+                <div className="text-center">Đang tính lương...</div>
               ) : (
-                currentFeedback &&
-                currentUserData && (
-                  <> */}
-                    <p>
-                      <strong>Email:</strong> 
-                    </p>
-                    <p>
-                      <strong>Tên:</strong> 
-                    </p>
-                    <p>
-                      <strong>Số ngày checkin trong tháng:</strong>
-                    </p>
-                    <p>
-                      <strong>Lương cơ bản:</strong>
-                    </p>
-                    <p>
-                      <strong>Số ngày đã checkin trong tháng:</strong>
-                    </p>
-                    <p>
-                      <strong>Lương được nhận:</strong> 
-                    </p>
-                  {/* </>
+                salaryReport && (
+                  <div className="salary-report">
+                    {/* Phần lương chưa thanh toán */}
+                    {salaryReport.unpaidSalaries?.length > 0 && (
+                      <>
+                        <h5>Lương chưa thanh toán</h5>
+                        {salaryReport.unpaidSalaries.map((report, index) => (
+                          <div key={index} className="border p-3 mb-3 rounded">
+                            <p>
+                              <strong>Tên ca:</strong> {report.shiftName}
+                            </p>
+                            <p>
+                              <strong>Tổng số ca:</strong> {report.totalShifts}
+                            </p>
+                            <p>
+                              <strong>Số buổi có mặt:</strong> {report.totalPresent}
+                            </p>
+                            <p>
+                              <strong>Số lần đi muộn:</strong> {report.lateCount}
+                            </p>
+                            <p>
+                              <strong>Số lần vắng mặt:</strong> {report.absenceCount}
+                            </p>
+                            <p>
+                              <strong>Tổng tiền phạt:</strong> {report.totalFines.toLocaleString()}đ
+                            </p>
+                            <p>
+                              <strong>Lương theo ca:</strong> {report.totalShiftsSalary.toLocaleString()}đ
+                            </p>
+                            <p>
+                              <strong>Lương cuối cùng:</strong> {report.finalSalary.toLocaleString()}đ
+                            </p>
+                            <p>
+                              <strong>Thời gian:</strong> {new Date(report.fromDate).toLocaleDateString()} - {new Date(report.toDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Phần lương đã thanh toán */}
+                    {salaryReport.paidSalaries?.length > 0 && (
+                      <>
+                        <h5 className="mt-4">Lương đã thanh toán</h5>
+                        {salaryReport.paidSalaries.map((report, index) => (
+                          <div key={index} className="border p-3 mb-3 rounded">
+                            <p>
+                              <strong>Tên ca:</strong> {report.shiftName}
+                            </p>
+                            <p>
+                              <strong>Tổng số ca:</strong> {report.totalShifts}
+                            </p>
+                            <p>
+                              <strong>Số buổi có mặt:</strong> {report.totalPresent}
+                            </p>
+                            <p>
+                              <strong>Số lần đi muộn:</strong> {report.lateCount}
+                            </p>
+                            <p>
+                              <strong>Số lần vắng mặt:</strong> {report.absenceCount}
+                            </p>
+                            <p>
+                              <strong>Tổng tiền phạt:</strong> {report.totalFines.toLocaleString()}đ
+                            </p>
+                            <p>
+                              <strong>Lương theo ca:</strong> {report.totalShiftsSalary.toLocaleString()}đ
+                            </p>
+                            <p>
+                              <strong>Lương cuối cùng:</strong> {report.finalSalary.toLocaleString()}đ
+                            </p>
+                            <p>
+                              <strong>Thời gian:</strong> {new Date(report.fromDate).toLocaleDateString()} - {new Date(report.toDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
                 )
-              )} */}
+              )}
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={closeModal}>
@@ -804,7 +1099,7 @@ const ManageCustomer = () => {
               </a>
             </div>
             <div className="modal-body">
-              <p>Người dùng được lưu thành công!</p>
+              <p>{successMessage}</p>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeSuccessModal}>

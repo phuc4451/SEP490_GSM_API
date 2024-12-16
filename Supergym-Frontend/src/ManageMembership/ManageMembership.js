@@ -41,6 +41,8 @@ const ManageMembership = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const detailModalRef = useRef(null);
   const [isLoadingUser, setIsLoadingUser] = useState(false);
+  const [arePackagesLoaded, setArePackagesLoaded] = useState(false);
+
   const [membershipDetails, setMembershipDetails] = useState({
     gymMemberships: [],
     boxingOptions: [],
@@ -87,19 +89,19 @@ const ManageMembership = () => {
 
   useEffect(() => {
     const fetchPackage = async () => {
-      // renamed function
       const token = localStorage.getItem("token");
       try {
         const response = await axios.get("http://localhost:5000/api/GymMembership", {
-          // updated API endpoint
           headers: { Authorization: `Bearer ${token}` },
         });
-        setSelectedPackages(response.data); // updated variable
+        setSelectedPackages(response.data);
+        setArePackagesLoaded(true); // Indicate packages are loaded
       } catch (error) {
-        console.error("Error fetching memberships:", error); // renamed error message
+        console.error("Error fetching memberships:", error);
+        showErrorModal("Không thể tải danh sách gói tập. Vui lòng thử lại sau.");
       }
     };
-    fetchPackage(); // renamed function call
+    fetchPackage();
   }, []);
 
   useEffect(() => {
@@ -173,23 +175,24 @@ const ManageMembership = () => {
   };
 
   const openDetailModal = async (membership) => {
-    setIsLoadingUser(true); // Start loading
+    setIsLoadingUser(true); // Bật loading
+    document.querySelector(".modal-overlay").style.display = "block"; // Show overlay ngay từ đầu
+
     const token = localStorage.getItem("token");
-  
+
     try {
-      const response = await axios.get(
-        `http://localhost:5000/api/Users/membershipDetails/${membership.user.userId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await axios.get(`http://localhost:5000/api/Users/membershipDetails/${membership.user.userId}`, { headers: { Authorization: `Bearer ${token}` } });
       setMembershipDetails(response.data);
+      detailModalRef.current.style.display = "block";
+      detailModalRef.current.classList.add("active");
     } catch (error) {
       console.error(`Error fetching membership details:`, error);
       showErrorModal("Có lỗi khi tải thông tin chi tiết");
-    } finally {
-      setIsLoadingUser(false); // Stop loading
+      // Trong trường hợp lỗi, vẫn giữ overlay và hiển thị form
       detailModalRef.current.style.display = "block";
       detailModalRef.current.classList.add("active");
-      document.querySelector(".modal-overlay").style.display = "block";
+    } finally {
+      setIsLoadingUser(false); // Tắt loading
     }
   };
 
@@ -304,9 +307,11 @@ const ManageMembership = () => {
 
   // Hàm để đóng modal thông báo
   const closeErrorModal = () => {
-    errorModalRef.current.style.display = "none"; // Ẩn modal
-    // document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
-    // window.location.reload();
+    errorModalRef.current.style.display = "none";
+    // Chỉ ẩn overlay nếu modal detail không được hiển thị
+    // if (detailModalRef.current.style.display !== "block") {
+    //   document.querySelector(".modal-overlay").style.display = "none";
+    // }
   };
 
   const openDeleteModal = (membership) => {
@@ -323,15 +328,15 @@ const ManageMembership = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     // Collect form data Gym
     const emailInputs = Array.from(document.querySelectorAll('input[type="email"]')).map((input) => input.value);
     const packageInput = formData.gymMembershipId;
     const qrPaymentInput = formData.qrPayment === "true";
-
+  
     // Prepare data for Gym
     const gymData = {
-      emails: [formData.email], // Chỉ lấy email từ formData
+      emails: [formData.email],
       boxingMembershipPlanId: null,
       gymMembershipId: packageInput,
       trainerRentalPlanId: null,
@@ -340,37 +345,56 @@ const ManageMembership = () => {
       selectedTimeSlot: "",
       isMonWedFri: true,
     };
+  
     setIsSubmitting(true);
-    // Send the request based on the trainer type
+  
     try {
       const token = localStorage.getItem("token");
-
-      // If it's a Gym trainer
+  
       const response = await fetch("http://localhost:5000/api/GymRegistration", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json", // Specify content type as JSON
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(gymData), // Send gym data for gym trainer
+        body: JSON.stringify(gymData),
       });
-
-      const responsejson = await response.json();
-      if (responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
-        setQrDataUrl(responsejson[0].qrDataUrl); // Set QR data URL in state
+  
+      let responsejson = null;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          responsejson = await response.json();
+        } catch (error) {
+          console.error("Error parsing JSON:", error);
+        }
       }
-
-      closeModal(); // Close the modal after success
-      if (qrPaymentInput === false) {
-        showSuccessModal("Thanh toán thành công");
+  
+      // Check if the response indicates success
+      if (response.ok) {
+        closeModal();
+  
+        if (responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
+          setQrDataUrl(responsejson[0].qrDataUrl);
+          if (qrPaymentInput) {
+            showQr();
+          }
+        }
+  
+        // Only show success modal for non-QR payments when registration is successful
+        if (!qrPaymentInput) {
+          showSuccessModal("Đăng ký thành viên thành công");
+        }
       } else {
-        showQr(); // Show QR if applicable
+        // If response isn't ok, show error message from server if available
+        const errorMessage = responsejson?.message || "Có lỗi khi đăng ký thành viên. Vui lòng thử lại.";
+        showErrorModal(errorMessage);
       }
     } catch (error) {
-      console.error("Error during trainer registration:", error);
-      showErrorModal("Có lỗi khi đăng ký đăng ký thành viên. Vui lòng thử lại.");
+      console.error("Error during membership registration:", error);
+      showErrorModal("Có lỗi khi đăng ký thành viên. Vui lòng thử lại.");
     } finally {
-      setIsSubmitting(false); // Stop loading spinner
+      setIsSubmitting(false);
     }
   };
 
@@ -550,10 +574,10 @@ const ManageMembership = () => {
                     <label>
                       Gói đăng kí <span className="icon-input">(*)</span>
                     </label>
-                    <select className="form-control form-select" name="option" value={selectedOption} onChange={handlePackageChange} required>
+                    <select className="form-control form-select" name="gymMembershipId" value={formData.gymMembershipId || ""} onChange={handlePackageChange} required>
                       <option value="">Chọn gói</option>
-                      {selectedPackages.map((option, index) => (
-                        <option key={index} value={option.gymMembershipId}>
+                      {selectedPackages.map((option) => (
+                        <option key={option.gymMembershipId} value={option.gymMembershipId}>
                           {option.name}
                         </option>
                       ))}
@@ -638,7 +662,6 @@ const ManageMembership = () => {
             </div>
             <div className="modal-body">
               <p>{successMessage}</p>
-              <p>Vui lòng xác nhận email vừa đăng kí</p>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={closeSuccessModal}>

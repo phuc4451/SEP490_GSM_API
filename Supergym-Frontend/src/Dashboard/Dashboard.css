@@ -16,6 +16,21 @@
   padding: 40px 0;
 }
 
+/* Thêm vào CSS hiện có của bạn */
+
+/* .statistics-section .row {
+  display: flex;
+  margin-bottom: 15px;
+  justify-content: flex-start; 
+  gap: 20px; 
+} */
+
+/* Nếu cần có thể thêm margin cho các column trong statistics-section */
+/* .statistics-section .col-lg-3,
+.statistics-section .col-lg-5 {
+  margin-right: 0;  
+} */
+
 .stat-card {
   background-color: #fff;
   border-radius: 8px;
@@ -84,9 +99,15 @@
 }
 
 .chart-container {
-  width: 250px;
-  height: 250px;
+  width: 250px !important;  /* hoặc kích thước bạn muốn */
+  height: 350px !important;
 }
+
+/* Thêm style cho canvas */
+/* .chart-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+} */
 
 
 

@@ -165,74 +165,134 @@ const ManageCourse = () => {
     fetchCourses();
   }, []);
 
-  // Modified handleInputChange to handle price formatting
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-
+  
     if (name === "price") {
-      // Remove existing commas and convert to number
-      const numericValue = removeCommas(value);
-
-      // Check if it's a valid positive number
-      if (!isNaN(numericValue) && parseFloat(numericValue) >= 0) {
+      // Allow empty value for price
+      if (value === '') {
         setFormData({
           ...formData,
-          [name]: formatNumberWithCommas(numericValue),
+          [name]: ''
         });
-        validateField(name, numericValue);
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          price: "Giá phải là số dương."
+        }));
+        return;
+      }
+  
+      // Remove existing commas and convert to number
+      const numericValue = removeCommas(value);
+  
+      // Check if it's a valid number
+      if (!isNaN(numericValue)) {
+        const numberValue = parseFloat(numericValue);
+        // Only format if it's a positive number
+        if (numberValue >= 0) {
+          setFormData({
+            ...formData,
+            [name]: formatNumberWithCommas(numericValue)
+          });
+          // Clear error if valid
+          setErrors((prevErrors) => {
+            const newErrors = { ...prevErrors };
+            delete newErrors.price;
+            return newErrors;
+          });
+        } else {
+          setErrors((prevErrors) => ({
+            ...prevErrors,
+            price: "Giá phải là số dương."
+          }));
+        }
       } else {
         setErrors((prevErrors) => ({
           ...prevErrors,
-          price: "Giá phải là số dương.",
+          price: "Giá phải là số dương."
+        }));
+      }
+    } else if (name === "durationMonths") {
+      // Handle duration input
+      if (value === '') {
+        setFormData({
+          ...formData,
+          [name]: ''
+        });
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          durationMonths: "Thời gian phải lớn hơn hoặc bằng 0."
+        }));
+        return;
+      }
+  
+      const numberValue = Number(value);
+      if (!isNaN(numberValue) && numberValue >= 0) {
+        setFormData({
+          ...formData,
+          [name]: value
+        });
+        // Clear error if valid
+        setErrors((prevErrors) => {
+          const newErrors = { ...prevErrors };
+          delete newErrors.durationMonths;
+          return newErrors;
+        });
+      } else {
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          durationMonths: "Thời gian phải lớn hơn hoặc bằng 0."
         }));
       }
     } else {
       setFormData({
         ...formData,
-        [name]: value,
+        [name]: value
       });
       validateField(name, value);
     }
   };
 
-  const validateField = (name, value) => {
-    const newErrors = { ...errors };
 
-    switch (name) {
-      case "name":
-        if (value.length <= 0) {
-          newErrors.name = "Tên gói phải có ít nhất từ 1 ký tự.";
-        } else {
-          delete newErrors.name; // Clear error if valid
-        }
-        break;
-      case "durationMonths":
-        if (value.length <= 0) {
-          newErrors.durationMonths = "Thời gian phải lớn hơn 0";
-        } else {
-          delete newErrors.durationMonths; // Clear error if valid
-        }
-        break;
-      case "price":
-        if (value.length <= 0) {
-          newErrors.price = "Giá gói tập phải lớn hơn 0";
-        } else {
-          delete newErrors.price; // Clear error if valid
-        }
-        break;
-      case "sessionCount":
-        if (!value) {
-          newErrors.sessionCount = "Số buổi phải lớn hơn hoặc bằng 0";
-        } else {
-          delete newErrors.sessionCount; // Clear error if valid
-        }
-        break;
-      default:
-        break;
-    }
+const validateField = (name, value) => {
+  const newErrors = { ...errors };
 
-    setErrors(newErrors);
-  };
+  switch (name) {
+    case "name":
+      if (value.length <= 0) {
+        newErrors.name = "Tên gói phải có ít nhất từ 1 ký tự.";
+      } else {
+        delete newErrors.name;
+      }
+      break;
+    case "durationMonths":
+      if (value.length <= 0) {
+        newErrors.durationMonths = "Thời gian phải lớn hơn 0";
+      } else {
+        delete newErrors.durationMonths;
+      }
+      break;
+    case "price":
+      if (value === '' || value <= 0) {
+        newErrors.price = "Giá gói tập phải lớn hơn 0";
+      } else {
+        delete newErrors.price;
+      }
+      break;
+    case "sessionCount":
+      if (!value) {
+        newErrors.sessionCount = "Số buổi phải lớn hơn hoặc bằng 0";
+      } else {
+        delete newErrors.sessionCount;
+      }
+      break;
+    default:
+      break;
+  }
+
+  setErrors(newErrors);
+};
 
   const validateForm = () => {
     const newErrors = {};

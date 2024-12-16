@@ -22,7 +22,7 @@ const ManageTrainerCourse = () => {
   const [rentalOptions, setRentalOptions] = useState([]); // Renamed to reflect rental options data
   const [errorMessage, setErrorMessage] = useState("");
   const errorModalRef = useRef(null);
-
+  const [validationErrors, setValidationErrors] = useState({});
   const [courses, setCourses] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -35,6 +35,7 @@ const ManageTrainerCourse = () => {
   });
 
   const openAddCustomerModal = () => {
+    // Reset form data
     setFormData({
       description: "",
       sessionCountMin: "",
@@ -43,17 +44,21 @@ const ManageTrainerCourse = () => {
       pricePerPersonPerSession: "",
       pricePerPersonPerMonth: "",
     });
-    setPreviewImage(null); // Đặt lại ảnh xem trước
+    // Clear all validation errors
+    setValidationErrors({});
+    
+    setPreviewImage(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = null; // Đặt lại giá trị input file
+      fileInputRef.current.value = null;
     }
-    setCurrentCustomer(null); // Đặt lại khách hàng hiện tại để thêm mới
-    customerModalRef.current.style.display = "block"; // Hiển thị modal
-    customerModalRef.current.classList.add("active"); // Thêm class 'active'
-    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+    setCurrentCustomer(null);
+    customerModalRef.current.style.display = "block";
+    customerModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block";
   };
-
+  
   const openAddCustomerModalByMonth = () => {
+    // Reset form data
     setFormData({
       description: "",
       sessionCountMin: "",
@@ -62,14 +67,17 @@ const ManageTrainerCourse = () => {
       pricePerPersonPerSession: "",
       pricePerPersonPerMonth: "",
     });
-    setPreviewImage(null); // Đặt lại ảnh xem trước
+    // Clear all validation errors
+    setValidationErrors({});
+    
+    setPreviewImage(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = null; // Đặt lại giá trị input file
+      fileInputRef.current.value = null;
     }
-    setCurrentCustomer(null); // Đặt lại khách hàng hiện tại để thêm mới
-    customerByMonthModalRef.current.style.display = "block"; // Hiển thị modal
-    customerByMonthModalRef.current.classList.add("active"); // Thêm class 'active'
-    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+    setCurrentCustomer(null);
+    customerByMonthModalRef.current.style.display = "block";
+    customerByMonthModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block";
   };
 
   const openEditCustomerModal = (course) => {
@@ -95,8 +103,10 @@ const ManageTrainerCourse = () => {
     customerModalRef.current.style.display = "none";
     customerModalRef.current.classList.remove("active");
     document.querySelector(".modal-overlay").style.display = "none";
-    setCurrentCustomer(null); // Đặt lại khách hàng hiện tại
-    setPreviewImage(null); // Đặt lại ảnh xem trước
+    
+    // Reset everything
+    setCurrentCustomer(null);
+    setPreviewImage(null);
     setFormData({
       description: "",
       sessionCountMin: "",
@@ -105,6 +115,8 @@ const ManageTrainerCourse = () => {
       pricePerPersonPerSession: "",
       pricePerPersonPerMonth: "",
     });
+    // Clear all validation errors
+    setValidationErrors({});
   };
 
   const deleteCustomer = async () => {
@@ -156,37 +168,120 @@ const ManageTrainerCourse = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value, // Cập nhật giá trị tương ứng trong formData
-    }));
+    
+    // For non-numeric fields (description)
+    if (name === 'description') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+      
+      // Validate description
+      if (!value || value.trim() === '') {
+        setValidationErrors(prev => ({
+          ...prev,
+          [name]: "Tên gói tập không được để trống"
+        }));
+      } else {
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        });
+      }
+      return;
+    }
+  
+    // For numeric fields
+    const numericFields = [
+      'sessionCountMin', 
+      'sessionCountMax', 
+      'memberCount', 
+      'pricePerPersonPerSession', 
+      'pricePerPersonPerMonth'
+    ];
+  
+    if (numericFields.includes(name)) {
+      // Allow empty value
+      if (value === '') {
+        setFormData(prev => ({
+          ...prev,
+          [name]: ''
+        }));
+        setValidationErrors(prev => ({
+          ...prev,
+          [name]: "Giá trị phải lớn hơn 0"
+        }));
+        return;
+      }
+  
+      const numberValue = Number(value);
+      if (!isNaN(numberValue)) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+  
+        // Validate number fields
+        if (numberValue <= 0) {
+          setValidationErrors(prev => ({
+            ...prev,
+            [name]: "Giá trị phải lớn hơn 0"
+          }));
+        } else {
+          // Special validation for sessionCountMax
+          if (name === 'sessionCountMax' && 
+              Number(formData.sessionCountMin) > 0 && 
+              numberValue <= Number(formData.sessionCountMin)) {
+            setValidationErrors(prev => ({
+              ...prev,
+              sessionCountMax: "Số buổi tối đa phải lớn hơn số buổi tối thiểu"
+            }));
+          } else {
+            setValidationErrors(prev => {
+              const newErrors = { ...prev };
+              delete newErrors[name];
+              return newErrors;
+            });
+          }
+        }
+      }
+    }
+  
+    // Update sessionCountMax validation when sessionCountMin changes
+    if (name === 'sessionCountMin' && Number(value) > 0 && 
+        Number(formData.sessionCountMax) > 0 && 
+        Number(formData.sessionCountMax) <= Number(value)) {
+      setValidationErrors(prev => ({
+        ...prev,
+        sessionCountMax: "Số buổi tối đa phải lớn hơn số buổi tối thiểu"
+      }));
+    }
   };
 
   const handleSubmitPackageSession = async (e) => {
     e.preventDefault();
+    const errors = validateForm(formData);
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
       const packageSession = {
         description: formData.description,
-        sessionCountMin: formData.sessionCountMin,
-        sessionCountMax: formData.sessionCountMax,
-        memberCount: formData.memberCount,
-        pricePerPersonPerSession: formData.pricePerPersonPerSession,
+        sessionCountMin: Number(formData.sessionCountMin),
+        sessionCountMax: Number(formData.sessionCountMax),
+        memberCount: Number(formData.memberCount),
+        pricePerPersonPerSession: Number(formData.pricePerPersonPerSession),
         pricePerPersonPerMonth: 0,
       };
       const response = await axios.post("http://localhost:5000/api/RentalOption", packageSession, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCourses((prevCourses) => [...prevCourses, response.data]);
-      setShowForm(false);
-      setFormData({
-        description: "string",
-        sessionCountMin: 0,
-        sessionCountMax: 0,
-        memberCount: 0,
-        pricePerPersonPerSession: 0,
-        pricePerPersonPerMonth: 0,
-      });
       closeModal();
       showSuccessModal(`Gói Trainer Gym ${formData.description} được lưu thành công`);
     } catch (error) {
@@ -194,36 +289,33 @@ const ManageTrainerCourse = () => {
         showErrorModal(`Gói Trainer Gym ${formData.description} đã tồn tại, vui lòng thêm gói Trainer khác!`);
       } else {
         showErrorModal(`Lỗi khi tạo gói Trainer Gym ${formData.description}`);
-        console.error("Error saving equipment:", error);
       }
     }
   };
 
   const handleSubmitPackageMonth = async (e) => {
     e.preventDefault();
+    const errors = validateForm(formData, true);
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
       const packageMonth = {
         description: formData.description,
         sessionCountMin: 0,
         sessionCountMax: 0,
-        memberCount: formData.memberCount,
+        memberCount: Number(formData.memberCount),
         pricePerPersonPerSession: 0,
-        pricePerPersonPerMonth: formData.pricePerPersonPerMonth,
+        pricePerPersonPerMonth: Number(formData.pricePerPersonPerMonth),
       };
       const response = await axios.post("http://localhost:5000/api/RentalOption", packageMonth, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCourses((prevCourses) => [...prevCourses, response.data]);
-      setShowForm(false);
-      setFormData({
-        description: "string",
-        sessionCountMin: 0,
-        sessionCountMax: 0,
-        memberCount: 0,
-        pricePerPersonPerSession: 0,
-        pricePerPersonPerMonth: 0,
-      });
       closeModal();
       showSuccessModal(`Gói Trainer Gym ${formData.description} được lưu thành công`);
     } catch (error) {
@@ -231,7 +323,6 @@ const ManageTrainerCourse = () => {
         showErrorModal(`Gói Trainer Gym ${formData.description} đã tồn tại, vui lòng thêm gói Trainer khác!`);
       } else {
         showErrorModal(`Lỗi khi tạo gói Trainer Gym ${formData.description}`);
-        console.error("Error saving equipment:", error);
       }
     }
   };
@@ -271,10 +362,45 @@ const ManageTrainerCourse = () => {
     document.querySelector(".modal-overlay").style.display = "none"; // Hide overlay
   };
 
+  const validateForm = (data, isMonthlyPackage = false) => {
+    const errors = {};
+
+    if (!data.description || data.description.trim() === "") {
+      errors.description = "Tên gói tập không được để trống";
+    }
+
+    if (!isMonthlyPackage) {
+      if (!data.sessionCountMin || Number(data.sessionCountMin) <= 0) {
+        errors.sessionCountMin = "Số buổi tối thiểu phải lớn hơn 0";
+      }
+
+      if (!data.sessionCountMax || Number(data.sessionCountMax) <= 0) {
+        errors.sessionCountMax = "Số buổi tối đa phải lớn hơn 0";
+      }
+
+      if (Number(data.sessionCountMax) <= Number(data.sessionCountMin)) {
+        errors.sessionCountMax = "Số buổi tối đa phải lớn hơn số buổi tối thiểu";
+      }
+
+      if (!data.pricePerPersonPerSession || Number(data.pricePerPersonPerSession) <= 0) {
+        errors.pricePerPersonPerSession = "Giá một người/buổi phải lớn hơn 0";
+      }
+    } else {
+      if (!data.pricePerPersonPerMonth || Number(data.pricePerPersonPerMonth) <= 0) {
+        errors.pricePerPersonPerMonth = "Giá một người/tháng phải lớn hơn 0";
+      }
+    }
+
+    if (!data.memberCount || Number(data.memberCount) <= 0) {
+      errors.memberCount = "Số thành viên trong gói phải lớn hơn 0";
+    }
+
+    return errors;
+  };
+
   return (
     <>
       <Header />
-
       <section className="section" id="features">
         <div className="container">
           <div className="row mt-5 mb-4">
@@ -322,7 +448,6 @@ const ManageTrainerCourse = () => {
                       </div>
 
                       <div className="sale-price-section">
-
                         {course.pricePerPersonPerSession > 0 && <p className="price">Giá 1 người/buổi: {course.pricePerPersonPerSession.toLocaleString()} VND</p>}
                         {course.pricePerPersonPerMonth > 0 && <p className="price">Giá 1 người/tháng: {course.pricePerPersonPerMonth.toLocaleString()} VND</p>}
                       </div>
@@ -334,7 +459,6 @@ const ManageTrainerCourse = () => {
           </div>
         </div>
       </section>
-
       {showForm && (
         <div className="modal">
           <div className="modal-dialog modal-dialog-centered">
@@ -378,8 +502,8 @@ const ManageTrainerCourse = () => {
         </div>
       )}
       {showForm && <div className="modal-overlay" onClick={() => setShowForm(false)}></div>}
-
       {/* customer Modal */}
+      // Form gói tập theo buổi
       <div ref={customerModalRef} className="modal">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
@@ -391,27 +515,21 @@ const ManageTrainerCourse = () => {
                 </a>
               </div>
               <div className="modal-body">
-                {/* Input Fields */}
                 <div className="row">
                   <div className="form-group col">
                     <label>
                       Tên gói tập <span className="icon-input">(*)</span>
                     </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="description" // binding với 'description' trong formData
-                      value={formData.description} // binding với formData
-                      onChange={handleInputChange} // Hàm thay đổi
-                      required
-                    />
+                    <input type="text" className={`form-control ${validationErrors.description ? "is-invalid" : ""}`} name="description" value={formData.description} onChange={handleInputChange} />
+                    {validationErrors.description && <div className="invalid-feedback">{validationErrors.description}</div>}
                   </div>
 
                   <div className="form-group col">
                     <label>
                       Số buổi tối thiểu <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="sessionCountMin" value={formData.sessionCountMin} onChange={handleInputChange} required />
+                    <input type="number" className={`form-control ${validationErrors.sessionCountMin ? "is-invalid" : ""}`} name="sessionCountMin" value={formData.sessionCountMin} onChange={handleInputChange} />
+                    {validationErrors.sessionCountMin && <div className="invalid-feedback">{validationErrors.sessionCountMin}</div>}
                   </div>
                 </div>
 
@@ -420,14 +538,16 @@ const ManageTrainerCourse = () => {
                     <label>
                       Số buổi tối đa <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="sessionCountMax" value={formData.sessionCountMax} onChange={handleInputChange} required />
+                    <input type="number" className={`form-control ${validationErrors.sessionCountMax ? "is-invalid" : ""}`} name="sessionCountMax" value={formData.sessionCountMax} onChange={handleInputChange} />
+                    {validationErrors.sessionCountMax && <div className="invalid-feedback">{validationErrors.sessionCountMax}</div>}
                   </div>
 
                   <div className="form-group col">
                     <label>
                       Thành viên trong gói <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required />
+                    <input type="number" className={`form-control ${validationErrors.memberCount ? "is-invalid" : ""}`} name="memberCount" value={formData.memberCount} onChange={handleInputChange} />
+                    {validationErrors.memberCount && <div className="invalid-feedback">{validationErrors.memberCount}</div>}
                   </div>
                 </div>
 
@@ -436,20 +556,12 @@ const ManageTrainerCourse = () => {
                     <label>
                       Giá 1 người/buổi <span className="icon-input">(*)</span>
                     </label>
-
                     <div className="input-group">
-                    <input type="text" className="form-control" name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} required />
-                    <span className="input-readonly">VNĐ</span>
+                      <input type="number" className={`form-control ${validationErrors.pricePerPersonPerSession ? "is-invalid" : ""}`} name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} />
+                      <span className="input-readonly">VNĐ</span>
                     </div>
-
+                    {validationErrors.pricePerPersonPerSession && <div className="invalid-feedback">{validationErrors.pricePerPersonPerSession}</div>}
                   </div>
-
-                  {/* <div className="form-group col">
-                    <label>
-                      Giá 1 người/tháng <span className="icon-input">(*)</span>
-                    </label>
-                    <input type="number" className="form-control" name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} required />
-                  </div> */}
                 </div>
               </div>
 
@@ -465,7 +577,7 @@ const ManageTrainerCourse = () => {
           </div>
         </div>
       </div>
-
+      {/* Form gói tập theo tháng */}
       <div ref={customerByMonthModalRef} className="modal">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
@@ -477,43 +589,34 @@ const ManageTrainerCourse = () => {
                 </a>
               </div>
               <div className="modal-body">
-                {/* Input Fields */}
                 <div className="row">
                   <div className="form-group col">
                     <label>
                       Tên gói tập <span className="icon-input">(*)</span>
                     </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="description" // binding với 'description' trong formData
-                      value={formData.description} // binding với formData
-                      onChange={handleInputChange} // Hàm thay đổi
-                      required
-                    />
+                    <input type="text" className={`form-control ${validationErrors.description ? "is-invalid" : ""}`} name="description" value={formData.description} onChange={handleInputChange} />
+                    {validationErrors.description && <div className="invalid-feedback">{validationErrors.description}</div>}
                   </div>
 
                   <div className="form-group col">
                     <label>
                       Thành viên trong gói <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required />
+                    <input type="number" className={`form-control ${validationErrors.memberCount ? "is-invalid" : ""}`} name="memberCount" value={formData.memberCount} onChange={handleInputChange} />
+                    {validationErrors.memberCount && <div className="invalid-feedback">{validationErrors.memberCount}</div>}
                   </div>
                 </div>
 
                 <div className="row">
-                  {/* <div className="form-group col">
-                    <label>
-                      Giá 1 người/buổi <span className="icon-input">(*)</span>
-                    </label>
-                    <input type="number" className="form-control" name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} required />
-                  </div> */}
-
                   <div className="form-group col">
                     <label>
                       Giá 1 người/tháng <span className="icon-input">(*)</span>
                     </label>
-                    <input type="text" className="form-control" name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} required />
+                    <div className="input-group">
+                      <input type="number" className={`form-control ${validationErrors.pricePerPersonPerMonth ? "is-invalid" : ""}`} name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} />
+                      <span className="input-readonly">VNĐ</span>
+                    </div>
+                    {validationErrors.pricePerPersonPerMonth && <div className="invalid-feedback">{validationErrors.pricePerPersonPerMonth}</div>}
                   </div>
                 </div>
               </div>
@@ -530,9 +633,6 @@ const ManageTrainerCourse = () => {
           </div>
         </div>
       </div>
-
-
-
       <div ref={detailPackageModalRef} className="modal">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
@@ -614,11 +714,8 @@ const ManageTrainerCourse = () => {
           </div>
         </div>
       </div>
-
       {/* Modal Overlay */}
       <div className="modal-overlay"></div>
-
-
       {/* Success Modal */}
       <div ref={successModalRef} className="modal">
         <div className="modal-dialog modal-dialog-notify">
@@ -640,7 +737,6 @@ const ManageTrainerCourse = () => {
           </div>
         </div>
       </div>
-
       {/* Error Modal */}
       <div ref={errorModalRef} className="modal">
         <div className="modal-dialog modal-dialog-notify">

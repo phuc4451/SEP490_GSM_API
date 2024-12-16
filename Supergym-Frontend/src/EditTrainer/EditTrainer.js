@@ -66,22 +66,22 @@ const EditTrainer = () => {
   const salaryModalRef = useRef(null);
 
   //FETCH DATA AND PRELOAD
-  useEffect(() => {
-    const fetchTrainers = async () => {
-      const token = localStorage.getItem("token");
-      try {
-        const response = await axios.get("http://localhost:5000/api/Trainer/GetAllTrainersWithOptions", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setTrainerData(response.data);
-      } catch (error) {
-        console.error("Error fetching trainers:", error);
-      } finally {
-        setIsDataLoading(false);
-      }
-    };
-    fetchTrainers();
-  }, []);
+  // useEffect(() => {
+  //   const fetchTrainers = async () => {
+  //     const token = localStorage.getItem("token");
+  //     try {
+  //       const response = await axios.get("http://localhost:5000/api/Trainer/GetAllTrainersWithOptions", {
+  //         headers: { Authorization: `Bearer ${token}` },
+  //       });
+  //       setTrainerData(response.data);
+  //     } catch (error) {
+  //       console.error("Error fetching trainers:", error);
+  //     } finally {
+  //       setIsDataLoading(false);
+  //     }
+  //   };
+  //   fetchTrainers();
+  // }, []);
 
   useEffect(() => {
     const fetchUserTrainers = async () => {

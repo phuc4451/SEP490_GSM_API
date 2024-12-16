@@ -4,6 +4,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./BookTrainerForm.css";
 import Header from "../Header/Header.js";
+import LoadingSpinner from "../utils/LoadingOverlay";
 
 const ManageSchedule = () => {
   const [trainerType, setTrainerType] = useState(""); // State cho loại huấn luyện viên
@@ -16,6 +17,11 @@ const ManageSchedule = () => {
   const [formData, setFormData] = useState({
     isTrainerGym: true,
     isTrainerBoxing: true,
+    qrPayment: true, // Thay đổi giá trị khởi tạo thành boolean true
+    timeSlot: "",
+    sessionCount: "",
+    trainerRentalPlanId: "",
+    boxingMembershipPlanId: "",
   });
   const [selectedPackages, setSelectedPackages] = useState([]); // Dữ liệu các gói
   const [trainers, setTrainers] = useState([]); // Store trainers data
@@ -27,10 +33,12 @@ const ManageSchedule = () => {
   const [showSessionCount, setShowSessionCount] = useState(null); // Track if the session count input should be shown
   const [memberCount, setMemberCount] = useState(1);
   const [qrDataUrl, setQrDataUrl] = useState(""); // State to store the QR code data URL
+  const [moneyToPay, setMoneyToPay] = useState(""); // State to store the QR code data URL
   const [showQR, setShowQR] = useState(true);
 
   const [errorMessage, setErrorMessage] = useState("");
   const errorModalRef = useRef(null);
+  const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
     openBookTrainerModal(); // Gọi hàm mở modal khi trang load
@@ -54,31 +62,33 @@ const ManageSchedule = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-
-    // Update form data
-    if (name === "boxingOption") {
-      // Update the isMonWedFri state based on the selected radio button value
+  
+    if (name === "qrPayment") {
       setFormData({
         ...formData,
-        isMonWedFri: value === "true", // Sets isMonWedFri to true or false based on the radio selection
+        qrPayment: value === "true" // Chuyển đổi string thành boolean
       });
+    } else if (name === "boxingOption") {
+      setFormData({
+        ...formData,
+        isMonWedFri: value === "true",
+      });
+    } else if (name === "trainerType") {
+      setTrainerType(value);
+      setSelectedOption("");
+      setTrainers([]);
+      setShowBoxingOptions(value === "Boxing");
+      fetchPackages(value);
     } else {
       setFormData({
         ...formData,
         [name]: value,
       });
     }
-    // When radio button is selected, fetch corresponding packages
-    if (name === "trainerType") {
-      setTrainerType(value); // Update trainerType state
-      setSelectedOption(""); // Reset selected package
-      setTrainers([]); // Clear trainers list before fetching new trainers
-      setShowBoxingOptions(value === "Boxing"); // Show boxing options if "Boxing" is selected
-      fetchPackages(value); // Fetch packages based on selected trainer type
-    }
   };
 
   const fetchPackages = async (type) => {
+    setIsFetching(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -111,10 +121,13 @@ const ManageSchedule = () => {
       }
     } catch (error) {
       console.error("Error fetching packages:", error);
+    } finally {
+      setIsFetching(false);
     }
   };
 
   const fetchTrainersByPackage = async (packageId) => {
+    setIsFetching(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -157,35 +170,10 @@ const ManageSchedule = () => {
       }
     } catch (error) {
       console.error("Error fetching trainers:", error);
+    } finally {
+      setIsFetching(false);
     }
   };
-
-  // const handlePackageChange = (e) => {
-  //   const selectedPackageId = e.target.value;
-  //   setSelectedOption(selectedPackageId); // Update selected package state
-
-  //   // Reset related states when package changes
-  //   setTrainerToAddCourse(null); // Reset selected trainer
-  //   setFormData((prevData) => ({
-  //     ...prevData,
-  //     trainerRentalPlanId: null,
-  //     boxingMembershipPlanId: null,
-  //     timeSlot: "", // Reset time slot
-  //     sessionCount: "", // Reset session count if applicable
-  //   }));
-
-  //   // Reset checkDetailPack
-  //   setCheckDetailPack(null);
-
-  //   if (selectedPackageId) {
-  //     // Only fetch trainers if a package is actually selected
-  //     fetchTrainersByPackage(selectedPackageId);
-  //   } else {
-  //     // Clear trainers if no package is selected
-  //     setTrainers([]);
-  //     setTrainersData([]);
-  //   }
-  // };
 
   const handlePackageChange = (e) => {
     const selectedPackageId = e.target.value;
@@ -334,46 +322,56 @@ const ManageSchedule = () => {
 
   const handleBookTrainer = async (e) => {
     e.preventDefault();
-    // Collect and filter out empty emails
+    
     const emailInputs = Array.from(document.querySelectorAll('input[type="email"]'))
       .map((input) => input.value)
-      .filter((email) => email.trim() !== ""); // Thêm filter để loại bỏ email rỗng
+      .filter((email) => email.trim() !== "");
+  
     const selectedTimeSlot = formData.timeSlot;
     const trainerRentalPlanId = formData.trainerRentalPlanId;
     const duration = formData.sessionCount;
     const gymDuration = duration ? duration : null;
-
+    const qrPaymentInput = formData.qrPayment; // Đã là boolean, không cần chuyển đổi
+  
     // Prepare data for Gym
     const gymData = {
-      emails: emailInputs, // Now using filtered emails
+      emails: emailInputs,
       boxingMembershipPlanId: null,
       gymMembershipId: null,
       trainerRentalPlanId: trainerRentalPlanId,
-      qrPayment: true,
+      qrPayment: qrPaymentInput,
       duration: gymDuration,
       selectedTimeSlot: selectedTimeSlot,
       isMonWedFri: trainerType === "TrainerRental" ? true : false,
     };
-
-    // For Boxing data, use the same filtered emails
+  
+    // For Boxing data
     const boxingData = {
-      emails: emailInputs, // Now using filtered emails
+      emails: emailInputs,
       boxingMembershipPlanId: formData.boxingMembershipPlanId,
       gymMembershipId: null,
       trainerRentalPlanId: null,
-      qrPayment: true,
+      qrPayment: qrPaymentInput,
       duration: 1,
       selectedTimeSlot: formData.timeSlot,
       isMonWedFri: formData.isMonWedFri,
     };
-
-    // Send the request based on the trainer type
+  
+    setIsFetching(true);
+  
     try {
       const token = localStorage.getItem("token");
-
-      // If it's a Gym trainer
+      if (!token) {
+        showErrorModal("Không tìm thấy token xác thực. Vui lòng đăng nhập lại.");
+        return;
+      }
+  
+      let response;
+      let responsejson = null;
+  
+      // Gửi request dựa trên loại trainer
       if (trainerType === "TrainerRental") {
-        const response = await fetch("http://localhost:5000/api/trainerRentalRegistration", {
+        response = await fetch("http://localhost:5000/api/trainerRentalRegistration", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -381,42 +379,8 @@ const ManageSchedule = () => {
           },
           body: JSON.stringify(gymData),
         });
-
-        const responseText = await response.text();
-
-        // Kiểm tra nếu response không ok
-        if (!response.ok) {
-          try {
-            const errorData = JSON.parse(responseText);
-            if (errorData.message) {
-              let fullErrorMessage = errorData.message;
-              if (errorData.details) {
-                fullErrorMessage = `${errorData.message}\n\nChi tiết: ${errorData.details}`;
-              }
-              showErrorModal(fullErrorMessage);
-            } else {
-              showErrorModal(responseText);
-            }
-          } catch (parseError) {
-            showErrorModal(responseText);
-          }
-          return;
-        }
-
-        // Nếu response ok thì mới parse và xử lý data
-        try {
-          const responseData = JSON.parse(responseText);
-          if (responseData && responseData[0] && responseData[0].qrDataUrl) {
-            setQrDataUrl(responseData[0].qrDataUrl);
-          }
-        } catch (parseError) {
-          showErrorModal("Lỗi xử lý dữ liệu từ server");
-          return;
-        }
-      }
-      // If it's a Boxing trainer
-      else if (trainerType === "Boxing") {
-        const response = await fetch("http://localhost:5000/api/BoxingRegistration", {
+      } else if (trainerType === "Boxing") {
+        response = await fetch("http://localhost:5000/api/BoxingRegistration", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -424,55 +388,60 @@ const ManageSchedule = () => {
           },
           body: JSON.stringify(boxingData),
         });
-
-        const responseText = await response.text();
-
-        if (!response.ok) {
-          try {
-            const errorData = JSON.parse(responseText);
-            if (errorData.message) {
-              let fullErrorMessage = errorData.message;
-              if (errorData.details) {
-                fullErrorMessage = `${errorData.message}\n\nChi tiết: ${errorData.details}`;
-              }
-              showErrorModal(fullErrorMessage);
-            } else {
-              showErrorModal(responseText);
-            }
-          } catch (parseError) {
-            showErrorModal(responseText);
-          }
-          return;
-        }
-
+      }
+  
+      // Parse response dựa trên content type
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
         try {
-          const responseData = JSON.parse(responseText);
-          if (responseData && responseData[0] && responseData[0].qrDataUrl) {
-            setQrDataUrl(responseData[0].qrDataUrl);
-          }
-        } catch (parseError) {
-          showErrorModal("Lỗi xử lý dữ liệu từ server");
-          return;
+          responsejson = await response.json();
+        } catch (error) {
+          console.error("Error parsing JSON:", error);
         }
       }
-
-      // Chỉ chạy closeModal và showQr khi không có lỗi
-      closeModal();
-      showQr();
+  
+      if (response.ok) {
+        closeModal();
+  
+        // Nếu là thanh toán QR và có QR URL
+        if (qrPaymentInput && responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
+          setQrDataUrl(responsejson[0].qrDataUrl);
+          showQr();
+        }
+  
+        if (!qrPaymentInput && responsejson) {
+          const money = responsejson;
+          console.log("Money to pay:", money);
+  
+          if (money !== undefined && money !== null) {
+            const formattedMoney = new Intl.NumberFormat('vi-VN', {
+              style: 'currency',
+              currency: 'VND'
+            }).format(money);
+            
+            showSuccessModal(`Đăng ký thành công! Số tiền cần thanh toán: ${formattedMoney}`);
+          } else {
+            // Fallback message nếu không có moneyToPay
+            showSuccessModal("Đăng ký huấn luyện viên thành công");
+            console.log("No money value found in response");
+          }
+        }
+      } else {
+        // Xử lý lỗi
+        const errorMessage = responsejson?.message || "Có lỗi xảy ra khi đăng ký. Vui lòng thử lại.";
+        showErrorModal(errorMessage);
+      }
     } catch (error) {
       console.error("Error during trainer registration:", error);
-      showErrorModal("Có lỗi xảy ra. Vui lòng thử lại.");
+      showErrorModal("Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.");
+    } finally {
+      setIsFetching(false);
     }
   };
-
   return (
     <>
       <Header />
-      {/* <section>
-        <button className="btn btn-success btn-sm" onClick={openBookTrainerModal}>
-          Đăng kí Trainer
-        </button>
-      </section> */}
+      {isFetching && <LoadingSpinner isLoading={true} />}
 
       <div ref={BookTrainer} className="modal">
         <div className="modal-dialog modal-dialog-centered">
@@ -509,6 +478,36 @@ const ManageSchedule = () => {
                     </div>
                   </div>
 
+                  <div className="form-group col">
+                    <label>
+                      Chọn kiểu thanh toán <span className="icon-input">(*)</span>
+                    </label>
+                    <div className="radio-group">
+                      <label>
+                        <input
+                          type="radio"
+                          name="qrPayment"
+                          value="true"
+                          checked={formData.qrPayment === true} // Sử dụng so sánh với boolean
+                          onChange={handleInputChange}
+                        />
+                        Chuyển khoản
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="qrPayment"
+                          value="false"
+                          checked={formData.qrPayment === false} // Sử dụng so sánh với boolean
+                          onChange={handleInputChange}
+                        />
+                        Tiền mặt
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row">
                   <div className="form-group col">
                     <label>Gói đăng kí</label>
                     <select className="form-control form-select" name="option" value={selectedOption} onChange={handlePackageChange} required>

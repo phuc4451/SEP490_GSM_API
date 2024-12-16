@@ -146,6 +146,7 @@ const ManageFeedback = () => {
   const openViewFeedbackModal = async (feedback) => {
     setIsLoadingUser(true);
     const token = localStorage.getItem("token");
+    document.querySelector(".modal-overlay").style.display = "block";
 
     try {
       const userResponse = await axios.get(
@@ -154,14 +155,16 @@ const ManageFeedback = () => {
       );
       setCurrentUserData(userResponse.data);
       setCurrentFeedback(feedback);
+      feedbackModalRef.current.style.display = "block";
+      feedbackModalRef.current.classList.add("active");
     } catch (error) {
       console.error(`Error fetching user data:`, error);
       setCurrentUserData({ name: "Unknown", email: "Unknown" });
-    } finally {
-      setIsLoadingUser(false);
       feedbackModalRef.current.style.display = "block";
       feedbackModalRef.current.classList.add("active");
-      document.querySelector(".modal-overlay").style.display = "block";
+    } finally {
+      setIsLoadingUser(false);
+
     }
   };
 

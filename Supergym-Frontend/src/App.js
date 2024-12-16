@@ -16,6 +16,8 @@ import ManageBoxingCourse from './ManageBoxingCourse/ManageBoxingCourse';
 // import ManageSale from './ManageSale/ManageSale';
 import ManageFeedback from './ManageFeedback/ManageFeedback';
 import ManageSchedule from './ManageSchedule/ManageSchedule';
+import ManageShift from './ManageShift/ManageShift';
+import ManageSalary from './ManageSalary/ManageSalary';
 import BookTrainerForm from './BookTrainerForm/BookTrainerForm';
 import ChangeSlotForm from './ChangeSlotForm/ChangeSlotForm';
 import Home from './home/home';
@@ -43,6 +45,8 @@ const App = () => {
         {/* <Route path="/manageSale" element={<ManageSale />} /> */}
         <Route path="/manageFeedback" element={<ManageFeedback />} />
         <Route path="/ManageSchedule" element={<ManageSchedule />} />
+        <Route path="/ManageShift" element={<ManageShift />} />
+        <Route path="/ManageSalary" element={<ManageSalary />} />
         <Route path="/BookTrainerForm" element={<BookTrainerForm />} />
         <Route path="/ChangeSlotForm" element={<ChangeSlotForm />} />
       </Routes>

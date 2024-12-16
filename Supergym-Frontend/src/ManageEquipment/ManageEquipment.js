@@ -85,22 +85,37 @@ const ManageEquipment = () => {
     const { name, value } = e.target;
 
     if (name === "equipmentImportPrice") {
-      // Loại bỏ dấu phẩy và chuyển đổi sang số thực
+      // Existing price handling logic remains the same
       const numericValue = value.replace(/,/g, "");
 
-      // Kiểm tra xem `numericValue` có phải là một số dương hay không
       if (!isNaN(numericValue) && parseFloat(numericValue) > 0) {
         setFormData({
           ...formData,
-          equipmentImportPrice: formatNumberWithCommas(numericValue), // Lưu giá trị số không có dấu phẩy
+          equipmentImportPrice: formatNumberWithCommas(numericValue),
         });
-        validateField(name, numericValue); // Gọi validate với giá trị không dấu phẩy
+        validateField(name, numericValue);
       } else {
         setErrors((prevErrors) => ({
           ...prevErrors,
           equipmentImportPrice: "Giá nhập phải là số dương.",
         }));
       }
+    } else if (name === "equipmentQuantity" && currentEquipment) {
+      // Add validation for quantity when editing
+      const newQuantity = parseInt(value);
+      if (newQuantity > currentEquipment.equipmentQuantity) {
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          equipmentQuantity: "Số lượng không thể vượt quá số lượng hiện tại.",
+        }));
+        // Keep the current value in the form
+        return;
+      }
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+      validateField(name, value);
     } else {
       setFormData({
         ...formData,
@@ -124,7 +139,6 @@ const ManageEquipment = () => {
         else if (value.length < 3) errorMsg = "Mã thiết bị phải có ít nhất 3 ký tự.";
         break;
       case "equipmentImportPrice":
-      case "equipmentImportPrice":
         if (!value || isNaN(value) || parseFloat(value) <= 0) {
           errorMsg = "Giá nhập phải là số dương.";
         }
@@ -132,11 +146,15 @@ const ManageEquipment = () => {
       case "equipmentBrand":
         if (!value) errorMsg = "Nhãn hiệu là bắt buộc.";
         else if (value.length < 3) errorMsg = "Nhãn hiệu phải có ít nhất 3 ký tự.";
-
         break;
       case "equipmentQuantity":
-        if (!value) errorMsg = "Số lượng là bắt buộc.";
-        else if (isNaN(value) || value < 0) errorMsg = "Số lượng phải là số không âm.";
+        if (!value) {
+          errorMsg = "Số lượng là bắt buộc.";
+        } else if (isNaN(value) || value < 0) {
+          errorMsg = "Số lượng phải là số không âm.";
+        } else if (currentEquipment && parseInt(value) > currentEquipment.equipmentQuantity) {
+          errorMsg = "Số lượng không thể vượt quá số lượng hiện tại.";
+        }
         break;
       case "equipmentManufactured":
         if (!value) errorMsg = "Nơi sản xuất là bắt buộc.";
@@ -545,27 +563,27 @@ const ManageEquipment = () => {
   // Hàm xác nhận chỉnh sửa mã thiết bị
   const handleConfirmCodeClick = async (e) => {
     e.preventDefault();
-  
+
     if (!isFormValid()) {
       showErrorModal("Vui lòng điền đầy đủ và đúng các trường thông tin.");
       return;
     }
-  
+
     const token = localStorage.getItem("token");
-  
+
     // Create the data object with the current equipment ID
     const updatedData = {
       ...formData,
       equipmentId: currentEquipment.equipmentId, // Use currentEquipment.equipmentId
       equipmentImportPrice: parseFloat(formData.equipmentImportPrice.replace(/,/g, "")), // Convert price to number
     };
-  
+
     try {
       // Gọi API cập nhật thiết bị
       await axios.put(`http://localhost:5000/api/Equipment/${currentEquipment.equipmentId}`, updatedData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
+
       // Cập nhật danh sách thiết bị với dữ liệu đã chỉnh sửa
       setEquipmentList((prev) =>
         prev.map((eq) =>
@@ -577,7 +595,7 @@ const ManageEquipment = () => {
             : eq
         )
       );
-  
+
       // Đặt lại chế độ chỉnh sửa và đóng modal
       setIsEditingCode(false);
       setIsSubmitDisabled(false);
@@ -807,7 +825,15 @@ const ManageEquipment = () => {
                       Giá nhập thiết bị <span className="icon-input">(*)</span>
                     </label>
                     <div className="input-group">
-                      <input type="text" className={`form-control equipment-price-input ${errors.equipmentImportPrice ? "is-invalid" : ""}`} name="equipmentImportPrice" value={formData.equipmentImportPrice || ""} onChange={handleInputChange} required />
+                      <input
+                        type="text"
+                        className={`form-control equipment-price-input ${errors.equipmentImportPrice ? "is-invalid" : ""}`}
+                        name="equipmentImportPrice"
+                        value={formData.equipmentImportPrice || ""}
+                        onChange={handleInputChange}
+                        required
+                        disabled={isEditingCode || isExistingEquipment} // Added isEditingCode here
+                      />
                       <span className="input-readonly">VNĐ</span>
                     </div>
                     {errors.equipmentImportPrice && <div className="invalid-feedback">{errors.equipmentImportPrice}</div>}

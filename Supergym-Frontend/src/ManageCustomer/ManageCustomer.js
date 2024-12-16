@@ -106,6 +106,7 @@ const ManageCustomer = () => {
       phone: "",
       address: "",
       userAvatar: null, // Đặt lại ảnh đã chọn
+      idCard: "",
     });
     setPreviewImage(null); // Đặt lại ảnh xem trước
     if (fileInputRef.current) {

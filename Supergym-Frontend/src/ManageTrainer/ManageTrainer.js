@@ -14,6 +14,8 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import { Delete } from "@mui/icons-material";
+import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 const ManageTrainer = () => {
   const [trainerDataList, setTrainerDataList] = useState([]);
@@ -53,6 +55,15 @@ const ManageTrainer = () => {
     bio: "",
     specialization: "",
   });
+
+  const [formSalary, setFormSalary] = useState({
+    assignmentId: "string",
+    staffId: "",
+    shiftId: "",
+    configurationId: "",
+    assignedDate: "",
+    endDate: "",
+  });
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8; // Maximum 2 trainers per page
@@ -62,6 +73,47 @@ const ManageTrainer = () => {
   const successModalRef = useRef(null);
   const deleteModalRef = useRef(null);
   const errorModalRef = useRef(null);
+  const AssignSalaryAndShiftModalRef = useRef(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [shifts, setShifts] = useState([]);
+  const [salaryConfigs, setSalaryConfigs] = useState([]);
+  const [currentTrainerForSalary, setCurrentTrainerForSalary] = useState(null);
+  const [salaryPeriod, setSalaryPeriod] = useState({
+    fromDate: "",
+    toDate: "",
+  });
+  const [salaryReport, setSalaryReport] = useState(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const salaryModalRef = useRef(null);
+
+  useEffect(() => {
+    const fetchShifts = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const response = await axios.get("http://localhost:5000/api/Salary/GetShifts", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setShifts(response.data);
+      } catch (error) {
+        console.error("Error fetching shifts:", error);
+      }
+    };
+
+    const fetchSalaryConfigs = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const response = await axios.get("http://localhost:5000/api/Salary/GetSalaryConfigs", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSalaryConfigs(response.data);
+      } catch (error) {
+        console.error("Error fetching salary configurations:", error);
+      }
+    };
+
+    fetchShifts();
+    fetchSalaryConfigs();
+  }, []);
 
   //FETCH DATA AND PRELOAD
   useEffect(() => {
@@ -74,8 +126,7 @@ const ManageTrainer = () => {
         setTrainerData(response.data);
       } catch (error) {
         console.error("Error fetching trainers:", error);
-      } 
-      finally {
+      } finally {
         setIsDataLoading(false);
       }
     };
@@ -161,6 +212,23 @@ const ManageTrainer = () => {
   };
   //END PAGENATION
 
+  const openAddShiftAndSalaryModal = (trainer) => {
+    setCurrentTrainerForSalary(trainer); // Store the current trainer
+    setFormSalary({
+      assignmentId: "string",
+      staffId: "",
+      shiftId: "",
+      configurationId: "",
+      assignedDate: "",
+      endDate: "",
+    });
+
+    setErrors({});
+    AssignSalaryAndShiftModalRef.current.style.display = "block";
+    AssignSalaryAndShiftModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block";
+  };
+
   const openAddTrainerModal = () => {
     setFormData({
       email: "",
@@ -207,6 +275,10 @@ const ManageTrainer = () => {
   };
 
   const closeModal = () => {
+    AssignSalaryAndShiftModalRef.current.style.display = "none";
+    AssignSalaryAndShiftModalRef.current.classList.remove("active");
+    salaryModalRef.current.style.display = "none";
+    salaryModalRef.current.classList.remove("active");
     addTrainToCourseModalRef.current.style.display = "none";
     addTrainToCourseModalRef.current.classList.remove("active");
     trainerModalRef.current.style.display = "none";
@@ -498,7 +570,7 @@ const ManageTrainer = () => {
 
   const handleSubmitAddTrainerToCourse = async (e) => {
     e.preventDefault();
-    
+
     // Validate package selection first
     if (!gymPackageId && !boxingPackageId) {
       showErrorModal("Vui lòng chọn gói tập!");
@@ -506,10 +578,10 @@ const ManageTrainer = () => {
     }
 
     const token = localStorage.getItem("token");
-    
+
     try {
       let response;
-      
+
       if (selectedOptionType === "gym") {
         const dataGym = {
           trainerRentalPlanId: "string",
@@ -517,13 +589,9 @@ const ManageTrainer = () => {
           rentalOptionId: gymPackageId,
         };
 
-        response = await axios.post(
-          "http://localhost:5000/api/trainerRentalPlan",
-          dataGym,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        response = await axios.post("http://localhost:5000/api/trainerRentalPlan", dataGym, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } else {
         const dataBoxing = {
           boxingMembershipPlanId: "string",
@@ -531,36 +599,25 @@ const ManageTrainer = () => {
           boxingOptionId: boxingPackageId,
         };
 
-        response = await axios.post(
-          "http://localhost:5000/api/boxingMembershipPlan",
-          dataBoxing,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        response = await axios.post("http://localhost:5000/api/boxingMembershipPlan", dataBoxing, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
 
       // Nếu thành công
-      setTrainerData((prevData) =>
-        prevData.map((trainer) =>
-          trainer.trainerId === trainerToAddCourse.trainerId
-            ? { ...trainer, isAssignedToCourse: true }
-            : trainer
-        )
-      );
+      setTrainerData((prevData) => prevData.map((trainer) => (trainer.trainerId === trainerToAddCourse.trainerId ? { ...trainer, isAssignedToCourse: true } : trainer)));
 
       closeModal();
       showSuccessModal("Huấn luyện viên đã được thêm vào khóa học thành công!");
-
     } catch (error) {
       console.error("Chi tiết lỗi:", error);
-      
+
       // Xử lý các loại lỗi khác nhau
       if (error.response) {
         // Server trả về response với status code nằm ngoài range 2xx
         const errorMessage = error.response.data.message || error.response.data || "Có lỗi xảy ra từ server";
         showErrorModal(`Lỗi: ${error.response.status} - ${errorMessage}`);
-        
+
         console.log("Status:", error.response.status);
         console.log("Data:", error.response.data);
         console.log("Headers:", error.response.headers);
@@ -573,11 +630,11 @@ const ManageTrainer = () => {
         showErrorModal(`Lỗi: ${error.message}`);
         console.log("Error:", error.message);
       }
-      
+
       // Log thêm config nếu cần debug
       console.log("Config:", error.config);
     }
-};
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -645,6 +702,116 @@ const ManageTrainer = () => {
     (Trainer) => Trainer.name.toLowerCase().includes(searchQuery.toLowerCase()) // Tìm kiếm theo email
   );
 
+  const handleSalaryInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormSalary({
+      ...formSalary,
+      [name]: value,
+    });
+    // validateSalaryField(name, value);
+  };
+
+  const handleAssign = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    setIsSaving(true);
+  
+    try {
+      const assignedDate = new Date();
+      assignedDate.setHours(0, 0, 0, 0);
+      assignedDate.setMinutes(assignedDate.getMinutes() - assignedDate.getTimezoneOffset());
+  
+      const endDate = new Date(formSalary.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      endDate.setMinutes(endDate.getMinutes() - endDate.getTimezoneOffset());
+  
+      // Log the current trainer to verify the trainerId
+      console.log('Current trainer for salary:', currentTrainerForSalary);
+  
+      const assignmentData = {
+        assignmentId: "string",
+        trainerId: currentTrainerForSalary.trainerId, // Make sure this exists
+        // staffId: "string",
+        // shiftId: formSalary.shiftId,
+        configurationId: formSalary.configurationId,
+        // assignedDate: assignedDate.toISOString(),
+        // endDate: endDate.toISOString(),
+      };
+  
+      console.log("Assignment data:", assignmentData); // Log the data being sent
+  
+      const response = await axios.post("http://localhost:5000/api/Salary/AssignTrainerSalaryConfig", assignmentData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      closeModal();
+      showSuccessModal("thêm ca làm việc và mức lương thành công");
+    } catch (error) {
+      if (error.response && error.response.status === 409) {
+        showErrorModal(error.response.data);
+      } else {
+        console.error("Error assigning shift and salary:", error);
+        showErrorModal("Có lỗi xảy ra khi thêm ca làm việc");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const openViewSalaryModal = (trainer) => {
+    setCurrentTrainerForSalary(trainer);
+    setSalaryReport(null);
+    setSalaryPeriod({ fromDate: "", toDate: "" });
+    salaryModalRef.current.style.display = "block";
+    salaryModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block";
+  };
+
+  const handleSalaryPeriodChange = (e) => {
+    const { name, value } = e.target;
+    setSalaryPeriod((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const calculateSalary = async (e) => {
+    e.preventDefault();
+    setIsCalculating(true);
+    const token = localStorage.getItem("token");
+
+    // Convert dates to ISO string and log for checking
+    const fromDateISO = new Date(salaryPeriod.fromDate).toISOString();
+    const toDateISO = new Date(salaryPeriod.toDate).toISOString();
+
+    try {
+      const requestBody = {
+        reportId: "",
+        trainerId: currentTrainerForSalary?.trainerId || "",
+        fullName: "string",
+        totalShifts: 0,
+        totalSlots: 0,
+        lateCount: 0,
+        absenceCount: 0,
+        totalFines: 0,
+        finalSalary: 0,
+        isBilled: true,
+        fromDate: fromDateISO,
+        toDate: toDateISO,
+        staffId: "string",
+      };
+
+      const response = await axios.post("http://localhost:5000/api/Salary/CalculateTrainerSalary", requestBody, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSalaryReport(response.data);
+    } catch (error) {
+      console.error("Error calculating salary:", error);
+      showErrorModal("Có lỗi xảy ra khi tính lương");
+    } finally {
+      setIsCalculating(false);
+    }
+  };
   return (
     <>
       <Header />
@@ -719,9 +886,17 @@ const ManageTrainer = () => {
                     <a href="#" onClick={() => openDeleteModal(trainer)} className="delete">
                       <DeleteIcon />
                     </a> */}
-                    <a href="#" onClick={() => openAddTrainToCourseModal(trainer)} className="add">
-                      <AddCircleOutlineIcon />
-                    </a>
+                    <td>
+                      <a href="#" onClick={() => openEditTrainerModal(trainer)} className="edit">
+                        <EditIcon />
+                      </a>
+                      <a href="#" onClick={() => openViewSalaryModal(trainer)} className="view">
+                        <VisibilityIcon />
+                      </a>
+                      <a href="#" onClick={() => openAddShiftAndSalaryModal(trainer)} className="money-icon">
+                        <MonetizationOnIcon />
+                      </a>
+                    </td>
                   </td>
                 </tr>
               ))}
@@ -986,6 +1161,136 @@ const ManageTrainer = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      </div>
+
+      <div ref={AssignSalaryAndShiftModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <form id="salaryForm" onSubmit={handleAssign}>
+              <div className="modal-header">
+                <h4 className="modal-title text-center mx-auto">Thêm ca làm việc và lương</h4>
+                <a type="button" className="close" onClick={closeModal}>
+                  <CloseIcon />
+                </a>
+              </div>
+              <div className="modal-body">
+                {/* <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Chọn ngày kết thúc <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="date" className={`form-control ${errors.endDate ? "is-invalid" : ""}`} name="endDate" value={formSalary.endDate} onChange={handleSalaryInputChange} min={new Date().toISOString().split("T")[0]} required />
+                    {errors.endDate && <div className="error-message">{errors.endDate}</div>}
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Chọn ca làm việc <span className="icon-input">(*)</span>
+                    </label>
+                    <select className={`form-control ${errors.shiftId ? "is-invalid" : ""}`} name="shiftId" value={formSalary.shiftId} onChange={handleSalaryInputChange} required>
+                      <option value="">-- Chọn ca làm việc --</option>
+                      {shifts.map((shift) => (
+                        <option key={shift.shiftId} value={shift.shiftId}>
+                          {shift.shiftName} ({new Date(shift.startTime).toLocaleTimeString()} - {new Date(shift.endTime).toLocaleTimeString()}) - {shift.location}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.shiftId && <div className="error-message">{errors.shiftId}</div>}
+                  </div>
+                </div> */}
+
+                <div className="row">
+                  <div className="form-group col">
+                    <label>
+                      Chọn cấu hình lương <span className="icon-input">(*)</span>
+                    </label>
+                    <select className={`form-control ${errors.configurationId ? "is-invalid" : ""}`} name="configurationId" value={formSalary.configurationId} onChange={handleSalaryInputChange} required>
+                      <option value="">-- Chọn cấu hình lương --</option>
+                      {salaryConfigs
+                        .filter((config) => config.perSlotSalary > 0) // Thay đổi từ perShiftSalary sang perSlotSalary
+                        .map((config) => (
+                          <option key={config.configurationId} value={config.configurationId}>
+                            Lương cơ bản: {config.baseSalary.toLocaleString()}đ/tháng - Lương theo buổi: {config.perSlotSalary.toLocaleString()}đ/buổi - Phạt đi muộn: {config.finePerLate.toLocaleString()}đ
+                          </option>
+                        ))}
+                    </select>
+                    {errors.configurationId && <div className="error-message">{errors.configurationId}</div>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-default" onClick={closeModal} disabled={isSaving}>
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-success" disabled={isSaving}>
+                  {isSaving ? "Đang lưu..." : "Lưu"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div ref={salaryModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Tính lương nhân viên</h4>
+              <a type="button" className="close" onClick={closeModal}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={calculateSalary}>
+                <div className="row mb-3">
+                  <div className="form-group col">
+                    <label>Từ ngày</label>
+                    <input type="date" className="form-control" name="fromDate" value={salaryPeriod.fromDate} onChange={handleSalaryPeriodChange} required />
+                  </div>
+                  <div className="form-group col">
+                    <label>Đến ngày</label>
+                    <input type="date" className="form-control" name="toDate" value={salaryPeriod.toDate} onChange={handleSalaryPeriodChange} required />
+                  </div>
+                </div>
+                <button type="submit" className="btn btn-primary w-100 mb-3" disabled={isCalculating}>
+                  {isCalculating ? "Đang tính..." : "Tính lương"}
+                </button>
+              </form>
+
+              {salaryReport && (
+                <div className="salary-report mt-4">
+                  <h5>Báo cáo lương</h5>
+                  <p>
+                    <strong>Họ và tên:</strong> {salaryReport.fullName}
+                  </p>
+                  <p>
+                    <strong>Tổng số ca:</strong> {salaryReport.totalShifts}
+                  </p>
+                  <p>
+                    <strong>Số lần đi muộn:</strong> {salaryReport.lateCount}
+                  </p>
+                  <p>
+                    <strong>Số lần vắng mặt:</strong> {salaryReport.absenceCount}
+                  </p>
+                  <p>
+                    <strong>Tổng tiền phạt:</strong> {salaryReport.totalFines.toLocaleString()}đ
+                  </p>
+                  <p>
+                    <strong>Lương cuối cùng:</strong> {salaryReport.finalSalary.toLocaleString()}đ
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={closeModal}>
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       </div>

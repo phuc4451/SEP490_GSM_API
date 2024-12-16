@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Dashboard.css";
 import { useNavigate } from "react-router-dom";
-import { getRole,Logout } from '../utils/authUtils';
+import { getRole, Logout } from "../utils/authUtils";
 import Header from "../Header/Header.js";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, DoughnutController, ArcElement, Title, Tooltip, Legend } from "chart.js";
@@ -22,9 +22,9 @@ const Home = () => {
   const navigate = useNavigate();
   useEffect(() => {
     const userRole = getRole();
-    if (userRole !== 'admin') {
+    if (userRole !== "admin") {
       Logout();
-      navigate('/login'); // or redirect to login
+      navigate("/login"); // or redirect to login
       return;
     }
   }, [navigate]);
@@ -44,7 +44,6 @@ const Home = () => {
   // Dữ liệu gốc cho biểu đồ Tổng tiền theo tháng
   const originalMonthlyData = [1000000, 2000000, 1500000, 3000000, 2500000, 4000000, 4500000, 3800000, 3200000, 2900000, 3700000, 4200000];
   const originalDailyCheckinData = [150, 200, 180, 220, 210, 230, 170];
-
 
   // Cấu hình tùy chọn cho biểu đồ
   const options = {
@@ -123,11 +122,41 @@ const Home = () => {
         labels: {
           boxWidth: 20, // Độ rộng của hộp màu trong legend
           padding: 10, // Khoảng cách giữa các mục trong legend
+          font: {
+            size: 12,
+            weight: "bold",
+          },
         },
+        maxWidth: 300, // Độ rộng tối đa của legend
+        maxHeight: 300, // Chiều cao tối đa của legend
       },
     },
     maintainAspectRatio: false,
   });
+
+  // const [op, setOp] = useState({
+  //   plugins: {
+  //     legend: {
+  //       display: true,
+  //       position: "bottom",
+  //       align: "start",
+  //       labels: {
+  //         boxWidth: 25, // Tăng độ rộng của ô màu
+  //         padding: 20,
+  //         font: {
+  //           size: 14,
+  //           weight: 'bold'
+  //         },
+  //         color: '#333333', // Màu chữ
+  //         usePointStyle: true, // Sử dụng style điểm thay vì hình vuông
+  //         pointStyle: 'circle' // Kiểu điểm (circle, rect, triangle, etc)
+  //       },
+  //       maxWidth: 300, // Độ rộng tối đa của legend
+  //       maxHeight: 200 // Chiều cao tối đa của legend
+  //     }
+  //   },
+  //   maintainAspectRatio: false,
+  // });
 
   useEffect(() => {
     // Lấy dữ liệu doanh thu từ API
@@ -274,7 +303,6 @@ const Home = () => {
 
   // Package sales data
 
-  
   useEffect(() => {
     if (packageSold.quantityPackage.length > 0 && packageColors.length !== packageSold.quantityPackage.length) {
       const newColors = generateColors(packageSold.quantityPackage.length);
@@ -288,7 +316,7 @@ const Home = () => {
         label: "Số lượng bán ra",
         data: packageSold.quantityPackage,
         backgroundColor: packageColors, // Sử dụng màu từ state
-        borderColor: packageColors.map(color => color.replace("0.5", "1")),
+        borderColor: packageColors.map((color) => color.replace("0.5", "1")),
         borderWidth: 1,
       },
     ],
@@ -297,6 +325,7 @@ const Home = () => {
   return (
     <>
       <Header />
+      {/* Inside the statistics-section */}
       <section className="statistics-section">
         <div className="container">
           <div className="row">

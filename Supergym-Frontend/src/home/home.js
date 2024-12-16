@@ -257,8 +257,10 @@ const Home = () => {
             <h2>
               Đồng hành cùng với <em>Super gym</em>
             </h2>
-            <div className="main-button scroll-to-section">
-              <a href="#features">
+            {/* <div className="main-button scroll-to-section"> */}
+            <div className="main-button">
+              {/* <a href="#features"> */}
+              <a href="#">
                 Đăng kí thành viên <FontAwesomeIcon icon={faDownload} />
               </a>
             </div>

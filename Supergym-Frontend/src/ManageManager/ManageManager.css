@@ -203,6 +203,10 @@ table.table td a.delete {
   color: #f44336;
 }
 
+table.table td a.money-icon {
+  color: #36a8f4;
+}
+
 table.table td i {
   font-size: 19px;
 }

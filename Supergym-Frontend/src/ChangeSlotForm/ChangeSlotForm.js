@@ -4,6 +4,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import "bootstrap/dist/css/bootstrap.min.css";
 // import "./BookTrainerForm.css";
 import Header from "../Header/Header.js";
+import LoadingSpinner from "../utils/LoadingOverlay";
 
 const ManageSchedule = () => {
   const [trainerType, setTrainerType] = useState(""); // State cho loại huấn luyện viên
@@ -48,6 +49,8 @@ const ManageSchedule = () => {
   const [errors, setErrors] = useState({
     email: "",
   });
+  const [isFetching, setIsFetching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     openBookTrainerModal(); // Gọi hàm mở modal khi trang load
@@ -369,6 +372,7 @@ const ManageSchedule = () => {
 
   const handleBookTrainer = async (e) => {
     e.preventDefault();
+    setIsFetching(true);
 
     try {
       const token = localStorage.getItem("token");
@@ -416,11 +420,16 @@ const ManageSchedule = () => {
     } catch (error) {
       console.error("Error during change timeslot:", error);
       showErrorModal("Có lỗi xảy ra. Vui lòng thử lại.");
+    }finally {
+      setIsFetching(false);
+
     }
   };
 
   const searchRegistrationByEmail = async () => {
     const token = localStorage.getItem("token");
+    setIsFetching(true);
+    setHasSearched(true);
     try {
       const dataSend = {
         email: searchEmail,
@@ -467,12 +476,18 @@ const ManageSchedule = () => {
     } catch (error) {
       console.error("Error searching registration:", error);
       showErrorModal("Có lỗi xảy ra khi tìm kiếm. Vui lòng thử lại.");
+    } finally {
+      setIsFetching(false);
     }
   };
   const handleSearchEmailChange = (e) => {
     const value = e.target.value;
     setSearchEmail(value);
     validateEmail(value);
+    setHasSearched(false); // Reset trạng thái tìm kiếm
+    setCourseData([]); // Reset course data
+    setSelectedCourseId(""); // Reset selected course
+    setCourseDetail({}); // Reset course detail
   };
 
   const handleChange = async (event) => {
@@ -480,7 +495,7 @@ const ManageSchedule = () => {
     setSelectedCourseId(selectedCourseIdInput);
     // Reset selected timeslot
     setSelectedTimeSlotId("");
-
+    setIsFetching(true);
     if (selectedCourseIdInput) {
       try {
         const response = await axios.post("http://localhost:5000/api/Schedule/getRegistrationDetails", {
@@ -490,6 +505,8 @@ const ManageSchedule = () => {
         console.log("API Response:", response.data);
       } catch (error) {
         console.error("Error posting registration ID:", error);
+      } finally {
+        setIsFetching(false);
       }
     }
   };
@@ -503,11 +520,7 @@ const ManageSchedule = () => {
   return (
     <>
       <Header />
-      {/* <section>
-        <button className="btn btn-success btn-sm" onClick={openBookTrainerModal}>
-          Đăng kí Trainer
-        </button>
-      </section> */}
+      {isFetching && <LoadingSpinner isLoading={true} />}
 
       <div ref={BookTrainer} className="modal">
         <div className="modal-dialog modal-dialog-centered">
@@ -523,46 +536,39 @@ const ManageSchedule = () => {
               </div>
 
               <div className="modal-body">
-              <div>
+                <div>
                   <label className="me-2">Tìm kiếm email</label>
                   <div className="d-flex flex-column">
                     <div className="d-flex align-items-center mb-2">
-                      <input 
-                        type="email" 
-                        className={`form-control me-2 ${errors.email ? "is-invalid" : ""}`}
-                        value={searchEmail} 
-                        onChange={handleSearchEmailChange}
-                        placeholder="Nhập email"
-                        required 
-                      />
-                      <button 
-                        type="button" 
-                        className="btn btn-primary" 
-                        onClick={searchRegistrationByEmail}
-                        disabled={!isEmailValid}
-                      >
+                      <input type="email" className={`form-control me-2 ${errors.email ? "is-invalid" : ""}`} value={searchEmail} onChange={handleSearchEmailChange} placeholder="Nhập email" required />
+                      <button type="button" className="btn btn-primary" onClick={searchRegistrationByEmail} disabled={!isEmailValid}>
                         Tìm kiếm
                       </button>
                     </div>
-                    {errors.email && (
-                      <div className="invalid-feedback d-block ms-1">
-                        {errors.email}
-                      </div>
-                    )}
+                    {errors.email && <div className="invalid-feedback d-block ms-1">{errors.email}</div>}
                   </div>
                 </div>
                 <div className="row">
                   <div className="form-group col">
-                    <label>Gói đăng kí</label>
-                    <select className="form-control form-select" name="option" value={selectedCourseId} onChange={handleChange} required>
-                      <option value="">Chọn gói</option>
-                      {/* {selectedPackages.map((option, index) => ( */}
-                      {courseData.map((courseData) => (
-                        <option key={courseData.registrationId} value={courseData.registrationId}>
-                          {courseData.description}
-                        </option>
-                      ))}
-                    </select>
+                    <label>Gói đã đăng kí</label>
+                    {!hasSearched ? (
+                      <select className="form-control form-select" disabled>
+                        <option value="">Chọn gói</option>
+                      </select>
+                    ) : courseData.length === 0 ? (
+                      <select className="form-control form-select" disabled>
+                        <option value="">Không có gói đăng ký</option>
+                      </select>
+                    ) : (
+                      <select className="form-control form-select" name="option" value={selectedCourseId} onChange={handleChange} required>
+                        <option value="">Chọn gói</option>
+                        {courseData.map((courseData) => (
+                          <option key={courseData.registrationId} value={courseData.registrationId}>
+                            {courseData.description}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
                 <div className="row">
