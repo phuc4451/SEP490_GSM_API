@@ -51,7 +51,14 @@ const Header = () => {
   const shouldShowMenu = (menuType) => {
     if (isAdmin) return true;
     if (role === "staff") {
-      return !["staff-management", "dashboard", "feedback", "trainer-management"].includes(menuType);
+      return ![
+        "staff-management", 
+        "dashboard", 
+        "feedback", 
+        "trainer-management",
+        "manageShift",  // Added to hide shift management
+        "manageSalary"  // Added to hide salary management
+      ].includes(menuType);
     }
     return true;
   };

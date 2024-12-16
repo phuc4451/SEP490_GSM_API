@@ -266,6 +266,8 @@ const ManageSchedule = () => {
     successModalRef.current.style.display = "none"; // Ẩn modal
     document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
     // window.location.reload();
+    window.close();
+
   };
 
   // Hàm để mở modal thông báo

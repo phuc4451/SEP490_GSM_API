@@ -309,6 +309,8 @@ const ManageSchedule = () => {
     setSuccessMessage(message); // Cập nhật thông báo
     successModalRef.current.style.display = "block";
     document.querySelector(".modal-overlay").style.display = "block";
+
+
   };
 
   // Hàm để đóng modal thông báo
@@ -316,6 +318,8 @@ const ManageSchedule = () => {
     successModalRef.current.style.display = "none"; // Ẩn modal
     document.querySelector(".modal-overlay").style.display = "none"; // Ẩn overlay
     // window.location.reload();
+    window.close();
+
   };
 
   // Hàm để mở modal thông báo

@@ -21,6 +21,9 @@ import trainingClass4 from "../assets/images/training-image-04.jpg";
 import trainer1 from "../assets/images/first-trainer.jpg";
 import trainer2 from "../assets/images/second-trainer.jpg";
 import trainer3 from "../assets/images/third-trainer.jpg";
+import khanh from "../assets/images/khanh.jpg";
+import ngoc from "../assets/images/ngoc.jpg";
+import nam from "../assets/images/nam.jpg";
 
 const Home = () => {
   // FIX CHANGE COLOR SECTIONS
@@ -272,248 +275,231 @@ const Home = () => {
 
       {/* <!-- ***** Features Item Start ***** --> */}
       <section className="section" id="features">
-        <div className="container">
-          <div className="row">
-            <div className="col-lg-6 offset-lg-3">
-              <div className="section-heading-home">
-                <h2>
-                  Chọn <em>chương trình</em>
-                </h2>
-                <img src={lineDec} alt="waves" />
-                <p>Training Studio is free CSS template for gyms and fitness centers. You are allowed to use this layout for your business website.</p>
-              </div>
-            </div>
-            <div className="col-lg-6">
-              <ul className="features-items">
-                <li className="feature-item">
-                  <div className="left-icon">
-                    <img src={featureFirstIcon} alt="First One" />
-                  </div>
-                  <div className="right-content">
-                    <h4>Basic Fitness</h4>
-                    <p>Please do not re-distribute this template ZIP file on any template collection website. This is not allowed.</p>
-                    <a href="#" className="text-button">
-                      Discover More
-                    </a>
-                  </div>
-                </li>
-                <li className="feature-item">
-                  <div className="left-icon">
-                    <img src={featureFirstIcon} alt="second one" />
-                  </div>
-                  <div className="right-content">
-                    <h4>New Gym Training</h4>
-                    <p>If you wish to support TemplateMo website via PayPal, please feel free to contact us. We appreciate it a lot.</p>
-                    <a href="#" className="text-button">
-                      Discover More
-                    </a>
-                  </div>
-                </li>
-                <li className="feature-item">
-                  <div className="left-icon">
-                    <img src={featureFirstIcon} alt="third gym training" />
-                  </div>
-                  <div className="right-content">
-                    <h4>Basic Muscle Course</h4>
-                    <p>
-                      Credit goes to{" "}
-                      <a rel="nofollow" href="https://www.pexels.com" target="_blank">
-                        Pexels website
-                      </a>{" "}
-                      for images and video background used in this HTML template.
-                    </p>
-                    <a href="#" className="text-button">
-                      Discover More
-                    </a>
-                  </div>
-                </li>
-              </ul>
-            </div>
-            <div className="col-lg-6">
-              <ul className="features-items">
-                <li className="feature-item">
-                  <div className="left-icon">
-                    <img src={featureFirstIcon} alt="fourth muscle" />
-                  </div>
-                  <div className="right-content">
-                    <h4>Advanced Muscle Course</h4>
-                    <p>
-                      You may want to browse through{" "}
-                      <a rel="nofollow" href="https://templatemo.com/tag/digital-marketing" target="_parent">
-                        Digital Marketing
-                      </a>{" "}
-                      or <a href="https://templatemo.com/tag/corporate">Corporate</a>
-                      HTML CSS templates on our website.
-                    </p>
-                    <a href="#" className="text-button">
-                      Discover More
-                    </a>
-                  </div>
-                </li>
-                <li className="feature-item">
-                  <div className="left-icon">
-                    <img src={featureFirstIcon} alt="training fifth" />
-                  </div>
-                  <div className="right-content">
-                    <h4>Yoga Training</h4>
-                    <p>This template is built on Bootstrap v4.3.1 framework. It is easy to adapt the columns and sections.</p>
-                    <a href="#" className="text-button">
-                      Discover More
-                    </a>
-                  </div>
-                </li>
-                <li className="feature-item">
-                  <div className="left-icon">
-                    <img src={featureFirstIcon} alt="gym training" />
-                  </div>
-                  <div className="right-content">
-                    <h4>Body Building Course</h4>
-                    <p>Suspendisse fringilla et nisi et mattis. Curabitur sed finibus nisi. Integer nibh sapien, vehicula et auctor.</p>
-                    <a href="#" className="text-button">
-                      Discover More
-                    </a>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </div>
+  <div className="container">
+    <div className="row">
+      <div className="col-lg-6 offset-lg-3">
+        <div className="section-heading-home">
+          <h2>
+            Chọn <em>chương trình</em>
+          </h2>
+          <img src={lineDec} alt="đường kẻ" />
+          <p>Khám phá các chương trình tập luyện đa dạng, được thiết kế phù hợp với mọi mục tiêu và trình độ.</p>
         </div>
-      </section>
-      {/* <!-- ***** Features Item End ***** --> */}
+      </div>
+      <div className="col-lg-6">
+        <ul className="features-items">
+          <li className="feature-item">
+            <div className="left-icon">
+              <img src={featureFirstIcon} alt="Tập luyện cơ bản" />
+            </div>
+            <div className="right-content">
+              <h4>Tập Luyện Cơ Bản</h4>
+              <p>Chương trình dành cho người mới bắt đầu, giúp bạn làm quen với các bài tập và xây dựng nền tảng thể chất vững chắc.</p>
+              <a href="#" className="text-button">
+                Tìm Hiểu Thêm
+              </a>
+            </div>
+          </li>
+          <li className="feature-item">
+            <div className="left-icon">
+              <img src={featureFirstIcon} alt="Tập luyện gym mới" />
+            </div>
+            <div className="right-content">
+              <h4>Tập Luyện Gym Nâng Cao</h4>
+              <p>Chương trình tập luyện hiện đại với các thiết bị mới nhất, giúp bạn đạt hiệu quả tối ưu trong quá trình rèn luyện.</p>
+              <a href="#" className="text-button">
+                Tìm Hiểu Thêm
+              </a>
+            </div>
+          </li>
+          <li className="feature-item">
+            <div className="left-icon">
+              <img src={featureFirstIcon} alt="Khóa cơ bắp cơ bản" />
+            </div>
+            <div className="right-content">
+              <h4>Khóa Học Cơ Bắp Cơ Bản</h4>
+              <p>Chương trình tập trung vào phát triển cơ bắp cho người mới, với các bài tập an toàn và hiệu quả.</p>
+              <a href="#" className="text-button">
+                Tìm Hiểu Thêm
+              </a>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div className="col-lg-6">
+        <ul className="features-items">
+          <li className="feature-item">
+            <div className="left-icon">
+              <img src={featureFirstIcon} alt="Khóa cơ bắp nâng cao" />
+            </div>
+            <div className="right-content">
+              <h4>Khóa Học Cơ Bắp Nâng Cao</h4>
+              <p>Chương trình chuyên sâu về phát triển cơ bắp, dành cho những người đã có nền tảng tập luyện vững chắc.</p>
+              <a href="#" className="text-button">
+                Tìm Hiểu Thêm
+              </a>
+            </div>
+          </li>
+          <li className="feature-item">
+            <div className="left-icon">
+              <img src={featureFirstIcon} alt="Tập yoga" />
+            </div>
+            <div className="right-content">
+              <h4>Lớp Học Yoga</h4>
+              <p>Kết hợp các bài tập thể chất và tinh thần, giúp bạn cân bằng cuộc sống và cải thiện sức khỏe toàn diện.</p>
+              <a href="#" className="text-button">
+                Tìm Hiểu Thêm
+              </a>
+            </div>
+          </li>
+          <li className="feature-item">
+            <div className="left-icon">
+              <img src={featureFirstIcon} alt="Khóa thể hình" />
+            </div>
+            <div className="right-content">
+              <h4>Khóa Học Thể Hình</h4>
+              <p>Chương trình toàn diện giúp bạn đạt được vóc dáng mơ ước thông qua các bài tập chuyên sâu và chế độ dinh dưỡng phù hợp.</p>
+              <a href="#" className="text-button">
+                Tìm Hiểu Thêm
+              </a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
 
-      {/* <!-- ***** Call to Action Start ***** --> */}
-      <section className="section" id="call-to-action">
-        <div className="container">
-          <div className="row">
-            <div className="col-lg-10 offset-lg-1">
-              <div className="cta-content">
-                <h2>
-                  Don’t <em>think</em>, begin <em>today</em>!
-                </h2>
-                <p>Ut consectetur, metus sit amet aliquet placerat, enim est ultricies ligula, sit amet dapibus odio augue eget libero. Morbi tempus mauris a nisi luctus imperdiet.</p>
-                <div className="main-button scroll-to-section">
-                  <a href="#our-classes">Đăng kí thành viên</a>
-                </div>
-              </div>
-            </div>
+<section className="section" id="call-to-action">
+  <div className="container">
+    <div className="row">
+      <div className="col-lg-10 offset-lg-1">
+        <div className="cta-content">
+          <h2>
+            Đừng <em>chần chừ</em>, hãy bắt đầu <em>ngay hôm nay</em>!
+          </h2>
+          <p>Không có thời điểm nào tốt hơn để bắt đầu hành trình rèn luyện sức khỏe của bạn. Hãy để chúng tôi đồng hành cùng bạn trên con đường đạt được mục tiêu.</p>
+          <div className="main-button scroll-to-section">
+            <a href="#our-classes">Đăng ký thành viên</a>
           </div>
         </div>
-      </section>
-      {/* <!-- ***** Call to Action End ***** --> */}
+      </div>
+    </div>
+  </div>
+</section>
 
-      {/* <!-- ***** Our Classes Start ***** --> */}
-      <section className="section" id="our-classes">
-        <div className="container">
-          <div className="row">
-            <div className="col-lg-6 offset-lg-3">
-              <div className="section-heading-home">
-                <h2>
-                  Our <em>Classes</em>
-                </h2>
-                <img src={lineDec} />
-                <p>Nunc urna sem, laoreet ut metus id, aliquet consequat magna. Sed viverra ipsum dolor, ultricies fermentum massa consequat eu.</p>
-              </div>
-            </div>
-          </div>
-          <div className="row" id="tabs">
-            <div className="col-lg-4">
-              <ul>
-                <li>
-                  <a
-                    href="#tabs-1"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setActiveTab(1);
-                    }}
-                  >
-                    <img src={tabFirstIcon} alt="First Training Icon" /> First Training className
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#tabs-2"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setActiveTab(2);
-                    }}
-                  >
-                    <img src={tabFirstIcon} alt="Second Training Icon" /> Second Training className
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#tabs-3"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setActiveTab(3);
-                    }}
-                  >
-                    <img src={tabFirstIcon} alt="Third Training Icon" /> Third Training className
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#tabs-4"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setActiveTab(4);
-                    }}
-                  >
-                    <img src={tabFirstIcon} alt="Fourth Training Icon" /> Fourth Training className
-                  </a>
-                </li>
-                <div className="main-rounded-button">
-                  <a href="#">View All Schedules</a>
-                </div>
-              </ul>
-            </div>
-            <div className="col-lg-8">
-              <section className="tabs-content">
-                {activeTab === 1 && (
-                  <article id="tabs-1">
-                    <img src={trainingClass1} alt="First className" />
-                    <h4>First Training className</h4>
-                    <p>Phasellus convallis mauris sed elementum vulputate...</p>
-                    <div className="main-button">
-                      <a href="#">View Schedule</a>
-                    </div>
-                  </article>
-                )}
-                {activeTab === 2 && (
-                  <article id="tabs-2">
-                    <img src={trainingClass2} alt="Second Training" />
-                    <h4>Second Training className</h4>
-                    <p>Integer dapibus, est vel dapibus mattis, sem mauris luctus leo...</p>
-                    <div className="main-button">
-                      <a href="#">View Schedule</a>
-                    </div>
-                  </article>
-                )}
-                {activeTab === 3 && (
-                  <article id="tabs-3">
-                    <img src={trainingClass3} alt="Third className" />
-                    <h4>Third Training className</h4>
-                    <p>Fusce laoreet malesuada rhoncus...</p>
-                    <div className="main-button">
-                      <a href="#">View Schedule</a>
-                    </div>
-                  </article>
-                )}
-                {activeTab === 4 && (
-                  <article id="tabs-4">
-                    <img src={trainingClass4} alt="Fourth Training" />
-                    <h4>Fourth Training className</h4>
-                    <p>Pellentesque habitant morbi tristique senectus et netus et malesuada...</p>
-                    <div className="main-button">
-                      <a href="#">View Schedule</a>
-                    </div>
-                  </article>
-                )}
-              </section>
-            </div>
-          </div>
+<section className="section" id="our-classes">
+  <div className="container">
+    <div className="row">
+      <div className="col-lg-6 offset-lg-3">
+        <div className="section-heading-home">
+          <h2>
+            Các <em>Lớp Học</em> Của Chúng Tôi
+          </h2>
+          <img src={lineDec} alt="đường kẻ" />
+          <p>Khám phá đa dạng các lớp học được thiết kế phù hợp với mọi mục tiêu và trình độ của bạn.</p>
         </div>
-      </section>
+      </div>
+    </div>
+    <div className="row" id="tabs">
+      <div className="col-lg-4">
+        <ul>
+          <li>
+            <a
+              href="#tabs-1"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab(1);
+              }}
+            >
+              <img src={tabFirstIcon} alt="Biểu tượng lớp học 1" /> Lớp Tập Cơ Bản
+            </a>
+          </li>
+          <li>
+            <a
+              href="#tabs-2"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab(2);
+              }}
+            >
+              <img src={tabFirstIcon} alt="Biểu tượng lớp học 2" /> Lớp Tập Nâng Cao
+            </a>
+          </li>
+          <li>
+            <a
+              href="#tabs-3"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab(3);
+              }}
+            >
+              <img src={tabFirstIcon} alt="Biểu tượng lớp học 3" /> Lớp Cardio
+            </a>
+          </li>
+          <li>
+            <a
+              href="#tabs-4"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab(4);
+              }}
+            >
+              <img src={tabFirstIcon} alt="Biểu tượng lớp học 4" /> Lớp Yoga
+            </a>
+          </li>
+          <div className="main-rounded-button">
+            <a href="#">Xem Tất Cả Lịch Học</a>
+          </div>
+        </ul>
+      </div>
+      <div className="col-lg-8">
+        <section className="tabs-content">
+          {activeTab === 1 && (
+            <article id="tabs-1">
+              <img src={trainingClass1} alt="Lớp tập cơ bản" />
+              <h4>Lớp Tập Cơ Bản</h4>
+              <p>Khóa học dành cho người mới bắt đầu, giúp bạn làm quen với các bài tập cơ bản...</p>
+              <div className="main-button">
+                <a href="#">Xem Lịch Học</a>
+              </div>
+            </article>
+          )}
+          {activeTab === 2 && (
+            <article id="tabs-2">
+              <img src={trainingClass2} alt="Lớp tập nâng cao" />
+              <h4>Lớp Tập Nâng Cao</h4>
+              <p>Chương trình tập luyện chuyên sâu dành cho những người đã có nền tảng...</p>
+              <div className="main-button">
+                <a href="#">Xem Lịch Học</a>
+              </div>
+            </article>
+          )}
+          {activeTab === 3 && (
+            <article id="tabs-3">
+              <img src={trainingClass3} alt="Lớp cardio" />
+              <h4>Lớp Cardio</h4>
+              <p>Tăng cường sức bền và đốt cháy mỡ thừa hiệu quả...</p>
+              <div className="main-button">
+                <a href="#">Xem Lịch Học</a>
+              </div>
+            </article>
+          )}
+          {activeTab === 4 && (
+            <article id="tabs-4">
+              <img src={trainingClass4} alt="Lớp yoga" />
+              <h4>Lớp Yoga</h4>
+              <p>Kết hợp các bài tập thể chất và tinh thần để cân bằng cuộc sống...</p>
+              <div className="main-button">
+                <a href="#">Xem Lịch Học</a>
+              </div>
+            </article>
+          )}
+        </section>
+      </div>
+    </div>
+  </div>
+</section>
       {/* <!-- ***** Our Classes End ***** --> */}
       {/* SCHEDULE START */}
       {/* <section className="section" id="schedule">
@@ -584,124 +570,124 @@ const Home = () => {
 
       {/* <!-- ***** Testimonials Starts ***** --> */}
       <section className="section" id="trainers">
-        <div className="container">
-          <div className="row">
-            <div className="col-lg-6 offset-lg-3">
-              <div className="section-heading-home">
-                <h2>
-                  Expert <em>Trainers</em>
-                </h2>
-                <img src={lineDec} alt="" />
-                <p>Nunc urna sem, laoreet ut metus id, aliquet consequat magna. Sed viverra ipsum dolor, ultricies fermentum massa consequat eu.</p>
-              </div>
-            </div>
+  <div className="container">
+    <div className="row">
+      <div className="col-lg-6 offset-lg-3">
+        <div className="section-heading-home">
+          <h2>
+            Đội Ngũ <em>Huấn Luyện Viên</em> Chuyên Nghiệp
+          </h2>
+          <img src={lineDec} alt="" />
+          <p>Chúng tôi tự hào giới thiệu đội ngũ huấn luyện viên giàu kinh nghiệm, tận tâm hỗ trợ bạn đạt được mục tiêu sức khỏe và thể hình của mình.</p>
+        </div>
+      </div>
+    </div>
+    <div className="row">
+      <div className="col-lg-4">
+        <div className="trainer-item">
+          <div className="image-thumb">
+            <img src={khanh} alt="Huấn luyện viên Nguyễn Ngọc Khánh" />
           </div>
-          <div className="row">
-            <div className="col-lg-4">
-              <div className="trainer-item">
-                <div className="image-thumb">
-                  <img src={trainer1} alt="" />
-                </div>
-                <div className="down-content">
-                  <span>Strength Trainer</span>
-                  <h4>Bret D. Bowers</h4>
-                  <p>Bitters cliche tattooed 8-bit distillery mustache. Keytar succulents gluten-free vegan church-key pour-over seitan flannel.</p>
-                  <ul className="social-icons">
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-facebook"></i>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-twitter"></i>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-linkedin"></i>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-behance"></i>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-            <div className="col-lg-4">
-              <div className="trainer-item">
-                <div className="image-thumb">
-                  <img src={trainer2} alt="" />
-                </div>
-                <div className="down-content">
-                  <span>Muscle Trainer</span>
-                  <h4>Hector T. Daigl</h4>
-                  <p>Bitters cliche tattooed 8-bit distillery mustache. Keytar succulents gluten-free vegan church-key pour-over seitan flannel.</p>
-                  <ul className="social-icons">
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-facebook"></i>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-twitter"></i>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-linkedin"></i>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-behance"></i>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-            <div className="col-lg-4">
-              <div className="trainer-item">
-                <div className="image-thumb">
-                  <img src={trainer3} alt="" />
-                </div>
-                <div className="down-content">
-                  <span>Power Trainer</span>
-                  <h4>Paul D. Newman</h4>
-                  <p>Bitters cliche tattooed 8-bit distillery mustache. Keytar succulents gluten-free vegan church-key pour-over seitan flannel.</p>
-                  <ul className="social-icons">
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-facebook"></i>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-twitter"></i>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-linkedin"></i>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#">
-                        <i className="fa fa-behance"></i>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+          <div className="down-content">
+            <span>Huấn Luyện Viên Sức Mạnh</span>
+            <h4>Nguyễn Ngọc Khánh</h4>
+            <p>Chuyên gia về các bài tập sức mạnh với hơn 5 năm kinh nghiệm. Đam mê giúp học viên phát triển sức mạnh và độ bền một cách toàn diện.</p>
+            <ul className="social-icons">
+              <li>
+                <a href="#">
+                  <i className="fa fa-facebook"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#">
+                  <i className="fa fa-twitter"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#">
+                  <i className="fa fa-linkedin"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#">
+                  <i className="fa fa-behance"></i>
+                </a>
+              </li>
+            </ul>
           </div>
         </div>
-      </section>
+      </div>
+      <div className="col-lg-4">
+        <div className="trainer-item">
+          <div className="image-thumb">
+            <img src={ngoc} alt="Huấn luyện viên Đặng Ngọc" />
+          </div>
+          <div className="down-content">
+            <span>Huấn Luyện Viên Cơ Bắp</span>
+            <h4>Đặng Ngọc</h4>
+            <p>Chuyên gia về phát triển cơ bắp và định hình cơ thể. Với kiến thức chuyên sâu về dinh dưỡng và tập luyện, sẽ giúp bạn đạt được vóc dáng mơ ước.</p>
+            <ul className="social-icons">
+              <li>
+                <a href="#">
+                  <i className="fa fa-facebook"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#">
+                  <i className="fa fa-twitter"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#">
+                  <i className="fa fa-linkedin"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#">
+                  <i className="fa fa-behance"></i>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div className="col-lg-4">
+        <div className="trainer-item">
+          <div className="image-thumb">
+            <img src={nam} alt="Huấn luyện viên Nguyễn Lý Nam" />
+          </div>
+          <div className="down-content">
+            <span>Huấn Luyện Viên Thể Lực</span>
+            <h4>Nguyễn Lý Nam</h4>
+            <p>Chuyên gia về rèn luyện thể lực và sức bền. Với phương pháp huấn luyện khoa học, sẽ giúp bạn nâng cao thể lực và sức khỏe toàn diện.</p>
+            <ul className="social-icons">
+              <li>
+                <a href="#">
+                  <i className="fa fa-facebook"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#">
+                  <i className="fa fa-twitter"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#">
+                  <i className="fa fa-linkedin"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#">
+                  <i className="fa fa-behance"></i>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
       {/* <!-- ***** Testimonials Ends ***** --> */}
 
       {/* <!-- ***** Contact Us Area Starts ***** --> */}
@@ -757,10 +743,10 @@ const Home = () => {
       <footer>
         <div className="container">
           <div className="row">
-            <div className="col-lg-3 col-md-6">
+            <div className="col-lg-6 col-md-6">
               <div className="footer-widget">
-                <h4>Colorlib</h4>
-                <p>A small river named Duden flows by their place and supplies it with the necessary regelialia. It is a paradisematic country, in which roasted parts of sentences fly into your mouth.</p>
+                <h4>SUPER GYM</h4>
+                <p>Super Gym là trung tâm thể hình hiện đại, cung cấp đa dạng dịch vụ như tập gym, yoga, và fitness với trang thiết bị tiên tiến cùng đội ngũ huấn luyện viên chuyên nghiệp. Đây là điểm đến lý tưởng cho mọi người muốn cải thiện sức khỏe và vóc dáng.</p>
                 <div className="footer-social">
                   <a href="#">
                     <FontAwesomeIcon icon={faTwitter} />
@@ -774,7 +760,7 @@ const Home = () => {
                 </div>
               </div>
             </div>
-            <div className="col-lg-3 col-md-6">
+            {/* <div className="col-lg-3 col-md-6">
               <div className="footer-widget">
                 <h4>Latest News</h4>
                 <ul className="footer-news">
@@ -790,8 +776,8 @@ const Home = () => {
                   </li>
                 </ul>
               </div>
-            </div>
-            <div className="col-lg-3 col-md-6">
+            </div> */}
+            {/* <div className="col-lg-3 col-md-6">
               <div className="footer-widget">
                 <h4>Quick Links</h4>
                 <ul className="footer-links">
@@ -815,25 +801,26 @@ const Home = () => {
                   </li>
                 </ul>
               </div>
-            </div>
-            <div className="col-lg-3 col-md-6">
+            </div> */}
+            <div className="col-lg-6 col-md-6">
               <div className="footer-widget">
-                <h4>Have a Questions?</h4>
+                <h4>ĐỊA CHỈ/LIÊN LẠC</h4>
                 <ul className="footer-contact">
                   <li>
-                    <i className="fa-solid fa-marker"></i> 203 Fake St. Mountain View, San Francisco, California, USA
+                    <i className="fa-solid fa-marker"></i> Super Gym Hoà Lạc 2
+                    396 thôn 4, Thạch Hoà, Thạch Thất, Hà Nội
                   </li>
                   <li>
                     <i className="fa-solid fa-phone"></i> +2 392 3929 210
                   </li>
                   <li>
-                    <i className="fas fa-envelope"></i> info@yourdomain.com
+                    <i className="fas fa-envelope"></i> SuperGymhoal@gmail.com
                   </li>
                 </ul>
               </div>
             </div>
           </div>
-          <div className="row">
+          {/* <div className="row">
             <div className="col-lg-12 text-center">
               <p>
                 Copyright &copy; 2024 All rights reserved | This template is made with <i className="fas fa-heart"></i> by{" "}
@@ -842,7 +829,7 @@ const Home = () => {
                 </a>
               </p>
             </div>
-          </div>
+          </div> */}
         </div>
       </footer>
 

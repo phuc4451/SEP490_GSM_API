@@ -134,29 +134,6 @@ const Home = () => {
     maintainAspectRatio: false,
   });
 
-  // const [op, setOp] = useState({
-  //   plugins: {
-  //     legend: {
-  //       display: true,
-  //       position: "bottom",
-  //       align: "start",
-  //       labels: {
-  //         boxWidth: 25, // Tăng độ rộng của ô màu
-  //         padding: 20,
-  //         font: {
-  //           size: 14,
-  //           weight: 'bold'
-  //         },
-  //         color: '#333333', // Màu chữ
-  //         usePointStyle: true, // Sử dụng style điểm thay vì hình vuông
-  //         pointStyle: 'circle' // Kiểu điểm (circle, rect, triangle, etc)
-  //       },
-  //       maxWidth: 300, // Độ rộng tối đa của legend
-  //       maxHeight: 200 // Chiều cao tối đa của legend
-  //     }
-  //   },
-  //   maintainAspectRatio: false,
-  // });
 
   useEffect(() => {
     // Lấy dữ liệu doanh thu từ API

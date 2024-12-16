@@ -13,7 +13,7 @@ namespace Alpha_API.Controllers
     [Route("api/[controller]")]
     [ApiController]
 
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,staff")]
     public class ImportEquipmentController : ControllerBase
     {
         private readonly FirebaseClient _firebaseClient;
@@ -24,24 +24,58 @@ namespace Alpha_API.Controllers
         }
 
         // GET: api/ImportEquipment
+        //[HttpGet]
+        //public async Task<ActionResult<IEnumerable<object>>> GetImportEquipments()
+        //{
+        //    // Fetch all import equipment data from Firebase
+        //    var importEquipments = await _firebaseClient
+        //        .Child("ImportEquipment")
+        //        .OnceAsync<ImportEquipment>();
+
+        //    // Map Firebase data to a list of objects with additional details if needed
+        //    var importEquipmentList = importEquipments.Select(import => new
+        //    {
+        //        ImportEquipmentId = import.Key,
+        //        ImportDate = import.Object.ImportDate,
+        //        ImportQuantity = import.Object.ImportQuantity,
+        //        ImportPrice = import.Object.ImportPrice,
+        //        ImportTotalPrice = import.Object.ImportTotalPrice,
+        //        EquipmentId = import.Object.EquipmentId
+        //    });
+
+        //    return Ok(importEquipmentList);
+        //}
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<object>>> GetImportEquipments()
         {
-            // Fetch all import equipment data from Firebase
-            var importEquipments = await _firebaseClient
+            var importEquipmentsTask = _firebaseClient
                 .Child("ImportEquipment")
                 .OnceAsync<ImportEquipment>();
+            var equipmentsTask = _firebaseClient
+                .Child("equipment")
+                .OnceAsync<Equipment>();
 
-            // Map Firebase data to a list of objects with additional details if needed
-            var importEquipmentList = importEquipments.Select(import => new
-            {
-                ImportEquipmentId = import.Key,
-                ImportDate = import.Object.ImportDate,
-                ImportQuantity = import.Object.ImportQuantity,
-                ImportPrice = import.Object.ImportPrice,
-                ImportTotalPrice = import.Object.ImportTotalPrice,
-                EquipmentId = import.Object.EquipmentId
-            });
+            await Task.WhenAll(importEquipmentsTask, equipmentsTask);
+
+            var importEquipments = importEquipmentsTask.Result;
+            var equipments = equipmentsTask.Result.ToDictionary(e => e.Key, e => new { e.Object.EquipmentCode, e.Object.EquipmentName });
+
+            var importEquipmentList = importEquipments
+                .Select(import => new
+                {
+                    ImportEquipmentId = import.Key,
+                    ImportDate = import.Object.ImportDate,
+                    ImportQuantity = import.Object.ImportQuantity,
+                    ImportPrice = import.Object.ImportPrice,
+                    ImportTotalPrice = import.Object.ImportTotalPrice,
+                    EquipmentId = import.Object.EquipmentId,
+                    EquipmentCode = equipments.GetValueOrDefault(import.Object.EquipmentId)?.EquipmentCode ?? "Unknown",
+                    EquipmentName = equipments.GetValueOrDefault(import.Object.EquipmentId)?.EquipmentName ?? "Unknown"
+                })
+                .OrderByDescending(x => x.ImportDate.Year)
+                .ThenByDescending(x => x.ImportDate.Month)
+                .ThenByDescending(x => x.ImportDate.Date);
 
             return Ok(importEquipmentList);
         }

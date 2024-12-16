@@ -23,16 +23,15 @@ const ManageBoxingCourse = () => {
   const errorModalRef = useRef(null);
   const [courses, setCourses] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   const [formData, setFormData] = useState({
     boxingOptionId: "string",
     description: "",
-    sessions: 0,
-    months: 0,
-    memberCount: 0,
+    sessions: "",
+    months: "",
+    memberCount: "",
     totalPrice: "",
   });
-
-  
 
   const openAddCustomerModal = () => {
     setFormData({
@@ -75,7 +74,7 @@ const ManageBoxingCourse = () => {
       sessions: course.sessions,
       months: course.months,
       memberCount: course.memberCount,
-      totalPrice: course.totalPrice,
+      totalPrice: course.totalPrice.toLocaleString(),
     });
     setCurrentCustomer(course); // Lưu thông tin gói tập để biết được ID của gói cần chỉnh sửa
     detailModalRef.current.style.display = "block"; // Hiển thị modal
@@ -146,38 +145,121 @@ const ManageBoxingCourse = () => {
   const formatNumberWithCommas = (number) => {
     return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
-  
+
   // Helper function to remove commas from string
   const removeCommas = (str) => {
     return str.replace(/,/g, "");
   };
 
-const handleInputChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === "totalPrice") {
-      // Remove existing commas and convert to number
-      const numericValue = removeCommas(value);
-
-      // Check if it's a valid positive number
-      if (!isNaN(numericValue) && parseFloat(numericValue) >= 0) {
-        setFormData(prevData => ({
-          ...prevData,
-          [name]: formatNumberWithCommas(numericValue),
-        }));
-        validateField(name, numericValue);
-      } else {
-        setErrors(prevErrors => ({
-          ...prevErrors,
-          totalPrice: "Giá phải là số dương.",
-        }));
-      }
-    } else {
-      setFormData(prevData => ({
-        ...prevData,
+    // For non-numeric fields (description)
+    if (name === "description") {
+      setFormData((prev) => ({
+        ...prev,
         [name]: value,
       }));
-      validateField(name, value);
+
+      // Validate description
+      if (!value || value.trim() === "") {
+        setValidationErrors((prev) => ({
+          ...prev,
+          [name]: "Tên gói Boxing không được để trống",
+        }));
+      } else {
+        setValidationErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        });
+      }
+      return;
+    }
+
+    // Special handling for price fields
+    if (name === "totalPrice") {
+      // Remove existing commas first
+      const cleanValue = removeCommas(value);
+
+      // Allow empty value or backspace
+      if (cleanValue === "") {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: "",
+        }));
+        setValidationErrors((prev) => ({
+          ...prev,
+          [name]: "Giá trị phải lớn hơn 0",
+        }));
+        return;
+      }
+
+      // Only process if the input is a valid number
+      if (/^\d*$/.test(cleanValue)) {
+        const numberValue = Number(cleanValue);
+
+        // Format with commas for display
+        const formattedValue = numberValue.toLocaleString("en-US").replace(/,/g, ",");
+
+        setFormData((prev) => ({
+          ...prev,
+          [name]: formattedValue,
+        }));
+
+        if (numberValue <= 0) {
+          setValidationErrors((prev) => ({
+            ...prev,
+            [name]: "Giá trị phải lớn hơn 0",
+          }));
+        } else {
+          setValidationErrors((prev) => {
+            const newErrors = { ...prev };
+            delete newErrors[name];
+            return newErrors;
+          });
+        }
+      }
+      return;
+    }
+
+    // For other numeric fields (sessions, memberCount)
+    const numericFields = ["sessions", "memberCount"];
+
+    if (numericFields.includes(name)) {
+      // Allow empty value
+      if (value === "") {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: "",
+        }));
+        setValidationErrors((prev) => ({
+          ...prev,
+          [name]: "Giá trị phải lớn hơn 0",
+        }));
+        return;
+      }
+
+      const numberValue = Number(value);
+      if (!isNaN(numberValue)) {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: value,
+        }));
+
+        if (numberValue <= 0) {
+          setValidationErrors((prev) => ({
+            ...prev,
+            [name]: "Giá trị phải lớn hơn 0",
+          }));
+        } else {
+          setValidationErrors((prev) => {
+            const newErrors = { ...prev };
+            delete newErrors[name];
+            return newErrors;
+          });
+        }
+      }
     }
   };
 
@@ -229,40 +311,50 @@ const handleInputChange = (e) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formattedData = {
-      ...formData,
-      totalPrice: parseFloat(removeCommas(formData.totalPrice)),
-      sessions: parseInt(formData.sessions),
-      months: 0,
-      memberCount: parseInt(formData.memberCount),
-    };
+
+    // Validate all fields before submission
+    const errors = {};
+    if (!formData.description || formData.description.trim() === "") {
+      errors.description = "Tên gói Boxing không được để trống";
+    }
+    if (!formData.sessions || Number(formData.sessions) <= 0) {
+      errors.sessions = "Số buổi phải lớn hơn 0";
+    }
+    if (!formData.memberCount || Number(formData.memberCount) <= 0) {
+      errors.memberCount = "Số thành viên phải lớn hơn 0";
+    }
+    if (!formData.totalPrice || Number(removeCommas(formData.totalPrice)) <= 0) {
+      errors.totalPrice = "Giá trị phải lớn hơn 0";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
 
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.post(
-        "http://localhost:5000/api/BoxingOption",
-        formattedData,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setCourses(prevCourses => [...prevCourses, response.data]);
-      setFormData({
+      const formattedData = {
         boxingOptionId: "string",
-        description: "",
-        sessions: 0,
+        description: formData.description,
+        sessions: parseInt(formData.sessions),
         months: 0,
-        memberCount: 0,
-        totalPrice: "",
+        memberCount: parseInt(formData.memberCount),
+        totalPrice: parseFloat(removeCommas(formData.totalPrice)),
+      };
+
+      const response = await axios.post("http://localhost:5000/api/BoxingOption", formattedData, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+
+      setCourses((prevCourses) => [...prevCourses, response.data]);
       closeModal();
-      showSuccessModal("Gói Boxing được lưu thành công");
+      showSuccessModal(`Gói Boxing ${formData.description} được lưu thành công`);
     } catch (error) {
       if (error.response && error.response.status === 409) {
-        showErrorModal("Gói Boxing đã tồn tại, vui lòng thêm gói Boxing khác!");
+        showErrorModal(`Gói Boxing ${formData.description} đã tồn tại, vui lòng thêm gói Boxing khác!`);
       } else {
-        showErrorModal("Lỗi khi tạo gói Boxing");
-        console.error("Error saving boxing course:", error);
+        showErrorModal(`Lỗi khi tạo gói Boxing`);
       }
     }
   };
@@ -423,31 +515,22 @@ const handleInputChange = (e) => {
                 </a>
               </div>
               <div className="modal-body">
-                {/* First row of input fields */}
                 <div className="row">
                   <div className="form-group col">
                     <label>
                       Tên gói Boxing <span className="icon-input">(*)</span>
                     </label>
-                    <input type="text" className="form-control" name="description" value={formData.description} onChange={handleInputChange} required />
-                    {errors.description && <div className="error-message">{errors.description}</div>}
+                    <input type="text" className={`form-control ${validationErrors.description ? "is-invalid" : ""}`} name="description" value={formData.description} onChange={handleInputChange} />
+                    {validationErrors.description && <div className="invalid-feedback">{validationErrors.description}</div>}
                   </div>
 
                   <div className="form-group col">
                     <label>
                       Thành viên trong gói <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
+                    <input type="number" className={`form-control ${validationErrors.memberCount ? "is-invalid" : ""}`} name="memberCount" value={formData.memberCount} onChange={handleInputChange} />
+                    {validationErrors.memberCount && <div className="invalid-feedback">{validationErrors.memberCount}</div>}
                   </div>
-
-                  {/* <div className="form-group col">
-                    <label>
-                      Thời hạn <span className="icon-input">(*)</span>
-                    </label>
-                    <input type="number" className="form-control" name="months" value={formData.months} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
-                  </div> */}
                 </div>
 
                 <div className="row">
@@ -455,24 +538,21 @@ const handleInputChange = (e) => {
                     <label>
                       Giá <span className="icon-input">(*)</span>
                     </label>
-
-                    <div className="input-group">
-                      <input type="text" className="form-control" name="totalPrice" value={formData.totalPrice} onChange={handleInputChange} required />
-                      <span className="input-readonly">VNĐ</span>
+                    <div className={`input-group ${validationErrors.totalPrice ? "is-invalid" : ""}`}>
+                      <input type="text" className={`form-control ${validationErrors.totalPrice ? "is-invalid" : ""}`} name="totalPrice" value={formData.totalPrice} onChange={handleInputChange} />
+                      <span className={`input-readonly ${validationErrors.totalPrice ? "error-border" : ""}`}>VNĐ</span>
                     </div>
-                    {errors.name && <div className="error-message">{errors.name}</div>}
+                    {validationErrors.totalPrice && <div className="invalid-feedback d-block">{validationErrors.totalPrice}</div>}
                   </div>
 
                   <div className="form-group col">
                     <label>
                       Số buổi <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="sessions" value={formData.sessions} onChange={handleInputChange} required />
-                    {errors.name && <div className="error-message">{errors.name}</div>}
+                    <input type="number" className={`form-control ${validationErrors.sessions ? "is-invalid" : ""}`} name="sessions" value={formData.sessions} onChange={handleInputChange} />
+                    {validationErrors.sessions && <div className="invalid-feedback">{validationErrors.sessions}</div>}
                   </div>
                 </div>
-
-                  
               </div>
 
               <div className="modal-footer">
@@ -506,7 +586,7 @@ const handleInputChange = (e) => {
                     <label>
                       Tên gói Boxing <span className="icon-input">(*)</span>
                     </label>
-                    <input type="text" className="form-control" name="description" value={formData.description} onChange={handleInputChange} required disabled/>
+                    <input type="text" className="form-control" name="description" value={formData.description} onChange={handleInputChange} required disabled />
                     {errors.description && <div className="error-message">{errors.description}</div>}
                   </div>
 
@@ -514,7 +594,7 @@ const handleInputChange = (e) => {
                     <label>
                       Thành viên trong gói <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required disabled/>
+                    <input type="number" className="form-control" name="memberCount" value={formData.memberCount} onChange={handleInputChange} required disabled />
                     {errors.name && <div className="error-message">{errors.name}</div>}
                   </div>
                 </div>
@@ -526,7 +606,7 @@ const handleInputChange = (e) => {
                     </label>
 
                     <div className="input-group">
-                      <input type="text" className="form-control" name="totalPrice" value={formData.totalPrice} onChange={handleInputChange} required disabled/>
+                      <input type="text" className="form-control" name="totalPrice" value={formData.totalPrice} onChange={handleInputChange} required disabled />
                       <span className="input-readonly">VNĐ</span>
                     </div>
                     {errors.name && <div className="error-message">{errors.name}</div>}
@@ -536,12 +616,10 @@ const handleInputChange = (e) => {
                     <label>
                       Số buổi <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className="form-control" name="sessions" value={formData.sessions} onChange={handleInputChange} required disabled/>
+                    <input type="number" className="form-control" name="sessions" value={formData.sessions} onChange={handleInputChange} required disabled />
                     {errors.name && <div className="error-message">{errors.name}</div>}
                   </div>
                 </div>
-
-                  
               </div>
 
               {/* <div className="modal-footer">

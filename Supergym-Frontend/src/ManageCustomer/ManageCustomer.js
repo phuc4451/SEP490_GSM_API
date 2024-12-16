@@ -98,6 +98,11 @@ const ManageCustomer = () => {
   //END PAGENATION
 
   const openAddCustomerModal = () => {
+    // Reset file input before opening modal
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    
     setFormData({
       name: "",
       gender: "male",
@@ -105,22 +110,24 @@ const ManageCustomer = () => {
       email: "",
       phone: "",
       address: "",
-      userAvatar: null, // Đặt lại ảnh đã chọn
+      userAvatar: "",
       idCard: "",
     });
-    setPreviewImage(null); // Đặt lại ảnh xem trước
-    if (fileInputRef.current) {
-      fileInputRef.current.value = null; // Đặt lại giá trị input file
-    }
-    setCurrentCustomer(null); // Đặt lại khách hàng hiện tại để thêm mới
-    customerModalRef.current.style.display = "block"; // Hiển thị modal
-    customerModalRef.current.classList.add("active"); // Thêm class 'active'
-    document.querySelector(".modal-overlay").style.display = "block"; // Hiển thị overlay
+    setPreviewImage("");
+    setCurrentCustomer(null);
+    customerModalRef.current.style.display = "block";
+    customerModalRef.current.classList.add("active");
+    document.querySelector(".modal-overlay").style.display = "block";
   };
 
   const openEditCustomerModal = (customer) => {
     const dob = customer.dob || {};
     const formattedDob = `${dob.year || "----"}-${String(dob.month || "01").padStart(2, "0")}-${String(dob.date || "01").padStart(2, "0")}`;
+
+    // Reset file input before setting new data
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
 
     setFormData({
       name: customer.name,
@@ -131,13 +138,15 @@ const ManageCustomer = () => {
       address: customer.address,
       userId: customer.userId,
       idCard: customer.idCard,
-      userAvatar: customer.userAvatar,
+      userAvatar: customer.userAvatar || "",
     });
+    
     if (customer.userAvatar) {
-      setPreviewImage(customer.userAvatar); // Set the current avatar to preview image
+      setPreviewImage(customer.userAvatar);
     } else {
-      setPreviewImage(null); // No avatar, clear the preview
+      setPreviewImage("");
     }
+    
     setCurrentCustomer(customer);
     customerModalRef.current.style.display = "block";
     customerModalRef.current.classList.add("active");
@@ -148,8 +157,12 @@ const ManageCustomer = () => {
     customerModalRef.current.style.display = "none";
     customerModalRef.current.classList.remove("active");
     document.querySelector(".modal-overlay").style.display = "none";
-    setCurrentCustomer(null); // Đặt lại khách hàng hiện tại
-    setPreviewImage(null); // Đặt lại ảnh xem trước
+    setCurrentCustomer(null);
+    setPreviewImage("");
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     setFormData({
       name: "",
       gender: "male",
@@ -157,7 +170,8 @@ const ManageCustomer = () => {
       email: "",
       phone: "",
       address: "",
-      userAvatar: null, // Đặt lại ảnh đã chọn
+      userAvatar: "",
+      idCard: "",
     });
   };
 
@@ -215,13 +229,13 @@ const ManageCustomer = () => {
           delete newErrors.address; // Clear error if valid
         }
         break;
-      case "idCard":
-        if (!value) {
-          newErrors.idCard = "Số căn cước không được để trống.";
-        } else {
-          delete newErrors.idCard; // Clear error if valid
-        }
-        break;
+      // case "idCard":
+      //   if (!value) {
+      //     newErrors.idCard = "Số căn cước không được để trống.";
+      //   } else {
+      //     delete newErrors.idCard; // Clear error if valid
+      //   }
+      //   break;
       case "gender":
         if (!value) {
           newErrors.gender = "Vui lòng chọn giới tính.";
@@ -263,9 +277,9 @@ const ManageCustomer = () => {
       newErrors.address = "Địa chỉ không được để trống.";
     }
 
-    if (!formData.idCard) {
-      newErrors.idCard = "Số căn cước không được để trống.";
-    }
+    // if (!formData.idCard) {
+    //   newErrors.idCard = "Số căn cước không được để trống.";
+    // }
 
     if (!formData.gender) {
       newErrors.gender = "Vui lòng chọn giới tính.";
@@ -337,8 +351,8 @@ const ManageCustomer = () => {
             address: formData.address,
             phone: formData.phone,
             roleId: "string",
-            userAvatar: formData.userAvatar,
-            idCard: formData.idCard,
+            userAvatar: formData.userAvatar || "", // Ensure empty string if no avatar
+            idCard: formData.idCard || "", // Ensure empty string if no ID card
           };
 
           // Update customer
@@ -356,8 +370,8 @@ const ManageCustomer = () => {
             dob: dobData,
             address: formData.address,
             phone: formData.phone,
-            userAvatar: formData.userAvatar,
-            idCard: formData.idCard,
+            userAvatar: formData.userAvatar || "", // Ensure empty string if no avatar
+            idCard: formData.idCard || "", // Ensure empty string if no ID card
           };
           // Add new customer
           const response = await axios.post("http://localhost:5000/api/Users/addcustomer", customerDataAdd, {
@@ -376,6 +390,8 @@ const ManageCustomer = () => {
           dob: "",
           address: "",
           phone: "",
+          userAvatar: "", // Reset to empty string
+          idCard: "",
         });
         closeModal();
         showSuccessModal("Người dùng được lưu thành công");
@@ -413,24 +429,23 @@ const ManageCustomer = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Use FileReader to convert image to base64
       const reader = new FileReader();
-
       reader.onloadend = () => {
-        // Extract base64 data without the "data:image/jpeg;base64," prefix
-        const base64String = reader.result.split(",")[1]; // Remove the prefix
-
-        // Set preview image for display (include the full base64 string with prefix)
-        setPreviewImage(reader.result.split(",")[1]); // Set only the image data for preview
-
-        // Store base64 image without the prefix in formData
+        const base64String = reader.result.split(",")[1];
+        setPreviewImage(base64String);
         setFormData({
           ...formData,
-          userAvatar: base64String, // Store base64 image without the prefix in formData
+          userAvatar: base64String,
         });
       };
-
-      reader.readAsDataURL(file); // Convert the file to base64
+      reader.readAsDataURL(file);
+    } else {
+      // When no file is selected or file selection is cancelled
+      setPreviewImage("");
+      setFormData({
+        ...formData,
+        userAvatar: "",
+      });
     }
   };
 
@@ -445,7 +460,7 @@ const ManageCustomer = () => {
     <>
       <Header />
 
-      {isLoading ? <Preloader /> : <div>{/* Nội dung khác của ManageCustomer */}</div>}
+      {isLoading ? <Preloader /> : <div></div>}
       {/* <!-- ***** Preloader End ***** --> */}
       {isSubmitting && <LoadingSpinner isLoading={true} />}
 
@@ -626,9 +641,9 @@ const ManageCustomer = () => {
 
                   <div className="form-group col">
                     <label>
-                      Số căn cước <span className="icon-input">(*)</span>
+                      Số căn cước 
                     </label>
-                    <input type="text" className={`form-control ${errors.idCard ? "is-invalid" : ""}`} name="idCard" value={formData.idCard} onChange={handleInputChange} required />
+                    <input type="text" className={`form-control ${errors.idCard ? "is-invalid" : ""}`} name="idCard" value={formData.idCard} onChange={handleInputChange} />
                     {errors.idCard && <div className="error-message">{errors.idCard}</div>}
                   </div>
                 </div>
@@ -636,7 +651,7 @@ const ManageCustomer = () => {
                 {/* Gender radio buttons */}
                 <div className="row">
                   <div className="form-group col">
-                    <label>Giới tính</label>
+                    <label>Giới tính <span className="icon-input">(*)</span></label>
                     <div className="radio-group">
                       <label>
                         <input type="radio" name="gender" value="male" checked={formData.gender === "male"} onChange={handleInputChange} />

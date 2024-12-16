@@ -37,7 +37,7 @@ const ManageCourse = () => {
   const formatNumberWithCommas = (number) => {
     return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
-  
+
   // Helper function to remove commas from string
   const removeCommas = (str) => {
     return str.replace(/,/g, "");
@@ -165,27 +165,26 @@ const ManageCourse = () => {
     fetchCourses();
   }, []);
 
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-  
+
     if (name === "price") {
       // Allow empty value for price
-      if (value === '') {
+      if (value === "") {
         setFormData({
           ...formData,
-          [name]: ''
+          [name]: "",
         });
         setErrors((prevErrors) => ({
           ...prevErrors,
-          price: "Giá phải là số dương."
+          price: "Giá phải là số dương.",
         }));
         return;
       }
-  
+
       // Remove existing commas and convert to number
       const numericValue = removeCommas(value);
-  
+
       // Check if it's a valid number
       if (!isNaN(numericValue)) {
         const numberValue = parseFloat(numericValue);
@@ -193,7 +192,7 @@ const ManageCourse = () => {
         if (numberValue >= 0) {
           setFormData({
             ...formData,
-            [name]: formatNumberWithCommas(numericValue)
+            [name]: formatNumberWithCommas(numericValue),
           });
           // Clear error if valid
           setErrors((prevErrors) => {
@@ -204,34 +203,34 @@ const ManageCourse = () => {
         } else {
           setErrors((prevErrors) => ({
             ...prevErrors,
-            price: "Giá phải là số dương."
+            price: "Giá phải là số dương.",
           }));
         }
       } else {
         setErrors((prevErrors) => ({
           ...prevErrors,
-          price: "Giá phải là số dương."
+          price: "Giá phải là số dương.",
         }));
       }
     } else if (name === "durationMonths") {
       // Handle duration input
-      if (value === '') {
+      if (value === "") {
         setFormData({
           ...formData,
-          [name]: ''
+          [name]: "",
         });
         setErrors((prevErrors) => ({
           ...prevErrors,
-          durationMonths: "Thời gian phải lớn hơn hoặc bằng 0."
+          durationMonths: "Thời gian phải lớn hơn hoặc bằng 0.",
         }));
         return;
       }
-  
+
       const numberValue = Number(value);
       if (!isNaN(numberValue) && numberValue >= 0) {
         setFormData({
           ...formData,
-          [name]: value
+          [name]: value,
         });
         // Clear error if valid
         setErrors((prevErrors) => {
@@ -242,57 +241,56 @@ const ManageCourse = () => {
       } else {
         setErrors((prevErrors) => ({
           ...prevErrors,
-          durationMonths: "Thời gian phải lớn hơn hoặc bằng 0."
+          durationMonths: "Thời gian phải lớn hơn hoặc bằng 0.",
         }));
       }
     } else {
       setFormData({
         ...formData,
-        [name]: value
+        [name]: value,
       });
       validateField(name, value);
     }
   };
 
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
 
-const validateField = (name, value) => {
-  const newErrors = { ...errors };
+    switch (name) {
+      case "name":
+        if (value.length <= 0) {
+          newErrors.name = "Tên gói phải có ít nhất từ 1 ký tự.";
+        } else {
+          delete newErrors.name;
+        }
+        break;
+      case "durationMonths":
+        if (value.length <= 0) {
+          newErrors.durationMonths = "Thời gian phải lớn hơn 0";
+        } else {
+          delete newErrors.durationMonths;
+        }
+        break;
+      case "price":
+        if (value === "" || value <= 0) {
+          newErrors.price = "Giá gói tập phải lớn hơn 0";
+        } else {
+          delete newErrors.price;
+        }
+        break;
+      case "sessionCount":
+        if (!value) {
+          newErrors.sessionCount = "Số buổi phải lớn hơn hoặc bằng 0";
+        } else {
+          delete newErrors.sessionCount;
+        }
+        break;
+      default:
+        break;
+    }
 
-  switch (name) {
-    case "name":
-      if (value.length <= 0) {
-        newErrors.name = "Tên gói phải có ít nhất từ 1 ký tự.";
-      } else {
-        delete newErrors.name;
-      }
-      break;
-    case "durationMonths":
-      if (value.length <= 0) {
-        newErrors.durationMonths = "Thời gian phải lớn hơn 0";
-      } else {
-        delete newErrors.durationMonths;
-      }
-      break;
-    case "price":
-      if (value === '' || value <= 0) {
-        newErrors.price = "Giá gói tập phải lớn hơn 0";
-      } else {
-        delete newErrors.price;
-      }
-      break;
-    case "sessionCount":
-      if (!value) {
-        newErrors.sessionCount = "Số buổi phải lớn hơn hoặc bằng 0";
-      } else {
-        delete newErrors.sessionCount;
-      }
-      break;
-    default:
-      break;
-  }
-
-  setErrors(newErrors);
-};
+    setErrors(newErrors);
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -326,16 +324,12 @@ const validateField = (name, value) => {
         const submitData = {
           ...formData,
           price: parseFloat(removeCommas(formData.price)),
-          sessionCount: 0
+          sessionCount: 0,
         };
 
-        const response = await axios.post(
-          "http://localhost:5000/api/GymMembership",
-          submitData,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const response = await axios.post("http://localhost:5000/api/GymMembership", submitData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setCourses((prevCourses) => [...prevCourses, response.data]);
         setFormData({
           name: "",
@@ -422,13 +416,13 @@ const validateField = (name, value) => {
                         <div className="row">
                           <div className="col-lg-6">
                             <p>Thời gian: {course.durationMonths} tháng</p>
-                            <p>Số buổi: {course.sessionCount}</p>
+                            {/* <p>Số buổi: {course.sessionCount}</p> */}
+                            <a href="#" onClick={() => openDetailModal(course)} className="btn-fix detail-button">
+                              Chi tiết
+                            </a>
                           </div>
                         </div>
 
-                        <a href="#" onClick={() => openDetailModal(course)} className="btn-fix detail-button">
-                          Chi tiết
-                        </a>
                         {/* <a href="#" className="btn-fix edit-button">
                           Sửa
                         </a>
@@ -574,7 +568,6 @@ const validateField = (name, value) => {
         </div>
       </div>
 
-
       <div ref={detailModalRef} className="modal">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
@@ -592,7 +585,7 @@ const validateField = (name, value) => {
                     <label>
                       Tên gói tập <span className="icon-input">(*)</span>
                     </label>
-                    <input type="text" className={`form-control ${errors.name ? "is-invalid" : ""}`} name="name" value={formData.name} onChange={handleInputChange} required disabled/>
+                    <input type="text" className={`form-control ${errors.name ? "is-invalid" : ""}`} name="name" value={formData.name} onChange={handleInputChange} required disabled />
                     {errors.name && <div className="error-message">{errors.name}</div>}
                   </div>
 
@@ -600,7 +593,7 @@ const validateField = (name, value) => {
                     <label>
                       Số tháng <span className="icon-input">(*)</span>
                     </label>
-                    <input type="number" className={`form-control ${errors.durationMonths ? "is-invalid" : ""}`} name="durationMonths" value={formData.durationMonths} onChange={handleInputChange} required disabled/>
+                    <input type="number" className={`form-control ${errors.durationMonths ? "is-invalid" : ""}`} name="durationMonths" value={formData.durationMonths} onChange={handleInputChange} required disabled />
                     {errors.durationMonths && <div className="error-message">{errors.durationMonths}</div>}
                   </div>
                 </div>
@@ -611,7 +604,7 @@ const validateField = (name, value) => {
                       Giá <span className="icon-input">(*)</span>
                     </label>
                     <div className="input-group">
-                      <input type="text" className={`form-control ${errors.price ? "is-invalid" : ""}`} name="price" value={formData.price} onChange={handleInputChange} required disabled/>
+                      <input type="text" className={`form-control ${errors.price ? "is-invalid" : ""}`} name="price" value={formData.price} onChange={handleInputChange} required disabled />
 
                       <span className="input-readonly">VNĐ</span>
                     </div>

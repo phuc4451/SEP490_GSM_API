@@ -46,7 +46,7 @@ const ManageTrainerCourse = () => {
     });
     // Clear all validation errors
     setValidationErrors({});
-    
+
     setPreviewImage(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = null;
@@ -56,7 +56,7 @@ const ManageTrainerCourse = () => {
     customerModalRef.current.classList.add("active");
     document.querySelector(".modal-overlay").style.display = "block";
   };
-  
+
   const openAddCustomerModalByMonth = () => {
     // Reset form data
     setFormData({
@@ -69,7 +69,7 @@ const ManageTrainerCourse = () => {
     });
     // Clear all validation errors
     setValidationErrors({});
-    
+
     setPreviewImage(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = null;
@@ -86,8 +86,8 @@ const ManageTrainerCourse = () => {
       sessionCountMin: course.sessionCountMin || "",
       sessionCountMax: course.sessionCountMax || "",
       memberCount: course.memberCount || "",
-      pricePerPersonPerSession: course.pricePerPersonPerSession || "",
-      pricePerPersonPerMonth: course.pricePerPersonPerMonth || "",
+      pricePerPersonPerSession: course.pricePerPersonPerSession.toLocaleString() || "",
+      pricePerPersonPerMonth: course.pricePerPersonPerMonth.toLocaleString() || "",
     });
     setCurrentCustomer(course); // Set current customer for editing
     detailPackageModalRef.current.style.display = "block"; // Show modal
@@ -103,7 +103,7 @@ const ManageTrainerCourse = () => {
     customerModalRef.current.style.display = "none";
     customerModalRef.current.classList.remove("active");
     document.querySelector(".modal-overlay").style.display = "none";
-    
+
     // Reset everything
     setCurrentCustomer(null);
     setPreviewImage(null);
@@ -166,6 +166,16 @@ const ManageTrainerCourse = () => {
     fetchCourses();
   }, []); // Empty dependency array ensures this only runs once on component mount
 
+  const formatNumberWithCommas = (number) => {
+    if (!number) return '';
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+  
+  const removeCommas = (str) => {
+    if (!str) return '';
+    return str.replace(/,/g, '');
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
@@ -192,15 +202,55 @@ const ManageTrainerCourse = () => {
       return;
     }
   
-    // For numeric fields
-    const numericFields = [
-      'sessionCountMin', 
-      'sessionCountMax', 
-      'memberCount', 
-      'pricePerPersonPerSession', 
-      'pricePerPersonPerMonth'
-    ];
+    // Special handling for price fields
+    if (name === 'pricePerPersonPerSession' || name === 'pricePerPersonPerMonth') {
+      // Remove existing commas first
+      const cleanValue = removeCommas(value);
+      
+      // Allow empty value or backspace
+      if (cleanValue === '') {
+        setFormData(prev => ({
+          ...prev,
+          [name]: ''
+        }));
+        setValidationErrors(prev => ({
+          ...prev,
+          [name]: "Giá trị phải lớn hơn 0"
+        }));
+        return;
+      }
   
+      // Only process if the input is a valid number
+      if (/^\d*$/.test(cleanValue)) {
+        const numberValue = Number(cleanValue);
+        
+        // Format with commas for display
+        const formattedValue = numberValue.toLocaleString('en-US').replace(/,/g, ',');
+        
+        setFormData(prev => ({
+          ...prev,
+          [name]: formattedValue
+        }));
+  
+        if (numberValue <= 0) {
+          setValidationErrors(prev => ({
+            ...prev,
+            [name]: "Giá trị phải lớn hơn 0"
+          }));
+        } else {
+          setValidationErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[name];
+            return newErrors;
+          });
+        }
+      }
+      return;
+    }
+  
+    // For other numeric fields
+    const numericFields = ['sessionCountMin', 'sessionCountMax', 'memberCount'];
+    
     if (numericFields.includes(name)) {
       // Allow empty value
       if (value === '') {
@@ -229,7 +279,6 @@ const ManageTrainerCourse = () => {
             [name]: "Giá trị phải lớn hơn 0"
           }));
         } else {
-          // Special validation for sessionCountMax
           if (name === 'sessionCountMax' && 
               Number(formData.sessionCountMin) > 0 && 
               numberValue <= Number(formData.sessionCountMin)) {
@@ -246,16 +295,6 @@ const ManageTrainerCourse = () => {
           }
         }
       }
-    }
-  
-    // Update sessionCountMax validation when sessionCountMin changes
-    if (name === 'sessionCountMin' && Number(value) > 0 && 
-        Number(formData.sessionCountMax) > 0 && 
-        Number(formData.sessionCountMax) <= Number(value)) {
-      setValidationErrors(prev => ({
-        ...prev,
-        sessionCountMax: "Số buổi tối đa phải lớn hơn số buổi tối thiểu"
-      }));
     }
   };
 
@@ -275,7 +314,7 @@ const ManageTrainerCourse = () => {
         sessionCountMin: Number(formData.sessionCountMin),
         sessionCountMax: Number(formData.sessionCountMax),
         memberCount: Number(formData.memberCount),
-        pricePerPersonPerSession: Number(formData.pricePerPersonPerSession),
+        pricePerPersonPerSession: Number(removeCommas(formData.pricePerPersonPerSession)),
         pricePerPersonPerMonth: 0,
       };
       const response = await axios.post("http://localhost:5000/api/RentalOption", packageSession, {
@@ -310,7 +349,7 @@ const ManageTrainerCourse = () => {
         sessionCountMax: 0,
         memberCount: Number(formData.memberCount),
         pricePerPersonPerSession: 0,
-        pricePerPersonPerMonth: Number(formData.pricePerPersonPerMonth),
+        pricePerPersonPerMonth: Number(removeCommas(formData.pricePerPersonPerMonth)),
       };
       const response = await axios.post("http://localhost:5000/api/RentalOption", packageMonth, {
         headers: { Authorization: `Bearer ${token}` },
@@ -551,16 +590,17 @@ const ManageTrainerCourse = () => {
                   </div>
                 </div>
 
+                {/* Replace the existing price input section with this updated version */}
                 <div className="row">
                   <div className="form-group col">
                     <label>
                       Giá 1 người/buổi <span className="icon-input">(*)</span>
                     </label>
-                    <div className="input-group">
-                      <input type="number" className={`form-control ${validationErrors.pricePerPersonPerSession ? "is-invalid" : ""}`} name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} />
-                      <span className="input-readonly">VNĐ</span>
+                    <div className={`input-group ${validationErrors.pricePerPersonPerSession ? "is-invalid" : ""}`}>
+                      <input type="text" className={`form-control ${validationErrors.pricePerPersonPerSession ? "is-invalid" : ""}`} name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} />
+                      <span className={`input-readonly ${validationErrors.pricePerPersonPerSession ? "error-border" : ""}`}>VNĐ</span>
                     </div>
-                    {validationErrors.pricePerPersonPerSession && <div className="invalid-feedback">{validationErrors.pricePerPersonPerSession}</div>}
+                    {validationErrors.pricePerPersonPerSession && <div className="invalid-feedback d-block">{validationErrors.pricePerPersonPerSession}</div>}
                   </div>
                 </div>
               </div>
@@ -612,11 +652,11 @@ const ManageTrainerCourse = () => {
                     <label>
                       Giá 1 người/tháng <span className="icon-input">(*)</span>
                     </label>
-                    <div className="input-group">
-                      <input type="number" className={`form-control ${validationErrors.pricePerPersonPerMonth ? "is-invalid" : ""}`} name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} />
-                      <span className="input-readonly">VNĐ</span>
+                    <div className={`input-group ${validationErrors.pricePerPersonPerMonth ? "is-invalid" : ""}`}>
+                      <input type="text" className={`form-control ${validationErrors.pricePerPersonPerMonth ? "is-invalid" : ""}`} name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} />
+                      <span className={`input-readonly ${validationErrors.pricePerPersonPerMonth ? "error-border" : ""}`}>VNĐ</span>
                     </div>
-                    {validationErrors.pricePerPersonPerMonth && <div className="invalid-feedback">{validationErrors.pricePerPersonPerMonth}</div>}
+                    {validationErrors.pricePerPersonPerMonth && <div className="invalid-feedback d-block">{validationErrors.pricePerPersonPerMonth}</div>}
                   </div>
                 </div>
               </div>
@@ -690,14 +730,14 @@ const ManageTrainerCourse = () => {
                     <label>
                       Giá 1 người/buổi <span className="icon-input">(*)</span>
                     </label>
-                    <input disabled type="number" className="form-control" name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} required />
+                    <input disabled type="text" className="form-control" name="pricePerPersonPerSession" value={formData.pricePerPersonPerSession} onChange={handleInputChange} required />
                   </div>
 
                   <div className="form-group col">
                     <label>
                       Giá 1 người/tháng <span className="icon-input">(*)</span>
                     </label>
-                    <input disabled type="number" className="form-control" name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} required />
+                    <input disabled type="text" className="form-control" name="pricePerPersonPerMonth" value={formData.pricePerPersonPerMonth} onChange={handleInputChange} required />
                   </div>
                 </div>
               </div>

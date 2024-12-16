@@ -15,6 +15,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import { Delete } from "@mui/icons-material";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
+import LoadingSpinner from "../utils/LoadingOverlay";
 
 const EditTrainer = () => {
   const [trainerDataList, setTrainerDataList] = useState([]);
@@ -44,6 +45,7 @@ const EditTrainer = () => {
   const [rentalOptions, setRentalOptions] = useState([]);
   const [boxingOptions, setBoxingOptions] = useState([]);
   const [selectedOption, setSelectedOption] = useState(""); // to store selected option
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     trainerId: "",
@@ -286,13 +288,14 @@ const EditTrainer = () => {
           delete newErrors.address; // Clear error if valid
         }
         break;
-      case "idCard":
-        if (!value) {
-          newErrors.idCard = "Số căn cước không được để trống.";
-        } else {
-          delete newErrors.idCard; // Clear error if valid
-        }
-        break;
+        case "idCard":
+          // Kiểm tra nếu không phải là số hoặc không đúng 12 chữ số
+          if (!value || !/^\d+$/.test(value) || value.length !== 12) {
+            newErrors.idCard = "Số căn cước phải là số và có 12 chữ số.";
+          } else {
+            delete newErrors.idCard;
+          }
+          break;
       case "gender":
         if (!value) {
           newErrors.gender = "Vui lòng chọn giới tính.";
@@ -334,8 +337,8 @@ const EditTrainer = () => {
       newErrors.address = "Địa chỉ không được để trống.";
     }
 
-    if (!formData.idCard) {
-      newErrors.idCard = "Số căn cước không được để trống.";
+    if (!formData.idCard || !/^\d+$/.test(formData.idCard) || formData.idCard.length !== 12) {
+      newErrors.idCard = "Số căn cước phải là số và có đúng 12 chữ số.";
     }
 
     if (!formData.gender) {
@@ -401,6 +404,8 @@ const EditTrainer = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
     if (validateForm()) {
       const token = localStorage.getItem("token");
 
@@ -472,6 +477,9 @@ const EditTrainer = () => {
       } catch (error) {
         console.error("Error saving trainer:", error);
         showErrorModal(error.message);
+      } finally {
+    setIsSubmitting(false);
+
       }
     }
   };
@@ -671,6 +679,7 @@ const EditTrainer = () => {
 
       {isLoading ? <Preloader /> : <div>{/* Nội dung khác của ManageTrainer */}</div>}
       {/* <!-- ***** Preloader End ***** --> */}
+      {isSubmitting && <LoadingSpinner isLoading={true} />}
 
       <div className="user-select">
         <h1>Sửa thông tin huấn luyện viên trong hệ thống super gym</h1>
@@ -741,9 +750,9 @@ const EditTrainer = () => {
                     <a href="#" onClick={() => openEditTrainerModal(trainer)} className="edit">
                       <EditIcon />
                     </a>
-                    <a href="#" onClick={() => openViewSalaryModal(trainer)} className="view">
+                    {/* <a href="#" onClick={() => openViewSalaryModal(trainer)} className="view">
                       <MonetizationOnIcon />
-                    </a>
+                    </a> */}
                   </td>
                 </tr>
               ))}

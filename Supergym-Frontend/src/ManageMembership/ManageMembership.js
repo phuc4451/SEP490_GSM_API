@@ -374,16 +374,28 @@ const ManageMembership = () => {
       if (response.ok) {
         closeModal();
   
-        if (responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
+        // Nếu là thanh toán QR và có QR URL
+        if (qrPaymentInput && responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
           setQrDataUrl(responsejson[0].qrDataUrl);
-          if (qrPaymentInput) {
-            showQr();
-          }
+          showQr();
         }
   
-        // Only show success modal for non-QR payments when registration is successful
-        if (!qrPaymentInput) {
-          showSuccessModal("Đăng ký thành viên thành công");
+        if (!qrPaymentInput && responsejson) {
+          const money = responsejson;
+          console.log("Money to pay:", money);
+  
+          if (money !== undefined && money !== null) {
+            const formattedMoney = new Intl.NumberFormat('vi-VN', {
+              style: 'currency',
+              currency: 'VND'
+            }).format(money);
+            
+            showSuccessModal(`Đăng ký thành công! Số tiền cần thanh toán: ${formattedMoney}`);
+          } else {
+            // Fallback message nếu không có moneyToPay
+            showSuccessModal("Đăng ký huấn luyện viên thành công");
+            console.log("No money value found in response");
+          }
         }
       } else {
         // If response isn't ok, show error message from server if available

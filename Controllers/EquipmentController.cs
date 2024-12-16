@@ -9,7 +9,7 @@ using System.Text;
 [Route("api/[controller]")]
 [ApiController]
 
-[Authorize(Roles = "admin")]
+[Authorize(Roles = "admin,staff")]
 public class EquipmentController : ControllerBase
 {
     private readonly FirebaseClient _firebaseClient;

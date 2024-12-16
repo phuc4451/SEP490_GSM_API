@@ -15,6 +15,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import LoadingSpinner from "../utils/LoadingOverlay";
 
 import ErrorModal from "../assets/hook/modal/errorModal.js";
 const ManageEquipment = () => {
@@ -44,7 +45,10 @@ const ManageEquipment = () => {
   const [currentEquipment, setCurrentEquipment] = useState(null); // for editing equipment
   const [searchCode, setSearchCode] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [isSaving, setIsSaving] = useState(false);
+  const [importHistoryData, setImportHistoryData] = useState([]);
+  const [showImportHistoryModal, setShowImportHistoryModal] = useState(false);
+  const importHistoryModalRef = useRef(null);
   const [formData, setFormData] = useState({
     equipmentName: "",
     equipmentCode: "",
@@ -77,6 +81,26 @@ const ManageEquipment = () => {
     equipmentMaterial: "",
   };
 
+  const fetchImportHistory = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const response = await axios.get("http://localhost:5000/api/ImportEquipment", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setImportHistoryData(response.data);
+      importHistoryModalRef.current.style.display = "block";
+      document.querySelector(".modal-overlay").style.display = "block";
+    } catch (error) {
+      console.error("Error fetching import history:", error);
+      showErrorModal("Không thể lấy dữ liệu lịch sử nhập thiết bị");
+    }
+  };
+
+  const closeImportHistoryModal = () => {
+    importHistoryModalRef.current.style.display = "none";
+    document.querySelector(".modal-overlay").style.display = "none";
+  };
+
   const formatNumberWithCommas = (value) => {
     return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
@@ -85,37 +109,42 @@ const ManageEquipment = () => {
     const { name, value } = e.target;
 
     if (name === "equipmentImportPrice") {
-      // Existing price handling logic remains the same
+      // Cho phép trường input trống
+      if (!value) {
+        setFormData({
+          ...formData,
+          equipmentImportPrice: "",
+        });
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          equipmentImportPrice: "Giá nhập là bắt buộc",
+        }));
+        return;
+      }
+
+      // Xóa dấu phẩy từ giá trị nhập vào để kiểm tra
       const numericValue = value.replace(/,/g, "");
 
+      // Kiểm tra nếu là số và lớn hơn 0
       if (!isNaN(numericValue) && parseFloat(numericValue) > 0) {
         setFormData({
           ...formData,
           equipmentImportPrice: formatNumberWithCommas(numericValue),
         });
-        validateField(name, numericValue);
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          equipmentImportPrice: "",
+        }));
       } else {
+        setFormData({
+          ...formData,
+          equipmentImportPrice: value,
+        });
         setErrors((prevErrors) => ({
           ...prevErrors,
-          equipmentImportPrice: "Giá nhập phải là số dương.",
+          equipmentImportPrice: "Giá nhập phải là số dương",
         }));
       }
-    } else if (name === "equipmentQuantity" && currentEquipment) {
-      // Add validation for quantity when editing
-      const newQuantity = parseInt(value);
-      if (newQuantity > currentEquipment.equipmentQuantity) {
-        setErrors((prevErrors) => ({
-          ...prevErrors,
-          equipmentQuantity: "Số lượng không thể vượt quá số lượng hiện tại.",
-        }));
-        // Keep the current value in the form
-        return;
-      }
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-      validateField(name, value);
     } else {
       setFormData({
         ...formData,
@@ -139,8 +168,13 @@ const ManageEquipment = () => {
         else if (value.length < 3) errorMsg = "Mã thiết bị phải có ít nhất 3 ký tự.";
         break;
       case "equipmentImportPrice":
-        if (!value || isNaN(value) || parseFloat(value) <= 0) {
-          errorMsg = "Giá nhập phải là số dương.";
+        if (!value) {
+          errorMsg = "Giá nhập là bắt buộc";
+        } else {
+          const numericValue = value.replace(/,/g, "");
+          if (isNaN(numericValue) || parseFloat(numericValue) <= 0) {
+            errorMsg = "Giá nhập phải là số dương";
+          }
         }
         break;
       case "equipmentBrand":
@@ -674,16 +708,19 @@ const ManageEquipment = () => {
                 <h2>Quản lí thiết bị</h2>
               </div>
               <div className="col-sm-6 d-flex justify-content-end">
+                <button onClick={fetchImportHistory} className="btn btn-info me-2">
+                  <SearchIcon /> Xem lịch sử nhập
+                </button>
                 <button onClick={openAddExistingEquipmentModal} className="btn btn-custom-equipment me-2">
                   <AddCircleOutlineIcon /> Nhập thiết bị có sẵn
                 </button>
                 <button onClick={openAddNewEquipmentModal} className="btn btn-success">
                   <AddCircleOutlineIcon /> Nhập thiết bị mới
                 </button>
-                <button className="btn btn-exel-custom align-items-center" onClick={handleFileUpload}>
+                {/* <button className="btn btn-exel-custom align-items-center" onClick={handleFileUpload}>
                   Nhập <FileDownloadIcon />
-                </button>
-                <input className="custom-input-file" type="file" accept=".xlsx, .xls" onChange={handleFileChange} />
+                </button> */}
+                {/* <input className="custom-input-file" type="file" accept=".xlsx, .xls" onChange={handleFileChange} /> */}
               </div>
             </div>
           </div>
@@ -726,7 +763,7 @@ const ManageEquipment = () => {
 
           <div className="clearfix-el">
             <div className="hint-text">
-              Showing <b>{currentEquipments.length}</b> out of <b>{equipmentList.length}</b> entries
+              Hiển thị <b>{currentEquipments.length}</b> trong <b>{equipmentList.length}</b> kết quả
             </div>
             <ul className="pagination">
               <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
@@ -776,7 +813,8 @@ const ManageEquipment = () => {
                   </div>
                 )}
                 <div className="row">
-                  <div className={`form-group col ${currentEquipment ? "equipmentName-fix" : ""}`}>
+                  {/* <div className={`form-group col ${currentEquipment ? "equipmentName-fix" : ""}`}> */}
+                  <div className={`form-group col`}>
                     <label>
                       Tên thiết bị <span className="icon-input">(*)</span>
                     </label>
@@ -785,16 +823,17 @@ const ManageEquipment = () => {
                   </div>
 
                   <div className="form-group col">
-                    <div className="d-flex align-items-center">
-                      <label className="me-2">
+                    {/* <div className="d-flex align-items-center"> */}
+                      {/* <label className="me-2"> */}
+                      <label>
                         Mã thiết bị <span className="icon-input">(*)</span>
                       </label>
-                      {currentEquipment && !isEditingCode && (
+                      {/* {currentEquipment && !isEditingCode && (
                         <button type="button" className="edit edit-equipmentCode" onClick={handleEditCodeClick}>
                           Sửa <EditIcon style={{ fontSize: "16px" }} />
                         </button>
-                      )}
-                    </div>
+                      )} */}
+                    {/* </div> */}
                     <input
                       type="text"
                       className={`form-control ${errors.equipmentCode ? "is-invalid" : ""}`}
@@ -825,18 +864,10 @@ const ManageEquipment = () => {
                       Giá nhập thiết bị <span className="icon-input">(*)</span>
                     </label>
                     <div className="input-group">
-                      <input
-                        type="text"
-                        className={`form-control equipment-price-input ${errors.equipmentImportPrice ? "is-invalid" : ""}`}
-                        name="equipmentImportPrice"
-                        value={formData.equipmentImportPrice || ""}
-                        onChange={handleInputChange}
-                        required
-                        disabled={isEditingCode || isExistingEquipment} // Added isEditingCode here
-                      />
+                      <input type="text" className={`form-control equipment-price-input ${errors.equipmentImportPrice ? "is-invalid" : ""}`} name="equipmentImportPrice" value={formData.equipmentImportPrice} onChange={handleInputChange} required disabled={isEditingCode || isExistingEquipment} />
                       <span className="input-readonly">VNĐ</span>
+                      {errors.equipmentImportPrice && <div className="invalid-feedback">{errors.equipmentImportPrice}</div>}
                     </div>
-                    {errors.equipmentImportPrice && <div className="invalid-feedback">{errors.equipmentImportPrice}</div>}
                   </div>
 
                   <div className="form-group col">
@@ -951,6 +982,52 @@ const ManageEquipment = () => {
           </div>
         </div>
       </div>
+
+      {/* Import History Modal */}
+      <div ref={importHistoryModalRef} className="modal">
+        <div className="modal-dialog modal-dialog-centered modal-lg">
+          <div className="modal-content modal-content-importEquipment">
+            <div className="modal-header">
+              <h4 className="modal-title text-center mx-auto">Lịch sử nhập thiết bị</h4>
+              <a type="button" className="close" onClick={closeImportHistoryModal}>
+                <CloseIcon />
+              </a>
+            </div>
+            <div className="modal-body modal-body-importEquipment">
+              <table className="table table-importEquipment">
+                <thead>
+                  <tr>
+                    <th>Ngày nhập</th>
+                    <th>Tên thiết bị</th>
+                    <th>Mã thiết bị</th>
+                    <th>Số lượng nhập</th>
+                    <th>Giá nhập (VNĐ)</th>
+                    <th>Tổng tiền (VNĐ)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importHistoryData.map((item) => (
+                    <tr key={item.importEquipmentId}>
+                      <td>{`${item.importDate.date}/${item.importDate.month}/${item.importDate.year}`}</td>
+                      <td>{item.equipmentName}</td>
+                      <td>{item.equipmentCode}</td>
+                      <td>{item.importQuantity}</td>
+                      <td>{item.importPrice.toLocaleString()}</td>
+                      <td>{item.importTotalPrice.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-default" onClick={closeImportHistoryModal}>
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Modal Overlay */}
       <div className="modal-overlay"></div>
 

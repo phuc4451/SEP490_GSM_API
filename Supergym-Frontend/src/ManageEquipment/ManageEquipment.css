@@ -615,3 +615,6 @@ table.table .avatar {
   border-right: none; /* Loại bỏ viền bên phải */
 }
 
+.modal-content-importEquipment{
+  width: fit-content!important;
+}
