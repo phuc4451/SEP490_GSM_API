@@ -116,6 +116,8 @@ namespace Alpha_API.Services
 
 			string info = "";
 
+			bool paid = false;
+
 			if (qrPayment)
 			{
 				info = "SEVQR" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).ToUpper();
@@ -123,6 +125,7 @@ namespace Alpha_API.Services
 			else
 			{
 				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
+				paid = true;
 			}
 
 			var expiryDate = DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0);
@@ -137,7 +140,7 @@ namespace Alpha_API.Services
 				EndDate = expiryDate,
 				//SessionLeft = membership.Result.SessionCount ?? (DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0) - DateTime.Now).Days,
 				SessionLeft = membership.Result.SessionCount.Value == 0 ? 999 : membership.Result.SessionCount.Value,
-                IsActive = false,
+				IsActive = paid,
 				PaymentId = info,
 			};
 
@@ -156,8 +159,8 @@ namespace Alpha_API.Services
 				TrainerRentalRegistrationId = "",
 				PaymentDate = DateTime.MinValue,
 				PaymentMethod = paymentMethod,
-				PaymentStatus = "Pending",
-				TransactionId = "Pending",
+				PaymentStatus = paid ? "Completed" : "Pending",
+				TransactionId = paid ? "" : "Pending",
 			};
 
 			jsonString = JsonSerializer.Serialize(payment, options);
@@ -346,6 +349,7 @@ namespace Alpha_API.Services
 
 			// Prepare the request data
 			string info = "";
+			bool paid = false;
 
 			if (qrPayment)
 			{
@@ -354,6 +358,7 @@ namespace Alpha_API.Services
 			else
 			{
 				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).ToUpper();
+				paid = true;
 			}
 
 			var regisId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
@@ -366,7 +371,7 @@ namespace Alpha_API.Services
 				StartDate = DateTime.Now,
 				EndDate = DateTime.Now.AddMonths(monthToAdd),
 				SessionLeft = sessionToAdd,
-				IsActive = false,
+				IsActive = paid,
 				PaymentId = info
 			};
 
@@ -393,8 +398,8 @@ namespace Alpha_API.Services
 				BoxingRegistrationId = "",
 				PaymentDate = DateTime.MinValue,
 				PaymentMethod = paymentMethod,
-				PaymentStatus = "Pending",
-				TransactionId = "Pending",
+				PaymentStatus = paid ? "Completed" : "Pending",
+				TransactionId = paid ? "" : "Pending",
 			};
 
 			jsonString = JsonSerializer.Serialize(payment, options);
@@ -562,9 +567,9 @@ namespace Alpha_API.Services
 				IsMonWedFri = request.IsMonWedFri,
 				SelectedTimeSlotId = request.SelectedTimeSlot,
 			};
-                        // Build comma-separated userIds for storage
-            var userIdsString = string.Join(",", userIds);
-            var schedule = await _scheduleService.CreateSchedule(scheduleRequest, userIdsString);
+			// Build comma-separated userIds for storage
+			var userIdsString = string.Join(",", userIds);
+			var schedule = await _scheduleService.CreateSchedule(scheduleRequest, userIdsString);
 			var scheduleId = schedule.Item1;
 
 
@@ -589,6 +594,7 @@ namespace Alpha_API.Services
 
 			// Prepare the request data
 			string info = "";
+			bool paid = false;
 
 			if (qrPayment)
 			{
@@ -597,6 +603,7 @@ namespace Alpha_API.Services
 			else
 			{
 				info = "TM" + Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15).ToUpper();
+				paid = true;
 			}
 
 			var regisId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 15);
@@ -609,7 +616,7 @@ namespace Alpha_API.Services
 				StartDate = DateTime.Now,
 				EndDate = DateTime.Now.AddMonths(option.Months),
 				SessionLeft = option.Sessions,
-				IsActive = false,
+				IsActive = paid,
 				PaymentId = info
 			};
 
@@ -638,8 +645,8 @@ namespace Alpha_API.Services
 				GymRegistrationId = "",
 				PaymentDate = DateTime.MinValue,
 				PaymentMethod = paymentMethod,
-				PaymentStatus = "Pending",
-				TransactionId = "Pending",
+				PaymentStatus = paid ? "Completed" : "Pending",
+				TransactionId = paid ? "" : "Pending",
 			};
 
 			jsonString = JsonSerializer.Serialize(payment, options);
