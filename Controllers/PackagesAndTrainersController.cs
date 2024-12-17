@@ -143,22 +143,30 @@ namespace Alpha_API.Controllers
 
 			if (!string.IsNullOrEmpty(boxingOptionId))
 			{
-				// Lấy thông tin gói boxing
-				var boxingOptions = await _firebaseClient
-					.Child("BoxingOptions")
-					.OnceAsync<BoxingOption>();
+                // Create tasks for both asynchronous calls
+                var boxingOptionsTask = _firebaseClient
+                    .Child("BoxingOptions")
+                    .OnceAsync<BoxingOption>();
 
-				var matchingOption = boxingOptions.FirstOrDefault(option => option.Key == boxingOptionId);
-				if (matchingOption == null)
-				{
-					return NotFound("No matching boxing option found.");
-				}
+                var boxingPlansTask = _firebaseClient
+                    .Child("BoxingMembershipPlans")
+                    .OnceAsync<BoxingMembershipPlan>();
 
-				var boxingPlans = await _firebaseClient
-					.Child("BoxingMembershipPlans")
-					.OnceAsync<BoxingMembershipPlan>();
+                // Wait for both tasks to complete using Task.WhenAll
+                await Task.WhenAll(boxingOptionsTask, boxingPlansTask);
 
-				var matchingPlans = boxingPlans
+                // Retrieve the results of the tasks
+                var boxingOptions = boxingOptionsTask.Result;
+                var boxingPlans = boxingPlansTask.Result;
+
+                // Find the matching boxing option
+                var matchingOption = boxingOptions.FirstOrDefault(option => option.Key == boxingOptionId);
+                if (matchingOption == null)
+                {
+                    return NotFound("No matching boxing option found.");
+                }
+
+                var matchingPlans = boxingPlans
 					.Where(plan => plan.Object.BoxingOptionId == boxingOptionId)
 					.ToList();
 
@@ -169,12 +177,6 @@ namespace Alpha_API.Controllers
 						.Child(plan.Object.BoxingTrainerId)
 						.OnceSingleAsync<Trainer>();
 
-					var specialization = await _firebaseClient
-						.Child("Trainers")
-						.Child(plan.Object.BoxingTrainerId)
-						.Child("specialization")
-						.OnceSingleAsync<string>();
-
 					if (trainer != null)
 					{
 						trainers.Add(new
@@ -182,7 +184,7 @@ namespace Alpha_API.Controllers
 							TrainerId = plan.Object.BoxingTrainerId,
 							Name = trainer.Name,
 							UserId = trainer.UserId,
-							Specialization = specialization,
+							Specialization = trainer.Specialization,
 							IsMonthlyPackage = matchingOption.Object.Months > 0,
 							MinSessions = matchingOption.Object.Months > 0 ? (int?)null : matchingOption.Object.Sessions,
 							MaxSessions = matchingOption.Object.Months > 0 ? (int?)null : matchingOption.Object.Sessions,
@@ -195,22 +197,30 @@ namespace Alpha_API.Controllers
 
 			if (!string.IsNullOrEmpty(rentalOptionId))
 			{
-				// Lấy thông tin gói thuê huấn luyện viên
-				var rentalOptions = await _firebaseClient
-					.Child("RentalOptions")
-					.OnceAsync<RentalOption>();
+                // Create tasks for both asynchronous calls
+                var rentalOptionsTask = _firebaseClient
+                    .Child("RentalOptions")
+                    .OnceAsync<RentalOption>();
 
-				var matchingOption = rentalOptions.FirstOrDefault(option => option.Key == rentalOptionId);
-				if (matchingOption == null)
-				{
-					return NotFound("No matching rental option found.");
-				}
+                var rentalPlansTask = _firebaseClient
+                    .Child("TrainerRentalPlans")
+                    .OnceAsync<TrainerRentalPlan>();
 
-				var rentalPlans = await _firebaseClient
-					.Child("TrainerRentalPlans")
-					.OnceAsync<TrainerRentalPlan>();
+                // Wait for both tasks to complete concurrently using Task.WhenAll
+                await Task.WhenAll(rentalOptionsTask, rentalPlansTask);
 
-				var matchingPlans = rentalPlans
+                // Retrieve the results of both tasks
+                var rentalOptions = rentalOptionsTask.Result;
+                var rentalPlans = rentalPlansTask.Result;
+
+                // Find the matching rental option
+                var matchingOption = rentalOptions.FirstOrDefault(option => option.Key == rentalOptionId);
+                if (matchingOption == null)
+                {
+                    return NotFound("No matching rental option found.");
+                }
+
+                var matchingPlans = rentalPlans
 					.Where(plan => plan.Object.RentalOptionId == rentalOptionId)
 					.ToList();
 
@@ -221,12 +231,6 @@ namespace Alpha_API.Controllers
 						.Child(plan.Object.TrainerId)
 						.OnceSingleAsync<Trainer>();
 
-					var specialization = await _firebaseClient
-						.Child("Trainers")
-						.Child(plan.Object.TrainerId)
-						.Child("specialization")
-						.OnceSingleAsync<string>();
-
 					if (trainer != null)
 					{
 						trainers.Add(new
@@ -234,7 +238,7 @@ namespace Alpha_API.Controllers
 							TrainerId = plan.Object.TrainerId,
 							Name = trainer.Name,
 							UserId = trainer.UserId,
-							Specialization = specialization,
+							Specialization = trainer.Specialization,
 							IsMonthlyPackage = matchingOption.Object.PricePerPersonPerMonth > 0,
 							MinSessions = matchingOption.Object.PricePerPersonPerMonth > 0 ? (int?)null : matchingOption.Object.SessionCountMin,
 							MaxSessions = matchingOption.Object.PricePerPersonPerMonth > 0 ? (int?)null : matchingOption.Object.SessionCountMax,
