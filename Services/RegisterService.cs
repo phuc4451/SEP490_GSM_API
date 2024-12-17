@@ -129,7 +129,7 @@ namespace Alpha_API.Services
 			}
 
 			var expiryDate = DateTime.Now.AddMonths(membership.Result.DurationMonths ?? 0);
-			expiryDate = new DateTime(expiryDate.Year, expiryDate.Month, expiryDate.Day, 23, 59, 59);
+			//expiryDate = new DateTime(expiryDate.Year, expiryDate.Month, expiryDate.Day, 23, 59, 59);
 
 
 			GymRegistration gymRegistration = new GymRegistration()
