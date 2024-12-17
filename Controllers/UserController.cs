@@ -589,7 +589,7 @@ public class UsersController : ControllerBase
 
         try
         {
-            string password = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 8);
+            string password = GenerateStrongPassword();
 
             // Create a Firebase Auth user
             var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
@@ -696,7 +696,7 @@ public class UsersController : ControllerBase
 
 		try
 		{
-			string password = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 8);
+			string password = GenerateStrongPassword();
 			// Create a Firebase Auth user
 			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
 			{
@@ -803,7 +803,7 @@ public class UsersController : ControllerBase
 
 		try
 		{
-			string password = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 8);
+			string password = GenerateStrongPassword();
 			// Create a Firebase Auth user
 			var createUserResponse = await _firebaseAuth.CreateUserAsync(new UserRecordArgs
 			{
@@ -1214,6 +1214,25 @@ public class UsersController : ControllerBase
     private string ConvertDateFormat(DateTime dateTime)
     {
         return dateTime.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+    }
+
+    public static string GenerateStrongPassword()
+    {
+        var random = new Random();
+        const string lower = "abcdefghijklmnopqrstuvwxyz";
+        const string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const string digits = "0123456789";
+        const string specialChars = "!@#$%^&*()_-+=<>?";
+        const string allChars = lower + upper + digits + specialChars;
+
+        // Generate a 16-character strong password
+        var password = new string(
+            Enumerable.Range(0, 10)
+                      .Select(_ => allChars[random.Next(allChars.Length)])
+                      .ToArray()
+        );
+
+        return password;
     }
 
     public class UserMembershipDetails
