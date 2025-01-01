@@ -1,40 +1,20 @@
-using Alpha_API.Services;
-using Firebase.Database;
-using Firebase.Database.Query;
-using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Net.Http;
-using System.Threading.Tasks;
-using Alpha_API.Utils;
 using Alpha_API.ViewModel;
-using Alpha_API.Models;
+using Alpha_API.Wrapper.Interfaces;
+using Newtonsoft.Json.Linq;
+using System.Text;
 
 namespace Alpha_API.Services
 {
-	public class QrCodeService
+	public class QrCodeService : IQrCodeService
 	{
 		private readonly IHttpClientFactory _httpClientFactory;
-		private readonly PaymentMethodService _paymentMethodService;
-		private readonly EmailService _emailService;
-		private readonly RegisterService _registerService;
-		private readonly FirebaseClientProvider _firebaseClientProvider;
-		private FirebaseClient _firebaseClient;
+		private readonly IRegisterService _registerService;
 
 		public QrCodeService(IHttpClientFactory httpClientFactory,
-							 FirebaseClientProvider firebaseClientProvider,
-							 PaymentMethodService paymentMethodService,
-							 EmailService emailService,
-							 RegisterService registerService)
+							 IRegisterService registerService)
 		{
 			_httpClientFactory = httpClientFactory;
-			_firebaseClientProvider = firebaseClientProvider;
-			_paymentMethodService = paymentMethodService;
-			_emailService = emailService;
 			_registerService = registerService;
-			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 		}
 
 		public async Task<List<object>> GenerateQrCodeAsync(RegisterPackageRequest request, string customerId)

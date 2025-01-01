@@ -1,13 +1,13 @@
 ﻿using Alpha_API.Models;
-using DocumentFormat.OpenXml.Spreadsheet;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
-using System.Text.Json.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Alpha_API.Services
 {
-	public class ShiftService
+	public class ShiftService : IShiftService
 	{
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;

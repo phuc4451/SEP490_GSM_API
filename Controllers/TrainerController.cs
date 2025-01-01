@@ -1,13 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Alpha_API.Models;
+using Alpha_API.Services;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
-using FirebaseAdmin.Auth;
-using Alpha_API.Services;
-using Alpha_API.Models;
 using Microsoft.AspNetCore.Authorization;
-using System.Text.Json.Serialization;
-using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alpha_API.Controllers
 {
@@ -17,9 +14,9 @@ namespace Alpha_API.Controllers
 	{
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
-		private readonly TrainerService _trainerService;
+		private readonly ITrainerService _trainerService;
 
-		public TrainerController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, TrainerService trainerService)
+		public TrainerController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, ITrainerService trainerService)
 		{
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
@@ -67,9 +64,9 @@ namespace Alpha_API.Controllers
 				var boxingOptions = boxingPlansTask.Result.Select(plan => _firebaseClient.Child("BoxingOptions").Child(plan.Object.BoxingOptionId).OnceSingleAsync<BoxingOption>()).ToList();
 
 				var boxingOptionsResult = await Task.WhenAll(boxingOptions);
-	
+
 				var rentalOptions = rentalPlansTask.Result.Select(plan => _firebaseClient.Child("RentalOptions").Child(plan.Object.RentalOptionId).OnceSingleAsync<RentalOption>()).ToList();
-					
+
 				var rentalOptionsResult = await Task.WhenAll(rentalOptions);
 
 				var trainerWithOptions = new
@@ -81,8 +78,8 @@ namespace Alpha_API.Controllers
 					trainer.Specialization,
 					trainer.TrainerId,
 					trainer.UserId,
-					BoxingOptions=boxingOptionsResult,
-					Rentaloptions=rentalOptionsResult,
+					BoxingOptions = boxingOptionsResult,
+					Rentaloptions = rentalOptionsResult,
 				};
 
 				list.Add(trainerWithOptions);

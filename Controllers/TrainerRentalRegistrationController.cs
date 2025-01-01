@@ -12,6 +12,7 @@ using Alpha_API.Services;
 using System.Security.Claims;
 using Alpha_API.Utils;
 using Alpha_API.ViewModel;
+using Alpha_API.Wrapper.Interfaces;
 
 namespace Alpha_API.Controllers
 {
@@ -19,21 +20,17 @@ namespace Alpha_API.Controllers
 	[ApiController]
 	public class TrainerRentalRegistrationController : ControllerBase
 	{
-		private readonly FirebaseAuth _firebaseAuth;
 		private FirebaseClient _firebaseClient;
-		private readonly RegisterService _registerService;
+		private readonly IRegisterService _registerService;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
-		private readonly EmailService _emailService;
-		private readonly QrCodeService _qrCodeService;
+		private readonly IQrCodeService _qrCodeService;
 
-		public TrainerRentalRegistrationController(RegisterService registerService, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient
-			, FirebaseAuth firebaseAuth, EmailService emailService, QrCodeService qrCodeService)
+		public TrainerRentalRegistrationController(IRegisterService registerService, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient
+			, IQrCodeService qrCodeService)
 		{
-			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;
 			_registerService = registerService;
 			_firebaseClientProvider = firebaseClientProvider;
-			_emailService = emailService;
 			_qrCodeService = qrCodeService;
 		}
 

@@ -2,14 +2,11 @@
 using Alpha_API.Services;
 using Firebase.Database;
 using Firebase.Database.Query;
-using FirebaseAdmin.Auth;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Globalization;
-using System.Text.Json.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Alpha_API.Controllers
 {
@@ -18,14 +15,12 @@ namespace Alpha_API.Controllers
 	public class PaymentController : ControllerBase
 	{
 		private readonly ILogger<PaymentController> _logger;
-		private readonly FirebaseAuth _firebaseAuth;
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 
-		public PaymentController(ILogger<PaymentController> logger, FirebaseClient firebaseClient, FirebaseAuth firebaseAuth, FirebaseClientProvider firebaseClientProvider)
+		public PaymentController(ILogger<PaymentController> logger, FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider)
 		{
 			_logger = logger;
-			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
 		}

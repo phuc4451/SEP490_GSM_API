@@ -2,6 +2,7 @@ using Alpha_API.Models;
 using Alpha_API.Services;
 using Alpha_API.Utils;
 using Alpha_API.ViewModel;
+using Alpha_API.Wrapper.Interfaces;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Firebase.Database;
 using Firebase.Database.Query;
@@ -23,16 +24,17 @@ namespace Alpha_API.Controllers
 	public class AuthController : ControllerBase
 	{
 		private readonly IConfiguration _configuration;
-		private readonly EmailService _emailService;
+		private readonly IEmailService _emailService;
 		private FirebaseClient _firebaseClient;
-		private readonly FirebaseAuth _firebaseAuth;
+		private readonly IFirebaseAuth _firebaseAuth;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private static readonly HttpClient _httpClient = new HttpClient();
 		private readonly string _firebaseAuthUrl;
 		private readonly string _firebaseApiKey;
 		private static readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new ConcurrentDictionary<string, SemaphoreSlim>();
 
-		public AuthController(IConfiguration configuration, EmailService emailService, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient, FirebaseAuth firebaseAuth)
+		public AuthController(IConfiguration configuration, IEmailService emailService,
+			FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient, IFirebaseAuth firebaseAuth)
 		{
 			_configuration = configuration;
 			_firebaseAuthUrl = configuration["Firebase:AuthUrl"];
@@ -128,7 +130,7 @@ namespace Alpha_API.Controllers
 				var jsonString = System.Text.Json.JsonSerializer.Serialize(u, options);
 
 				// Send the verification email using a third-party email service
-				var emailSent = _emailService.SendVerificationEmail(registerUserDto.Email, verificationLink);
+				var emailSent = _emailService.SendVerificationEmail(registerUserDto.Email, verificationLink, registerUserDto.Password);
 
 				if (!emailSent)
 				{

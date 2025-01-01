@@ -4,10 +4,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Alpha_API.Models;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
 
-public class RoleService
+public class RoleService :IRoleService
 {
 	private readonly FirebaseClient _firebaseClient;
 

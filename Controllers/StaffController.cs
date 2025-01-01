@@ -1,5 +1,6 @@
 ﻿using Alpha_API.Models;
 using Alpha_API.Services;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
 using Microsoft.AspNetCore.Authorization;
@@ -14,13 +15,13 @@ namespace Alpha_API.Controllers
 	{
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
-		private readonly StaffService _staffService;
-		private readonly RoleService _roleService;
-		private readonly SalaryService _salaryService;
+		private readonly IStaffService _staffService;
+		private readonly IRoleService _roleService;
+		private readonly ISalaryService _salaryService;
 
 		public StaffController(FirebaseClient firebaseClient,
 			FirebaseClientProvider firebaseClientProvider,
-			StaffService staffService, RoleService roleService, SalaryService salaryService)
+			IStaffService staffService, IRoleService roleService, ISalaryService salaryService)
 		{
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;

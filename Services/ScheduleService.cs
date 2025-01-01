@@ -1,6 +1,7 @@
 ﻿using Alpha_API.Models;
 using Alpha_API.Utils;
 using Alpha_API.ViewModel;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
@@ -11,12 +12,6 @@ using Microsoft.AspNetCore.Http;
 
 namespace Alpha_API.Services
 {
-	public interface IScheduleService
-	{
-		Task<(string, DateOnly)> CreateSchedule(RegisterScheduleRequest request, string userIdsString);
-		Task<bool> CheckTrainerAvailability(string trainerId, List<Slot> slots);
-	}
-
 	public class ScheduleService : IScheduleService
 	{
 		private FirebaseClient _firebaseClient;

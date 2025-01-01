@@ -1,10 +1,11 @@
 ﻿using Alpha_API.Models;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
 
 namespace Alpha_API.Services
 {
-	public class GymMembershipCheckService
+	public class GymMembershipCheckService : IGymMembershipCheckService
 	{
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private FirebaseClient _firebaseClient;

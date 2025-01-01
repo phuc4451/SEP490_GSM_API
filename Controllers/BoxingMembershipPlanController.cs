@@ -14,13 +14,11 @@ namespace Alpha_API.Controllers
 	[ApiController]
 	public class BoxingMembershipPlanController : ControllerBase
 	{
-		private readonly FirebaseAuth _firebaseAuth;
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 
-		public BoxingMembershipPlanController(FirebaseClient firebaseClient, FirebaseAuth firebaseAuth, FirebaseClientProvider firebaseClientProvider)
+		public BoxingMembershipPlanController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider)
 		{
-			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
 		}

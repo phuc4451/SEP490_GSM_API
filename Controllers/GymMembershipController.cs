@@ -18,13 +18,11 @@ namespace GymManagementAPI.Controllers
 	[ApiController]
 	public class GymMembershipController : ControllerBase
 	{
-		private readonly FirebaseAuth _firebaseAuth;
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 
-		public GymMembershipController(FirebaseClient firebaseClient, FirebaseAuth firebaseAuth, FirebaseClientProvider firebaseClientProvider)
+		public GymMembershipController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider)
 		{
-			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
 		}

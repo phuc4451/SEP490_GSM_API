@@ -1,15 +1,16 @@
 ﻿using Firebase.Database;
 using Firebase.Database.Query;
 using FirebaseAdmin.Auth;
+using Alpha_API.Wrapper.Interfaces;
 
 namespace Alpha_API.Services
 {
 	public class PhoneService
 	{
-		private readonly FirebaseAuth _firebaseAuth;
+		private readonly IFirebaseAuth _firebaseAuth;
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
-		public PhoneService(FirebaseAuth firebaseAuth, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient)
+		public PhoneService(IFirebaseAuth firebaseAuth, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient)
 		{
 			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;

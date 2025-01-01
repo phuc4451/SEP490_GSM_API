@@ -12,14 +12,11 @@ using FirebaseAdmin.Auth;
 [ApiController]
 public class RoleController : ControllerBase
 {
-	private readonly FirebaseAuth _firebaseAuth;
 	private FirebaseClient _firebaseClient;
-	private const string FirebaseBaseUrl = "https://sgm-management-c98cd-default-rtdb.firebaseio.com/";
 
-	public RoleController()
+	public RoleController(FirebaseClient firebaseClient)
 	{
-		_firebaseClient = new FirebaseClient(FirebaseBaseUrl);
-		_firebaseAuth = FirebaseAuth.DefaultInstance;
+		_firebaseClient = firebaseClient;
 	}
 
 	// GET: api/roles

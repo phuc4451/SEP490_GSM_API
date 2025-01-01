@@ -15,6 +15,7 @@ using Alpha_API.Services;
 using ClosedXML.Excel;
 using System.Globalization;
 using static Google.Apis.Requests.BatchRequest;
+using Alpha_API.Wrapper.Interfaces;
 
 
 [Route("api/[controller]")]
@@ -22,15 +23,15 @@ using static Google.Apis.Requests.BatchRequest;
 
 public class UsersController : ControllerBase
 {
-	private readonly EmailService _emailService;
-	private readonly FirebaseAuth _firebaseAuth;
+	private readonly IEmailService _emailService;
+	private readonly IFirebaseAuth _firebaseAuth;
 	private FirebaseClient _firebaseClient;
-	private readonly RoleService _roleService;
-	private readonly TrainerService _trainerService;
+	private readonly IRoleService _roleService;
+	private readonly ITrainerService _trainerService;
 	private readonly FirebaseClientProvider _firebaseClientProvider;
 
-	public UsersController(EmailService emailService, FirebaseClient firebaseClient, FirebaseAuth firebaseAuth, RoleService roleService,
-		FirebaseClientProvider firebaseClientProvider, TrainerService trainerService)
+	public UsersController(IEmailService emailService, FirebaseClient firebaseClient, IFirebaseAuth firebaseAuth, IRoleService roleService,
+		FirebaseClientProvider firebaseClientProvider, ITrainerService trainerService)
 	{
 		_firebaseClient = firebaseClient;
 		_emailService = emailService;
@@ -644,8 +645,7 @@ public class UsersController : ControllerBase
             var jsonString = JsonSerializer.Serialize(u, options);
 
             // Send the verification email using a third-party email service
-            var emailSent = _emailService.SendVerificationEmail(staff.Email, verificationLink);
-            _emailService.SendEmailMessage(staff.Email, password, "Here is your password");
+            var emailSent = _emailService.SendVerificationEmail(staff.Email, verificationLink, password);
 
             if (!emailSent)
             {
@@ -742,8 +742,7 @@ public class UsersController : ControllerBase
 			var jsonString = JsonSerializer.Serialize(u, options);
 
 			// Send the verification email using a third-party email service
-			var emailSent = _emailService.SendVerificationEmail(trainer.Email, verificationLink);
-			_emailService.SendEmailMessage(trainer.Email, password, "Here is your password");
+			var emailSent = _emailService.SendVerificationEmail(trainer.Email, verificationLink, password);
 			if (!emailSent)
 			{
 				return BadRequest("Failed to send email verification.");
@@ -842,8 +841,7 @@ public class UsersController : ControllerBase
 			};
 
 			// Send the verification email using a third-party email service
-			var emailSent = _emailService.SendVerificationEmail(customer.Email, verificationLink);
-			_emailService.SendEmailMessage(customer.Email, password, "Here is your password");
+			var emailSent = _emailService.SendVerificationEmail(customer.Email, verificationLink, password);
 			if (!emailSent)
 			{
 				return BadRequest("Failed to send email verification.");

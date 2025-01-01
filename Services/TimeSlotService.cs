@@ -1,9 +1,10 @@
 ﻿using Alpha_API.Models;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 
 namespace Alpha_API.Services
 {
-	public class TimeSlotService
+	public class TimeSlotService : ITimeSlotService
 	{
 		private readonly FirebaseClient _firebaseClient;
 		private Dictionary<string, string> _timeSlots;
@@ -12,7 +13,6 @@ namespace Alpha_API.Services
 		{
 			_firebaseClient = firebaseClient;
 		}
-
 
 		public async Task LoadTimeSlotsAsync()
 		{
@@ -29,7 +29,6 @@ namespace Alpha_API.Services
 					ts => ts.Object.Time // Use TimeSlot as the value
 				);
 		}
-
 
 		public string GetTimeSlot(string timeSlotId)
 		{

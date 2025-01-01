@@ -1,31 +1,24 @@
 ﻿using Alpha_API.Models;
-using DocumentFormat.OpenXml.Spreadsheet;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json.Serialization;
 using System.Text.Json;
-using System.Threading.Tasks;
-using DocumentFormat.OpenXml.Office2016.Excel;
+using System.Text.Json.Serialization;
 
 namespace Alpha_API.Services
 {
-	public class TrainerService
+	public class TrainerService : ITrainerService
 	{
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
-		private readonly TimeSlotService _timeSlotService;
+		private readonly ITimeSlotService _timeSlotService;
 
-
-		public TrainerService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, TimeSlotService timeSlotService)
+		public TrainerService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, ITimeSlotService timeSlotService)
 		{
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
 			_timeSlotService = timeSlotService;
 		}
-
 		// Add a new trainer
 		public async Task<string> AddTrainerAsync(Trainer trainer)
 		{
@@ -45,7 +38,6 @@ namespace Alpha_API.Services
 
 			return trainer.Name;
 		}
-
 		// Get all trainers
 		public async Task<List<Trainer>> GetAllTrainersAsync()
 		{
@@ -61,7 +53,6 @@ namespace Alpha_API.Services
 
 			return trainers.Select(t => t.Object).ToList();
 		}
-
 		// Get a trainer by ID
 		public async Task<Trainer> GetTrainerByIdAsync(string trainerId)
 		{
@@ -76,7 +67,6 @@ namespace Alpha_API.Services
 
 			return trainer;
 		}
-
 		// Update an existing trainer
 		public async Task<bool> UpdateTrainerAsync(string id, Trainer trainer)
 		{

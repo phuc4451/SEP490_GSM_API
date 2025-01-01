@@ -1,6 +1,7 @@
 using Alpha_API.Controllers;
 using Alpha_API.Services;
 using Alpha_API.Utils;
+using Alpha_API.Wrapper.Interfaces;
 using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using Firebase.Database;
 using FirebaseAdmin;
@@ -12,6 +13,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OData.Edm;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.OpenApi.Models;
+using System.Net.Mail;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -35,21 +37,20 @@ namespace WebAPI
 
 			var firebaseClient = new FirebaseClient(firebaseBaseUrl);
 			builder.Services.AddSingleton(firebaseClient);
-			builder.Services.AddSingleton<EmailService>();
-			builder.Services.AddSingleton(FirebaseAuth.DefaultInstance);
-			builder.Services.AddSingleton<RoleService>();
-			builder.Services.AddScoped<RegisterService>();
-			builder.Services.AddScoped<TrainerService>();
-			builder.Services.AddScoped<SalaryService>();
-			builder.Services.AddScoped<StaffService>();
-			builder.Services.AddScoped<ShiftService>();
-			builder.Services.AddScoped<GymMembershipCheckService>();
-			builder.Services.AddScoped<QrCodeService>();
-			builder.Services.AddSingleton<PaymentMethodService>();
-			builder.Services.AddSingleton<TimeSlotService>();
+			builder.Services.AddSingleton<IFirebaseAuth, FirebaseAuthService>();
+			builder.Services.AddTransient<IEmailService, EmailService>();
+			builder.Services.AddTransient<ISmtpClient, SmtpClientService>();
+			builder.Services.AddTransient<IRoleService, RoleService>();
+			builder.Services.AddScoped<IRegisterService, RegisterService>();
+			builder.Services.AddScoped<ITrainerService, TrainerService>();
+			builder.Services.AddScoped<ISalaryService, SalaryService>();
+			builder.Services.AddTransient<IStaffService, StaffService>();
+			builder.Services.AddTransient<IShiftService, ShiftService>();
+			builder.Services.AddTransient<IGymMembershipCheckService, GymMembershipCheckService>();
+			builder.Services.AddScoped<IQrCodeService, QrCodeService>();
+			builder.Services.AddSingleton<ITimeSlotService, TimeSlotService>();
 			builder.Services.AddScoped<IScheduleService, ScheduleService>();
-            builder.Services.AddScoped<ScheduleService>();
-            builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+			builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 			builder.Services.AddScoped<FirebaseClientProvider>(provider =>
 				new FirebaseClientProvider(
 					provider.GetRequiredService<IHttpContextAccessor>(),
@@ -142,7 +143,7 @@ namespace WebAPI
 
 			using (var scope = app.Services.CreateScope())
 			{
-				var timeSlotService = scope.ServiceProvider.GetRequiredService<TimeSlotService>();
+				var timeSlotService = scope.ServiceProvider.GetRequiredService<ITimeSlotService>();
 				await timeSlotService.LoadTimeSlotsAsync();
 			}
 

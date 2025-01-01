@@ -1,10 +1,9 @@
 ﻿using Alpha_API.Models;
 using Alpha_API.Services;
-using DocumentFormat.OpenXml.Spreadsheet;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Alpha_API.Controllers
@@ -15,12 +14,12 @@ namespace Alpha_API.Controllers
 	{
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
-		private readonly TrainerService _trainerService;
-		private readonly ShiftService _shiftService;
-		private readonly SalaryService _salaryService;
-		private readonly StaffService _staffService;
-		public SalaryController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, TrainerService trainerService,
-			ShiftService shiftService, SalaryService salaryService, StaffService staffService)
+		private readonly ITrainerService _trainerService;
+		private readonly IShiftService _shiftService;
+		private readonly ISalaryService _salaryService;
+		private readonly IStaffService _staffService;
+		public SalaryController(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, ITrainerService trainerService,
+			IShiftService shiftService, ISalaryService salaryService, IStaffService staffService)
 		{
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;

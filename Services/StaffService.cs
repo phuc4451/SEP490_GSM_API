@@ -1,20 +1,19 @@
 ﻿using Alpha_API.Models;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
 
 namespace Alpha_API.Services
 {
-	public class StaffService
+	public class StaffService :IStaffService
 	{
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
-		private readonly TimeSlotService _timeSlotService;
 
-		public StaffService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, TimeSlotService timeSlotService)
+		public StaffService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider)
 		{
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
-			_timeSlotService = timeSlotService;
 		}
 
 		public async Task<string> GetStaffName(string staffId)

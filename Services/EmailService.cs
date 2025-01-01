@@ -6,47 +6,41 @@ using Alpha_API.Models;
 using Newtonsoft.Json;
 using System.Net.Http;
 using System.Text;
+using Alpha_API.Wrapper.Interfaces;
 
 namespace Alpha_API.Utils
 {
-	public class EmailService
+	public class EmailService : IEmailService
 	{
-		private readonly string _smtpServer;
-		private readonly int _port;
-		private readonly string _fromEmail;
-		private readonly string _password;
-        private readonly FirebaseAuth _firebaseAuth;
+        private readonly IFirebaseAuth _firebaseAuth;
         private readonly HttpClient _httpClient;
-        public EmailService(FirebaseAuth firebaseAuth)
+        private readonly ISmtpClient _smtpClient;
+        public EmailService(IFirebaseAuth firebaseAuth, ISmtpClient smtpClient)
 		{
-			// Configure SMTP settings
-			_smtpServer = "smtp.gmail.com";
-			_port = 587;
-			_fromEmail = "phucvu159753@gmail.com";
-			_password = "tlpmzxpedrnlkfnn";
             _firebaseAuth = firebaseAuth;
             _httpClient = new HttpClient();
-
+            _smtpClient = smtpClient;
         }
 
-		public bool SendVerificationEmail(string email, string verificationLink)
+		public bool SendVerificationEmail(string email, string verificationLink, string password)
 		{
 			try
 			{
 				MailMessage mail = new MailMessage();
-				mail.From = new MailAddress(_fromEmail);
+				mail.From = new MailAddress(_smtpClient.GetAddress());
 				mail.To.Add(email);
 				mail.Subject = "Verify your email";
-				mail.Body = $"Please verify your email by clicking on the link: {verificationLink}";
+				mail.Body = $"Your password is: {password}\nPlease verify your email by clicking on the link: {verificationLink}";
 
-				using (SmtpClient smtpServer = new SmtpClient(_smtpServer))
-				{
-					smtpServer.Port = _port;
-					smtpServer.Credentials = new NetworkCredential(_fromEmail, _password);
-					smtpServer.EnableSsl = true;
+				//using (SmtpClient smtpServer = new SmtpClient(_smtpServer))
+				//{
+				//	smtpServer.Port = _port;
+				//	smtpServer.Credentials = new NetworkCredential(_fromEmail, _password);
+				//	smtpServer.EnableSsl = true;
 
-					smtpServer.Send(mail);
-				}
+				//	smtpServer.Send(mail);
+				//}
+				_smtpClient.Send(mail);
 
 				return true;
 			}
@@ -62,20 +56,22 @@ namespace Alpha_API.Utils
             {
                 // Gửi email thông báo cho người dùng
                 MailMessage mail = new MailMessage();
-                mail.From = new MailAddress(_fromEmail);
+                mail.From = new MailAddress(_smtpClient.GetAddress());
                 mail.To.Add(email);
                 mail.Subject = subject;
                 mail.Body = message;
 
-                using (SmtpClient smtpServer = new SmtpClient(_smtpServer))
-                {
-                    smtpServer.Port = _port;
-                    smtpServer.Credentials = new NetworkCredential(_fromEmail, _password);
-                    smtpServer.EnableSsl = true;
+                //using (SmtpClient smtpServer = new SmtpClient(_smtpServer))
+                //{
+                //    smtpServer.Port = _port;
+                //    smtpServer.Credentials = new NetworkCredential(_fromEmail, _password);
+                //    smtpServer.EnableSsl = true;
 
-                    smtpServer.Send(mail);
-                }
-            }
+                //    smtpServer.Send(mail);
+                //}
+
+				_smtpClient.Send(mail);
+			}
             catch (Exception ex)
             {
                 Console.WriteLine($"Error sending notification email: {ex.Message}");

@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 using Alpha_API.Services;
 using System.Security.Claims;
 using Alpha_API.ViewModel;
+using Alpha_API.Wrapper.Interfaces;
 
 namespace Alpha_API.Controllers
 {
@@ -18,18 +19,15 @@ namespace Alpha_API.Controllers
 	[ApiController]
 	public class GymRegistrationController : ControllerBase
 	{
-		private readonly FirebaseAuth _firebaseAuth;
 		private FirebaseClient _firebaseClient;
-		private readonly RegisterService _registerService;
-		private readonly QrCodeService _qrCodeService;
-		private readonly GymMembershipCheckService _gymMembershipCheckService;
-
+		private readonly IRegisterService _registerService;
+		private readonly IQrCodeService _qrCodeService;
+		private readonly IGymMembershipCheckService _gymMembershipCheckService;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 
-		public GymRegistrationController(RegisterService registerService, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient
-			, FirebaseAuth firebaseAuth, QrCodeService qrCodeService, GymMembershipCheckService gymMembershipCheckService)
+		public GymRegistrationController(IRegisterService registerService, FirebaseClientProvider firebaseClientProvider, FirebaseClient firebaseClient
+			, IQrCodeService qrCodeService, IGymMembershipCheckService gymMembershipCheckService)
 		{
-			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;
 			_registerService = registerService;
 			_firebaseClientProvider = firebaseClientProvider;
@@ -206,7 +204,7 @@ namespace Alpha_API.Controllers
 				}
 				else if (!request.QRPayment)
 				{
-					var result=await _registerService.RegisterGym(request, request.QRPayment, userId);
+					var result = await _registerService.RegisterGym(request, request.QRPayment, userId);
 					return Ok(result.MoneyToPay);
 				}
 				else { return BadRequest("QR Payment is required but was not provided."); }

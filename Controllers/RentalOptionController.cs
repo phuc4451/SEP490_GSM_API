@@ -1,5 +1,6 @@
 ﻿using Alpha_API.Models;
 using Alpha_API.Services;
+using Alpha_API.Wrapper.Interfaces;
 using Alpha_API.ViewModel;
 using Firebase.Database;
 using Firebase.Database.Query;
@@ -18,11 +19,11 @@ namespace Alpha_API.Controllers
 	[ApiController]
 	public class RentalOptionController : ControllerBase
 	{
-		private readonly FirebaseAuth _firebaseAuth;
+		private readonly IFirebaseAuth _firebaseAuth;
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 
-		public RentalOptionController(FirebaseClient firebaseClient, FirebaseAuth firebaseAuth, FirebaseClientProvider firebaseClientProvider)
+		public RentalOptionController(FirebaseClient firebaseClient, IFirebaseAuth firebaseAuth, FirebaseClientProvider firebaseClientProvider)
 		{
 			_firebaseAuth = firebaseAuth;
 			_firebaseClient = firebaseClient;

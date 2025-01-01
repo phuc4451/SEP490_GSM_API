@@ -1,27 +1,22 @@
 ﻿using Alpha_API.Models;
-using DocumentFormat.OpenXml.Spreadsheet;
-using DocumentFormat.OpenXml.Wordprocessing;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
-using System.Linq;
-using System.Text.Json.Serialization;
-using System.Text.Json;
-using DocumentFormat.OpenXml.Bibliography;
-using DocumentFormat.OpenXml.Math;
-using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Alpha_API.Services
 {
-	public class SalaryService
+	public class SalaryService : ISalaryService
 	{
 		private FirebaseClient _firebaseClient;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
-		private readonly TrainerService _trainerService;
-		private readonly StaffService _staffService;
-		private readonly TimeSlotService _timeSlotService;
-		public SalaryService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, StaffService staffService,
-			TrainerService trainerService, TimeSlotService timeSlotService)
+		private readonly ITrainerService _trainerService;
+		private readonly IStaffService _staffService;
+		private readonly ITimeSlotService _timeSlotService;
+		public SalaryService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider, IStaffService staffService,
+			ITrainerService trainerService, ITimeSlotService timeSlotService)
 		{
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;

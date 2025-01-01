@@ -1,17 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Alpha_API.Models;
+﻿using Alpha_API.Models;
 using Alpha_API.Services;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Security.Claims;
-using DocumentFormat.OpenXml.Office2010.Excel;
-using System.Text.Json.Serialization;
-using System.Text.Json;
-using System.ComponentModel;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Alpha_API.Controllers
 {
@@ -22,15 +17,15 @@ namespace Alpha_API.Controllers
 		private const int CheckInLateIflaterThanMinutes = 15;
 		private const int StaffIsAbsenceIfWorkLessThanHours = 0;
 		private const int TrainerIsAbsenceIfWorkLessThanMinutes = 0;
-		private readonly TimeSlotService _timeSlotService;
-		private readonly TrainerService _trainerService;
-		private readonly RoleService _roleService;
-		private readonly ShiftService _shiftService;
+		private readonly ITimeSlotService _timeSlotService;
+		private readonly ITrainerService _trainerService;
+		private readonly IRoleService _roleService;
+		private readonly IShiftService _shiftService;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
 		private FirebaseClient _firebaseClient;
 
-		public CheckInController(FirebaseClientProvider firebaseClientProvider, TimeSlotService timeSlotService, RoleService roleService
-			, ShiftService shiftService, TrainerService trainerService)
+		public CheckInController(FirebaseClientProvider firebaseClientProvider, ITimeSlotService timeSlotService, IRoleService roleService
+			, IShiftService shiftService, ITrainerService trainerService)
 		{
 			_firebaseClientProvider = firebaseClientProvider;
 			_timeSlotService = timeSlotService;
@@ -403,9 +398,6 @@ namespace Alpha_API.Controllers
             // Trả về danh sách các ngày check-in và thời gian check-in đầu tiên
             return Ok(new CheckInDatesResponse { CheckInDates = checkInDates });
         }
-
-
-
 
         [HttpGet("hasCheckIn/{userId}/{date}")]
 		public async Task<IActionResult> HasCheckInOnDate(string userId, string date)

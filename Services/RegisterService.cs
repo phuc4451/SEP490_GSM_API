@@ -1,49 +1,33 @@
 ﻿using Alpha_API.Models;
-using Alpha_API.Utils;
-using Firebase.Database;
-using Alpha_API.Services;
+using Alpha_API.ViewModel;
+using Alpha_API.Wrapper.Interfaces;
 using Firebase.Database;
 using Firebase.Database.Query;
 using FirebaseAdmin.Auth;
-using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
-using System.Text;
-using System.Text.Json.Serialization;
 using System.Text.Json;
-using System.Threading.Tasks;
-using System.Timers;
-using Alpha_API.Utils;
-using Microsoft.Extensions.Options;
-using DocumentFormat.OpenXml.Spreadsheet;
-using Alpha_API.ViewModel;
-using System.Security.Claims;
+using System.Text.Json.Serialization;
 
 namespace Alpha_API.Services
 {
-	public class RegisterService
+	public class RegisterService : IRegisterService
 	{
-		private readonly PaymentMethodService _paymentMethodService;
 		private FirebaseClient _firebaseClient;
-		private readonly FirebaseAuth _firebaseAuth;
-		private readonly EmailService _emailService;
+		private readonly IFirebaseAuth _firebaseAuth;
 		private readonly FirebaseClientProvider _firebaseClientProvider;
-		private readonly RoleService _roleService;
-		private readonly GymMembershipCheckService _gymMembershipCheckService;
+		private readonly IRoleService _roleService;
+		private readonly IGymMembershipCheckService _gymMembershipCheckService;
 		private readonly IScheduleService _scheduleService;
 		private readonly Dictionary<string, System.Timers.Timer> _customerTimers = new();
 		private readonly Dictionary<string, (string PaymentId, string RegistrationType, string RegistrationId, string ScheduleId)> _pendingRegistrations = new();
 		private readonly double paymentWaitingTime = 100000;
 
 		public RegisterService(FirebaseClient firebaseClient, FirebaseClientProvider firebaseClientProvider,
-			PaymentMethodService paymentMethodService, EmailService emailService, RoleService roleService,
-			IScheduleService scheduleService, GymMembershipCheckService gymMembershipCheckService, FirebaseAuth firebaseAuth)
+			IRoleService roleService,
+			IScheduleService scheduleService, IGymMembershipCheckService gymMembershipCheckService, IFirebaseAuth firebaseAuth)
 		{
 
 			_firebaseClient = firebaseClient;
 			_firebaseClientProvider = firebaseClientProvider;
-			//_paymentMethodService = paymentMethodService;
-			_emailService = emailService;
 			_roleService = roleService;
 			_scheduleService = scheduleService;
 			_gymMembershipCheckService = gymMembershipCheckService;
@@ -51,7 +35,7 @@ namespace Alpha_API.Services
 		}
 		public async Task<RegisterResult> RegisterGym(RegisterPackageRequest request, bool qrPayment, string customerId)
 		{
-			//_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
 
 			var user = await _firebaseAuth.GetUserByEmailAsync(request.Emails.FirstOrDefault());
 
