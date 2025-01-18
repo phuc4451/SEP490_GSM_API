@@ -36,25 +36,34 @@ namespace Alpha_API.Services
 			return true;
 		}
 
-		public async Task<bool> CheckGymMembershipEndDate(string userId, DateOnly endDate)
-		{
-			_firebaseClient = _firebaseClientProvider.GetFirebaseClient();
-			var existingGymRegistrations = await _firebaseClient
-				.Child("GymRegistrations")
-				.OrderBy("userId")
-				.EqualTo(userId)
-				.OnceAsync<GymRegistration>();
+        public async Task<(bool, bool)> CheckGymMembershipEndDate(string userId, DateOnly endDate)
+        {
+            _firebaseClient = _firebaseClientProvider.GetFirebaseClient();
+            var existingGymRegistrations = await _firebaseClient
+                .Child("GymRegistrations")
+                .OrderBy("userId")
+                .EqualTo(userId)
+                .OnceAsync<GymRegistration>();
 
-			var hasValidMembership = existingGymRegistrations
-				.Any(ex => ex.Object.IsActive &&
-				(DateOnly.FromDateTime(ex.Object.EndDate) >= endDate || ex.Object.SessionLeft > 0));
+            var hasValidMembership = existingGymRegistrations
+                .Any(ex => ex.Object.IsActive &&
+                (DateOnly.FromDateTime(ex.Object.EndDate) >= endDate && ex.Object.SessionLeft > 0));
 
-			if (!hasValidMembership)
-			{
-				return false;
-			}
+            var hasActiveMembership = existingGymRegistrations
+                .Any(ex => ex.Object.IsActive &&
+                (ex.Object.EndDate >= DateTime.Now && ex.Object.SessionLeft > 0));
 
-			return true;
-		}
-	}
+            if (!hasActiveMembership)
+            {
+                return (false, false);
+            }
+
+            if (!hasValidMembership && hasActiveMembership)
+            {
+                return (true, false);
+            }
+
+            return (true, true);
+        }
+    }
 }
