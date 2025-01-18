@@ -16,10 +16,18 @@ const ManageSchedule = () => {
   const navigate = useNavigate();
   const [allTrainerData, setAllTrainerData] = useState([]); // Store raw data fetched from API
   const [trainers, setTrainers] = useState([]); // Store trainers' data filtered by date
-  const [loading, setLoading] = useState(true); // Loading state for the API call
-  const [selectedDate, setSelectedDate] = useState(null); // Track selected date
-  const timeSlots = ["6:00", "7:00", "8:00", "9:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
   const [isDataLoading, setIsDataLoading] = useState(true);
+
+  const [loading, setLoading] = useState(true); // Loading state for the API call
+  const [selectedDate, setSelectedDate] = useState(() => {
+    // Lấy ngày local hiện tại
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // Thêm 0 phía trước nếu < 10
+    const day = String(today.getDate()).padStart(2, '0'); // Thêm 0 phía trước nếu < 10
+    return `${year}-${month}-${day}`;
+  });
+  const timeSlots = ["6:00", "7:00", "8:00", "9:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
 
   // MODAL
   const [currentTrainer, setCurrentTrainer] = useState(null); // for editing trainer
@@ -145,142 +153,115 @@ const ManageSchedule = () => {
   };
 
   const handleRegisterTrainer = () => {
-    // Mở tab mới và chuyển đến URL bạn muốn
-    // window.open("http://localhost:3000/bookTrainerForm", "_blank");
     openBookTrainerModal();
   };
 
   const handleChangeSlot = () => {
-    // Mở tab mới và chuyển đến URL bạn muốn
-    // window.open("http://localhost:3000/changeSlotForm", "_blank");
     openChangeSlotModal();
   };
 
   // END MODAL
 
-  // SCHEDULE
-  const getScheduleButton = (trainerName, timeSlot, selectedDate, trainers) => {
-    const trainer = trainers.find((trainer) => trainer.trainerName === trainerName);
-    if (trainer && Array.isArray(trainer.slots)) {
-      const schedule = trainer.slots.filter((slot) => {
-        const startTime = slot.timeSlot.split("-")[0];
-        return slot.date === selectedDate && startTime === timeSlot;
+// 4. Update getScheduleButton function to be more resilient
+const getScheduleButton = (trainerName, timeSlot, selectedDate, trainers) => {
+  try {
+    const trainer = trainers.find(t => t.trainerName === trainerName);
+    if (!trainer?.slots) return <span className="">Trống</span>;
+
+    const schedule = trainer.slots.find(slot => {
+      if (!slot?.timeSlot) return false;
+      const startTime = slot.timeSlot.split("-")[0];
+      return slot.date === selectedDate && startTime === timeSlot;
+    });
+
+    if (!schedule) return <span className="">Trống</span>;
+
+    const hasCustomers = schedule.customers && Array.isArray(schedule.customers) && schedule.customers.length > 0;
+    
+    if (hasCustomers) {
+      return (
+        <button 
+          onClick={() => openViewDetailSlot(
+            trainerName,
+            schedule.timeSlot,
+            schedule.customers,
+            schedule.rentalOption || "No rental option",
+            schedule.boxingOption || "No boxing option"
+          )}
+          className="btn btn-info btn-sm"
+        >
+          Chi tiết
+        </button>
+      );
+    }
+  } catch (error) {
+    console.error("Error in getScheduleButton:", error);
+  }
+
+  return <span className="">Trống</span>;
+};
+
+  
+
+useEffect(() => {
+  let isMounted = true;
+
+  const fetchTrainerData = async () => {
+    if (!selectedDate) return;
+    
+    setIsDataLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No token found in localStorage");
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/Schedule/Slots/All?inputDate=${selectedDate}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
 
-      const hasCustomers = schedule.length > 0 && schedule[0].customers.length > 0;
-      const customers = hasCustomers ? schedule[0].customers : [];
-      const rentalOption = schedule.length > 0 ? schedule[0].rentalOption : "No rental option";
-      const boxingOption = schedule.length > 0 ? schedule[0].boxingOption : "No boxing option";
+      if (!response.ok) {
+        throw new Error("Failed to fetch trainer data");
+      }
 
-      if (hasCustomers) {
-        return (
-          <button onClick={() => openViewDetailSlot(trainerName, schedule[0].timeSlot, customers, rentalOption, boxingOption)} className="btn btn-info btn-sm">
-            Chi tiết
-          </button>
-        );
-      } else {
-        // Display "Trống" when there are no customers
-        return <span className="">Trống</span>;
+      const data = await response.json();
+      
+      // Chỉ update state nếu component vẫn mounted
+      if (isMounted && Array.isArray(data)) {
+        setTrainers(data);
+      }
+    } catch (error) {
+      console.error("Error fetching trainer data:", error);
+      // Nếu có lỗi, giữ lại data cũ thay vì set về mảng rỗng
+      if (isMounted) {
+        setTrainers(prev => prev);
+      }
+    } finally {
+      if (isMounted) {
+        setIsDataLoading(false);
       }
     }
-    // Fallback for when there is no trainer data
-    return <span className="">Trống</span>;
   };
 
-  //END SCHEDULE
-  useEffect(() => {
-    // Automatically set today's date when the page is loaded
-    const today = new Date().toISOString().split("T")[0]; // Format YYYY-MM-DD
-    setSelectedDate(today); // Set the selectedDate to today's date
-  }, []);
-  // Hàm lấy dữ liệu huấn luyện viên từ API
-  useEffect(() => {
-    const fetchTrainerData = async (date) => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          console.error("No token found in localStorage");
-          return;
-        }
+  fetchTrainerData();
 
-        const apiUrl = `http://localhost:5000/api/Schedule/Slots/All?inputDate=${date}`;
-
-        const response = await fetch(apiUrl, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch trainer data");
-          return;
-        }
-
-        const data = await response.json();
-        setAllTrainerData(data);
-        setTrainers(data);
-      } catch (error) {
-        console.error("Error fetching trainer data:", error);
-      } finally {
-        setIsDataLoading(false);
-      }
-    };
-
-    // Set today's date và fetch data trong cùng một useEffect
-    const today = new Date().toISOString().split("T")[0];
-    setSelectedDate(today);
-    fetchTrainerData(today);
-  }, []); // Chỉ chạy một lần khi component mount
-
-  // useEffect riêng cho việc fetch data khi selectedDate thay đổi
-  useEffect(() => {
-    // Không fetch data khi lần đầu component mount (selectedDate === null)
-    if (!selectedDate) return;
-
-    const fetchTrainerData = async () => {
-      setIsDataLoading(true);
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          console.error("No token found in localStorage");
-          return;
-        }
-
-        const apiUrl = `http://localhost:5000/api/Schedule/Slots/All?inputDate=${selectedDate}`;
-
-        const response = await fetch(apiUrl, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch trainer data");
-          return;
-        }
-
-        const data = await response.json();
-        setAllTrainerData(data);
-        setTrainers(data);
-      } catch (error) {
-        console.error("Error fetching trainer data:", error);
-      } finally {
-        setIsDataLoading(false);
-      }
-    };
-
-    fetchTrainerData();
-  }, [selectedDate]); // Chỉ chạy khi selectedDate thay đổi
-
-  // Xử lý thay đổi ngày
-  const handleDateChange = (e) => {
-    const selected = e.target.value; // Lấy ngày được chọn từ input
-    setSelectedDate(selected); // Cập nhật selectedDate và gọi lại fetch API
+  // Cleanup function
+  return () => {
+    isMounted = false;
   };
+}, [selectedDate]);
+
+// 3. Cập nhật hàm handleDateChange
+const handleDateChange = (e) => {
+  const selected = e.target.value;
+  setSelectedDate(selected);
+  setIsDataLoading(true); // Set loading state immediately
+};
 
   //CHANGE SLOT FORM
   const closeChangeSlotModal = () => {
