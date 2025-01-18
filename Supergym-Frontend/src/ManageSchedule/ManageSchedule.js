@@ -791,16 +791,28 @@ const ManageSchedule = () => {
         });
       }
 
+      let responsejson = null;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          responsejson = await response.json();
+        } catch (error) {
+          console.error("Error parsing JSON:", error);
+        }
+      }
+
       if (response.ok) {
         closeModal();
 
-        if (qrPaymentInput && responseData && responseData[0] && responseData[0].qrDataUrl) {
-          setQrDataUrl(responseData[0].qrDataUrl);
+
+        // Nếu là thanh toán QR và có QR URL
+        if (qrPaymentInput && responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
+          setQrDataUrl(responsejson[0].qrDataUrl);
           showQr();
         }
 
-        if (!qrPaymentInput && responseData) {
-          const money = responseData;
+        if (!qrPaymentInput && responsejson) {
+          const money = responsejson;
           console.log("Money to pay:", money);
 
           if (money !== undefined && money !== null) {

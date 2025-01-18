@@ -328,12 +328,12 @@ const ManageMembership = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     // Collect form data Gym
     const emailInputs = Array.from(document.querySelectorAll('input[type="email"]')).map((input) => input.value);
     const packageInput = formData.gymMembershipId;
     const qrPaymentInput = formData.qrPayment === "true";
-  
+
     // Prepare data for Gym
     const gymData = {
       emails: [formData.email],
@@ -345,12 +345,12 @@ const ManageMembership = () => {
       selectedTimeSlot: "",
       isMonWedFri: true,
     };
-  
+
     setIsSubmitting(true);
-  
+
     try {
       const token = localStorage.getItem("token");
-  
+
       const response = await fetch("http://localhost:5000/api/GymRegistration", {
         method: "POST",
         headers: {
@@ -359,7 +359,7 @@ const ManageMembership = () => {
         },
         body: JSON.stringify(gymData),
       });
-  
+
       let responsejson = null;
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
@@ -369,27 +369,27 @@ const ManageMembership = () => {
           console.error("Error parsing JSON:", error);
         }
       }
-  
+
       // Check if the response indicates success
       if (response.ok) {
         closeModal();
-  
+
         // Nếu là thanh toán QR và có QR URL
         if (qrPaymentInput && responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
           setQrDataUrl(responsejson[0].qrDataUrl);
           showQr();
         }
-  
+
         if (!qrPaymentInput && responsejson) {
           const money = responsejson;
           console.log("Money to pay:", money);
-  
+
           if (money !== undefined && money !== null) {
-            const formattedMoney = new Intl.NumberFormat('vi-VN', {
-              style: 'currency',
-              currency: 'VND'
+            const formattedMoney = new Intl.NumberFormat("vi-VN", {
+              style: "currency",
+              currency: "VND",
             }).format(money);
-            
+
             showSuccessModal(`Đăng ký thành công! Số tiền cần thanh toán: ${formattedMoney}`);
           } else {
             // Fallback message nếu không có moneyToPay
@@ -497,37 +497,32 @@ const ManageMembership = () => {
               </tr>
             </thead>
             <tbody>
-            {filteredMembershipData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((membership, index) => (
-  <tr key={index}>
-    <td>
-      <img src={`data:image/jpeg;base64,${membership.user.userAvatar}`} className="customer-avatar" />
-      {membership.user.name}
-    </td>
-    <td>{membership.user.gender === "male" ? "Nam" : "Nữ"}</td>
-    <td>{formatDate(membership.user.dob)}</td>
-    <td>{membership.user.email}</td>
-    <td>{membership.user.phone}</td>
-    <td>{membership.user.address}</td>
-    <td>
-      {membership.gymRegistrations && membership.gymRegistrations.length > 0 
-        ? (membership.gymRegistrations[0].isActive ? "Đã thanh toán" : "Chưa thanh toán")
-        : "Chưa đăng ký"
-      }
-    </td>
-    <td>
-      <a
-        href="#"
-        onClick={(e) => {
-          e.preventDefault();
-          openDetailModal(membership);
-        }}
-        className="view"
-      >
-        <VisibilityIcon />
-      </a>
-    </td>
-  </tr>
-))}
+              {filteredMembershipData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((membership, index) => (
+                <tr key={index}>
+                  <td>
+                    <img src={`data:image/jpeg;base64,${membership.user.userAvatar}`} className="customer-avatar" />
+                    {membership.user.name}
+                  </td>
+                  <td>{membership.user.gender === "male" ? "Nam" : "Nữ"}</td>
+                  <td>{formatDate(membership.user.dob)}</td>
+                  <td>{membership.user.email}</td>
+                  <td>{membership.user.phone}</td>
+                  <td>{membership.user.address}</td>
+                  <td>{membership.gymRegistrations && membership.gymRegistrations.length > 0 ? (membership.gymRegistrations[0].isActive ? "Đã thanh toán" : "Chưa thanh toán") : "Chưa đăng ký"}</td>
+                  <td>
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openDetailModal(membership);
+                      }}
+                      className="view"
+                    >
+                      <VisibilityIcon />
+                    </a>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
 
