@@ -47,7 +47,7 @@ namespace Alpha_API.Services
 
 			var hasValidMembership = existingGymRegistrations
 				.Any(ex => ex.Object.IsActive &&
-				(DateOnly.FromDateTime(ex.Object.EndDate) >= endDate && ex.Object.SessionLeft > 0));
+				(DateOnly.FromDateTime(ex.Object.EndDate) >= endDate || ex.Object.SessionLeft > 0));
 
 			if (!hasValidMembership)
 			{
