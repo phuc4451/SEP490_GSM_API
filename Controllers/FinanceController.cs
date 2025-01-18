@@ -438,20 +438,15 @@ namespace Alpha_API.Controllers
         [HttpGet("checkin")]
         public async Task<ActionResult<object>> GetCheckIn([FromQuery] string day)
         {
-            // Lấy ngày hiện tại
             var today = DateTime.Today;
 
-            // Tính ngày bắt đầu tuần trước (thứ 2 của tuần trước)
-            var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday - 7);  // Thứ 2 của tuần trước
+            // 🔹 Lấy ngày Monday đầu tuần hiện tại (từ thứ Hai đến Chủ Nhật)
+            var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+            var endOfWeek = startOfWeek.AddDays(6);
 
-            // Tính ngày kết thúc tuần hiện tại (chủ nhật của tuần hiện tại)
-            var endOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Sunday);  // Chủ nhật của tuần hiện tại
+            Console.WriteLine($"Start of Week: {startOfWeek:yyyy-MM-dd}");
+            Console.WriteLine($"End of Week: {endOfWeek:yyyy-MM-dd}");
 
-            // Debug: In ra ngày bắt đầu và kết thúc tuần
-            Console.WriteLine($"Start of Week: {startOfWeek.ToString("yyyy-MM-dd")}");
-            Console.WriteLine($"End of Week: {endOfWeek.ToString("yyyy-MM-dd")}");
-
-            // Truy vấn bảng GymRegistrations để lấy danh sách UserId có IsActive = true
             var gymRegistrations = await _firebaseClient
                 .Child("GymRegistrations")
                 .OnceAsync<GymRegistration>();
@@ -459,66 +454,63 @@ namespace Alpha_API.Controllers
             var activeUsers = gymRegistrations
                 .Where(g => g.Object.IsActive)
                 .Select(g => g.Object.UserId)
-                .ToList();
+                .ToHashSet();
 
-            // Truy vấn bảng CheckIns để lấy dữ liệu
             var checkIns = await _firebaseClient
                 .Child("CheckIns")
                 .OnceAsync<CheckIn>();
 
-            // Lọc các check-in trong khoảng thời gian từ startOfWeek đến endOfWeek và có UserId trong danh sách activeUsers
             var filteredCheckIns = checkIns
                 .Where(c => activeUsers.Contains(c.Object.UserId) &&
-                            c.Object.Time?.Date >= startOfWeek.Date && c.Object.Time?.Date <= endOfWeek.Date)
+                            c.Object.Time != null &&
+                            c.Object.Time.Value.Date >= startOfWeek.Date &&
+                            c.Object.Time.Value.Date <= endOfWeek.Date)
                 .Select(c => c.Object)
                 .ToList();
 
-            // Debug: Kiểm tra số lượng CheckIn đã lọc
             Console.WriteLine($"Filtered CheckIns Count: {filteredCheckIns.Count}");
 
-            // Nếu chọn "Tất cả các ngày", trả về số lượt check-in cho tất cả các ngày trong tuần
             if (day == "AllDays")
             {
-                var dailyCheckInCounts = new List<CheckInPerDay>();
-
-                // Tính số lượt check-in cho mỗi ngày trong tuần (thứ 2 - chủ nhật)
-                foreach (var i in Enumerable.Range(0, 7))
-                {
-                    var date = startOfWeek.AddDays(i);
-
-                    // Lọc các check-in của ngày đó, nhóm theo UserId để chỉ tính một lần cho mỗi User
-                    var checkInCount = filteredCheckIns
-                        .Where(c => c.Time?.Date == date)
-                        .GroupBy(c => c.UserId)  // Nhóm theo UserId
-                        .Count();  // Đếm số nhóm (mỗi nhóm là một lượt check-in cho mỗi User)
-
-                    dailyCheckInCounts.Add(new CheckInPerDay
+                var dailyCheckInCounts = Enumerable.Range(0, 7)
+                    .Select(i =>
                     {
-                        Day = date.ToString("dddd"),  // Tên ngày (ví dụ: Monday, Tuesday, ...)
-                        CheckInCount = checkInCount
-                    });
-                }
+                        var date = startOfWeek.AddDays(i);
+                        var checkInCount = filteredCheckIns
+                            .Where(c => c.Time?.Date == date)
+                            .GroupBy(c => c.UserId)
+                            .Count();
+
+                        return new CheckInPerDay
+                        {
+                            Day = date.ToString("dddd"),
+                            CheckInCount = checkInCount
+                        };
+                    })
+                    .ToList();
 
                 return Ok(dailyCheckInCounts);
             }
 
-            // Nếu chọn ngày cụ thể (ví dụ: "Monday", "Tuesday", ...)
-            var selectedDay = DateTime.ParseExact(day, "dddd", null);
+            if (!DateTime.TryParseExact(day, "dddd", null, System.Globalization.DateTimeStyles.None, out var selectedDay))
+            {
+                return BadRequest(new { Message = "Invalid day format. Use full day name (e.g., 'Monday')." });
+            }
 
-            // Lọc các check-in của ngày đó, nhóm theo UserId để chỉ tính một lần cho mỗi User
+            var selectedDate = startOfWeek.AddDays(((int)selectedDay.DayOfWeek + 6) % 7);
+
             var selectedDayCheckInCount = filteredCheckIns
-                .Where(c => c.Time?.Date == selectedDay.Date)
-                .GroupBy(c => c.UserId)  // Nhóm theo UserId
-                .Count();  // Đếm số nhóm (mỗi nhóm là một lượt check-in cho mỗi User)
+                .Where(c => c.Time?.Date == selectedDate.Date)
+                .GroupBy(c => c.UserId)
+                .Count();
 
             return Ok(new
             {
-                Day = selectedDay.ToString("dddd"),  // Tên ngày
+                Day = selectedDate.ToString("dddd"),
+                Date = selectedDate.ToString("yyyy-MM-dd"),
                 CheckInCount = selectedDayCheckInCount
             });
         }
-
-
 
     }
 
