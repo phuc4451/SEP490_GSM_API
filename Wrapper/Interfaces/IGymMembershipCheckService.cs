@@ -3,6 +3,6 @@
 	public interface IGymMembershipCheckService
 	{
 		Task<bool> CheckGymMembership(string userId);
-		Task<bool> CheckGymMembershipEndDate(string userId, DateOnly endDate);
+		Task<(bool,bool)> CheckGymMembershipEndDate(string userId, DateOnly endDate);
 	}
 }

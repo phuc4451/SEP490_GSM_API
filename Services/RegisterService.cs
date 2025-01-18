@@ -304,22 +304,35 @@ namespace Alpha_API.Services
 			var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembershipEndDate(userId, schedule.Item2));
 			var hasMembership = await Task.WhenAll(checkMembershipTask);
 
-			if (hasMembership.Any(membership => !membership))
-			{
-				var tasks = new List<Task>();
+            if (hasMembership.All(membership => membership.Item1 && membership.Item2))
+            {
 
-				tasks.Add(_firebaseClient.Child("Schedules").Child(scheduleId).DeleteAsync());
+            }
+            else
+            {
+                var tasks = new List<Task>();
 
-				// Handle slot deletions
-				var slots = await _firebaseClient.Child("Slots")
-					.OrderBy("scheduleId").EqualTo(scheduleId).OnceAsync<Slot>();
-				tasks.AddRange(slots.Select(slot => _firebaseClient.Child("Slots").Child(slot.Key).DeleteAsync()));
-				// Execute all deletions
-				await Task.WhenAll(tasks);
-				throw new InvalidOperationException("User doesn't have an active gym membership");
-			}
+                tasks.Add(_firebaseClient.Child("Schedules").Child(scheduleId).DeleteAsync());
 
-			int monthToAdd = 0;
+                // Handle slot deletions
+                var slots = await _firebaseClient.Child("Slots")
+                    .OrderBy("scheduleId").EqualTo(scheduleId).OnceAsync<Slot>();
+                tasks.AddRange(slots.Select(slot => _firebaseClient.Child("Slots").Child(slot.Key).DeleteAsync()));
+                // Execute all deletions
+                await Task.WhenAll(tasks);
+
+                if (hasMembership.Any(membership => !membership.Item1))
+                {
+                    throw new InvalidOperationException("One or more users don't have an active gym membership");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Users need to extend gym membership to {schedule.Item2.ToString()}");
+                }
+            }
+
+
+            int monthToAdd = 0;
 			int sessionToAdd = 0;
 
 			if (option.SessionCountMax == 0 && option.SessionCountMin == 0)
@@ -561,23 +574,36 @@ namespace Alpha_API.Services
 			var checkMembershipTask = userIds.Select(userId => _gymMembershipCheckService.CheckGymMembershipEndDate(userId, schedule.Item2));
 			var hasMembership = await Task.WhenAll(checkMembershipTask);
 
-			if (hasMembership.Any(membership => !membership))
-			{
-				var tasks = new List<Task>();
+            if (hasMembership.All(membership => membership.Item1 && membership.Item2))
+            {
 
-				tasks.Add(_firebaseClient.Child("Schedules").Child(scheduleId).DeleteAsync());
+            }
+            else
+            {
+                var tasks = new List<Task>();
 
-				// Handle slot deletions
-				var slots = await _firebaseClient.Child("Slots")
-					.OrderBy("scheduleId").EqualTo(scheduleId).OnceAsync<Slot>();
-				tasks.AddRange(slots.Select(slot => _firebaseClient.Child("Slots").Child(slot.Key).DeleteAsync()));
-				// Execute all deletions
-				await Task.WhenAll(tasks);
-				throw new InvalidOperationException("User doesn't have an active gym membership");
-			}
+                tasks.Add(_firebaseClient.Child("Schedules").Child(scheduleId).DeleteAsync());
 
-			// Prepare the request data
-			string info = "";
+                // Handle slot deletions
+                var slots = await _firebaseClient.Child("Slots")
+                    .OrderBy("scheduleId").EqualTo(scheduleId).OnceAsync<Slot>();
+                tasks.AddRange(slots.Select(slot => _firebaseClient.Child("Slots").Child(slot.Key).DeleteAsync()));
+                // Execute all deletions
+                await Task.WhenAll(tasks);
+
+                if (hasMembership.Any(membership => !membership.Item1))
+                {
+                    throw new InvalidOperationException("One or more users don't have an active gym membership");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Users need to extend gym membership to {schedule.Item2.ToString()}");
+                }
+            }
+
+
+            // Prepare the request data
+            string info = "";
 			bool paid = false;
 
 			if (qrPayment)
