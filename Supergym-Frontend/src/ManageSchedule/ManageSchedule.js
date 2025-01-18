@@ -735,9 +735,8 @@ const ManageSchedule = () => {
     const trainerRentalPlanId = formData.trainerRentalPlanId;
     const duration = formData.sessionCount;
     const gymDuration = duration ? duration : null;
-    const qrPaymentInput = formData.qrPayment; // Đã là boolean, không cần chuyển đổi
+    const qrPaymentInput = formData.qrPayment;
 
-    // Prepare data for Gym
     const gymData = {
       emails: emailInputs,
       boxingMembershipPlanId: null,
@@ -749,7 +748,6 @@ const ManageSchedule = () => {
       isMonWedFri: trainerType === "TrainerRental" ? true : false,
     };
 
-    // For Boxing data
     const boxingData = {
       emails: emailInputs,
       boxingMembershipPlanId: formData.boxingMembershipPlanId,
@@ -771,9 +769,8 @@ const ManageSchedule = () => {
       }
 
       let response;
-      let responsejson = null;
+      let responseData = null;
 
-      // Gửi request dựa trên loại trainer
       if (trainerType === "TrainerRental") {
         response = await fetch("http://localhost:5000/api/trainerRentalRegistration", {
           method: "POST",
@@ -794,27 +791,16 @@ const ManageSchedule = () => {
         });
       }
 
-      // Parse response dựa trên content type
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        try {
-          responsejson = await response.json();
-        } catch (error) {
-          console.error("Error parsing JSON:", error);
-        }
-      }
-
       if (response.ok) {
         closeModal();
 
-        // Nếu là thanh toán QR và có QR URL
-        if (qrPaymentInput && responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
-          setQrDataUrl(responsejson[0].qrDataUrl);
+        if (qrPaymentInput && responseData && responseData[0] && responseData[0].qrDataUrl) {
+          setQrDataUrl(responseData[0].qrDataUrl);
           showQr();
         }
 
-        if (!qrPaymentInput && responsejson) {
-          const money = responsejson;
+        if (!qrPaymentInput && responseData) {
+          const money = responseData;
           console.log("Money to pay:", money);
 
           if (money !== undefined && money !== null) {
@@ -825,15 +811,23 @@ const ManageSchedule = () => {
 
             showSuccessModal(`Đăng ký thành công! Số tiền cần thanh toán: ${formattedMoney}`);
           } else {
-            // Fallback message nếu không có moneyToPay
             showSuccessModal("Đăng ký huấn luyện viên thành công");
             console.log("No money value found in response");
           }
         }
       } else {
-        // Xử lý lỗi
-        const errorMessage = responsejson?.message || "Có lỗi xảy ra khi đăng ký. Vui lòng thử lại.";
-        showErrorModal(errorMessage);
+        const errorText = await response.text();
+        if (errorText) {
+          try {
+            const errorData = JSON.parse(errorText);
+            const errorMessage = errorData.message;
+            const errorDetails = errorData.details ? `\n${errorData.details}` : '';
+            showErrorModal(`${errorMessage}${errorDetails}`);
+          } catch {
+            showErrorModal(errorText);
+          }
+        }
+        return;
       }
     } catch (error) {
       console.error("Error during trainer registration:", error);
@@ -841,7 +835,7 @@ const ManageSchedule = () => {
     } finally {
       setIsFetching(false);
     }
-  };
+};
 
   useEffect(() => {
     if (checkDetailPack && checkDetailPack.memberCount) {
