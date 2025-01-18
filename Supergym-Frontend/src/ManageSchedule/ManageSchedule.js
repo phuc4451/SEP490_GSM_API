@@ -796,6 +796,10 @@ const ManageSchedule = () => {
       if (contentType && contentType.includes("application/json")) {
         try {
           responsejson = await response.json();
+          if (responsejson.message) {
+            showErrorModal(responsejson.message);
+            return;
+          }
         } catch (error) {
           console.error("Error parsing JSON:", error);
         }
@@ -803,7 +807,6 @@ const ManageSchedule = () => {
 
       if (response.ok) {
         closeModal();
-
 
         // Nếu là thanh toán QR và có QR URL
         if (qrPaymentInput && responsejson && responsejson[0] && responsejson[0].qrDataUrl) {
@@ -833,7 +836,7 @@ const ManageSchedule = () => {
           try {
             const errorData = JSON.parse(errorText);
             const errorMessage = errorData.message;
-            const errorDetails = errorData.details ? `\n${errorData.details}` : '';
+            const errorDetails = errorData.details ? `\n${errorData.details}` : "";
             showErrorModal(`${errorMessage}${errorDetails}`);
           } catch {
             showErrorModal(errorText);
@@ -847,7 +850,7 @@ const ManageSchedule = () => {
     } finally {
       setIsFetching(false);
     }
-};
+  };
 
   useEffect(() => {
     if (checkDetailPack && checkDetailPack.memberCount) {
@@ -857,21 +860,18 @@ const ManageSchedule = () => {
   }, [checkDetailPack]); // Chạy khi checkDetailPack thay đổi
 
   // 3. useEffect cho session count handling (cần thêm vào ManageSchedule):
-useEffect(() => {
-  // Check if the trainerType is Gym or Boxing to control the display of the session count field
-  if (trainerType === "TrainerRental") {
-    setShowSessionCount(true); // Show session count input for Gym
-  } else if (trainerType === "Boxing") {
-    setShowSessionCount(false); // Hide session count input for Boxing
-    setFormData((prevData) => ({
-      ...prevData,
-      sessionCount: 1, // Automatically set sessionCount to 1 for Boxing
-    }));
-  }
-}, [trainerType]); // This effect depends on the trainerType
-
-
-
+  useEffect(() => {
+    // Check if the trainerType is Gym or Boxing to control the display of the session count field
+    if (trainerType === "TrainerRental") {
+      setShowSessionCount(true); // Show session count input for Gym
+    } else if (trainerType === "Boxing") {
+      setShowSessionCount(false); // Hide session count input for Boxing
+      setFormData((prevData) => ({
+        ...prevData,
+        sessionCount: 1, // Automatically set sessionCount to 1 for Boxing
+      }));
+    }
+  }, [trainerType]); // This effect depends on the trainerType
 
   return (
     <>
