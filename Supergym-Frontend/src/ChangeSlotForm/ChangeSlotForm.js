@@ -309,8 +309,6 @@ const ManageSchedule = () => {
     setSuccessMessage(message); // Cập nhật thông báo
     successModalRef.current.style.display = "block";
     document.querySelector(".modal-overlay").style.display = "block";
-
-
   };
 
   // Hàm để đóng modal thông báo

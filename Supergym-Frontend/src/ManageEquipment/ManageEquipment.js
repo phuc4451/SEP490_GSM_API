@@ -190,6 +190,13 @@ const ManageEquipment = () => {
           errorMsg = "Số lượng không thể vượt quá số lượng hiện tại.";
         }
         break;
+      case "importQuantity":
+        if (!value) {
+          errorMsg = "Số lượng nhập là bắt buộc.";
+        } else if (isNaN(value) || parseInt(value) <= 0) {
+          errorMsg = "Số lượng nhập phải là số dương.";
+        }
+        break;
       case "equipmentManufactured":
         if (!value) errorMsg = "Nơi sản xuất là bắt buộc.";
         else if (value.length < 2) errorMsg = "Nhãn hiệu phải có ít nhất 2 ký tự.";
@@ -219,6 +226,11 @@ const ManageEquipment = () => {
 
   const isFormValid = () => {
     const requiredFields = ["equipmentName", "equipmentCode", "equipmentImportPrice", "equipmentBrand", "equipmentQuantity", "equipmentManufactured", "equipmentSize", "equipmentWeightStack", "equipmentMaterial"];
+
+    // Add importQuantity validation when in existing equipment mode
+    if (isExistingEquipment) {
+      requiredFields.push("importQuantity");
+    }
 
     let isValid = true;
     requiredFields.forEach((field) => {
@@ -428,6 +440,7 @@ const ManageEquipment = () => {
       return;
     }
     const token = localStorage.getItem("token");
+    const importer = localStorage.getItem("userName");
 
     // Chuẩn bị completeData và chuyển đổi equipmentImportPrice thành số
     const completeData = {
@@ -468,6 +481,7 @@ const ManageEquipment = () => {
           importPrice: completeData.equipmentImportPrice,
           importTotalPrice: completeData.equipmentImportPrice * importEquipmentInput,
           equipmentId: selectedEquipmentId,
+          importer: importer,
         };
 
         // Call the ImportEquipment API
@@ -499,6 +513,7 @@ const ManageEquipment = () => {
           importPrice: completeData.equipmentImportPrice,
           importTotalPrice: completeData.equipmentImportPrice * completeData.equipmentQuantity,
           equipmentId,
+          importer: importer,
         };
 
         // Call the ImportEquipment API
@@ -734,7 +749,7 @@ const ManageEquipment = () => {
                 <th>Số lượng</th>
                 <th>Nơi sản xuất</th>
                 <th>Hạng mục</th>
-                <th>Cơ sở</th>
+                {/* <th>Cơ sở</th> */}
                 <th>Hành động</th>
               </tr>
             </thead>
@@ -747,7 +762,7 @@ const ManageEquipment = () => {
                   <td>{equipment.equipmentQuantity}</td>
                   <td>{equipment.equipmentManufactured}</td>
                   <td>{equipment.equipmentCategoryName}</td>
-                  <td>{equipment.trainingRoomName}</td>
+                  {/* <td>{equipment.trainingRoomName}</td> */}
                   <td>
                     <a href="#" onClick={() => openEditEquipmentModal(equipment)} className="edit">
                       <EditIcon />
@@ -824,11 +839,11 @@ const ManageEquipment = () => {
 
                   <div className="form-group col">
                     {/* <div className="d-flex align-items-center"> */}
-                      {/* <label className="me-2"> */}
-                      <label>
-                        Mã thiết bị <span className="icon-input">(*)</span>
-                      </label>
-                      {/* {currentEquipment && !isEditingCode && (
+                    {/* <label className="me-2"> */}
+                    <label>
+                      Mã thiết bị <span className="icon-input">(*)</span>
+                    </label>
+                    {/* {currentEquipment && !isEditingCode && (
                         <button type="button" className="edit edit-equipmentCode" onClick={handleEditCodeClick}>
                           Sửa <EditIcon style={{ fontSize: "16px" }} />
                         </button>
@@ -892,13 +907,14 @@ const ManageEquipment = () => {
                       <label>
                         Số lượng nhập <span className="icon-input">(*)</span>
                       </label>
-                      <input type="number" className="form-control" name="importQuantity" value={formData.importQuantity} onChange={handleInputChange} required />
+                      <input type="number" className={`form-control ${errors.importQuantity ? "is-invalid" : ""}`} name="importQuantity" value={formData.importQuantity} onChange={handleInputChange} required />
+                      {errors.importQuantity && <div className="invalid-feedback">{errors.importQuantity}</div>}
                     </div>
                   )}
                 </div>
 
                 <div className="row">
-                  <div className="form-group col">
+                  {/* <div className="form-group col">
                     <label>
                       Cơ sở <span className="icon-input">(*)</span>
                     </label>
@@ -912,7 +928,7 @@ const ManageEquipment = () => {
                         Cơ sở 2
                       </label>
                     </div>
-                  </div>
+                  </div> */}
                   <div className="form-group col">
                     <label>
                       Loại thiết bị <span className="icon-input">(*)</span>
@@ -985,7 +1001,7 @@ const ManageEquipment = () => {
 
       {/* Import History Modal */}
       <div ref={importHistoryModalRef} className="modal">
-        <div className="modal-dialog modal-dialog-centered modal-lg">
+      <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-import">
           <div className="modal-content modal-content-importEquipment">
             <div className="modal-header">
               <h4 className="modal-title text-center mx-auto">Lịch sử nhập thiết bị</h4>
@@ -1003,6 +1019,7 @@ const ManageEquipment = () => {
                     <th>Số lượng nhập</th>
                     <th>Giá nhập (VNĐ)</th>
                     <th>Tổng tiền (VNĐ)</th>
+                    <th>Người nhập</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1014,6 +1031,7 @@ const ManageEquipment = () => {
                       <td>{item.importQuantity}</td>
                       <td>{item.importPrice.toLocaleString()}</td>
                       <td>{item.importTotalPrice.toLocaleString()}</td>
+                      <td>{item.importer}</td>
                     </tr>
                   ))}
                 </tbody>

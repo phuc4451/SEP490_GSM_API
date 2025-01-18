@@ -13,6 +13,7 @@ namespace Alpha_API.Models
         public string EquipmentId { get; set; }
 
         public decimal ImportPrice { get; set; }
+        public string Importer { get; set; }
         public CustomDateTimeIE MapDateTimeToCustomFormat(DateTime dateTime)
         {
             return new CustomDateTimeIE

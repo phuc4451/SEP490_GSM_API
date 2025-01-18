@@ -320,14 +320,13 @@ const ManageShift = () => {
       });
 
       // Kiểm tra và xử lý response
-      if (response.data) {
-        if (response.data.success) {  // Giả sử API trả về field success
-          closeModal();
-          showSuccessModal(response.data || "Ca làm việc được lưu thành công");
-        } else {
-          showErrorModal(response.data || "Có lỗi xảy ra khi lưu ca làm việc");
-        }
+      if (response.status === 200) {
+        closeModal();
+        showSuccessModal("Ca làm việc được lưu thành công");
+      } else {
+        showErrorModal("Có lỗi xảy ra khi lưu ca làm việc");
       }
+      // }
     } catch (error) {
       console.error("Error saving Staff:", error);
       // Xử lý các loại lỗi khác nhau

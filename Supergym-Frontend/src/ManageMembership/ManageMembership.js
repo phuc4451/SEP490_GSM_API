@@ -492,44 +492,42 @@ const ManageMembership = () => {
                 <th>Email</th>
                 <th>Số điện thoại</th>
                 <th>Địa chỉ</th>
+                <th>Trạng thái thanh toán</th>
                 <th className="action-el">Hành động</th>
               </tr>
             </thead>
             <tbody>
-              {filteredMembershipData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((membership, index) => (
-                <tr key={index}>
-                  <td>
-                    <img src={`data:image/jpeg;base64,${membership.user.userAvatar}`} className="customer-avatar" />
-                    {membership.user.name}
-                  </td>
-                  {/* <td>{customer.gender}</td> */}
-                  <td>{membership.user.gender === "male" ? "Nam" : "Nữ"}</td>
-                  <td>{formatDate(membership.user.dob)}</td>
-                  <td>{membership.user.email}</td>
-                  <td>{membership.user.phone}</td>
-                  <td>{membership.user.address}</td>
-                  {/* <td className={customer.status === "Hoạt động" ? "status-el-active" : "status-el-inactive"}>{customer.status}</td> */}
-                  {/* <td>{customer.role}</td> */}
-                  <td>
-                    {/* <a href="#" onClick={() => openEditMembershipModal(membership.user)} className="edit">
-                      <EditIcon />
-                    </a>
-                    <a href="#" onClick={() => openDeleteModal(membership.user)} className="delete">
-                      <DeleteIcon />
-                    </a> */}
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        openDetailModal(membership);
-                      }}
-                      className="view"
-                    >
-                      <VisibilityIcon />
-                    </a>
-                  </td>
-                </tr>
-              ))}
+            {filteredMembershipData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((membership, index) => (
+  <tr key={index}>
+    <td>
+      <img src={`data:image/jpeg;base64,${membership.user.userAvatar}`} className="customer-avatar" />
+      {membership.user.name}
+    </td>
+    <td>{membership.user.gender === "male" ? "Nam" : "Nữ"}</td>
+    <td>{formatDate(membership.user.dob)}</td>
+    <td>{membership.user.email}</td>
+    <td>{membership.user.phone}</td>
+    <td>{membership.user.address}</td>
+    <td>
+      {membership.gymRegistrations && membership.gymRegistrations.length > 0 
+        ? (membership.gymRegistrations[0].isActive ? "Đã thanh toán" : "Chưa thanh toán")
+        : "Chưa đăng ký"
+      }
+    </td>
+    <td>
+      <a
+        href="#"
+        onClick={(e) => {
+          e.preventDefault();
+          openDetailModal(membership);
+        }}
+        className="view"
+      >
+        <VisibilityIcon />
+      </a>
+    </td>
+  </tr>
+))}
             </tbody>
           </table>
 

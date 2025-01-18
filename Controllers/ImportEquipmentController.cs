@@ -23,29 +23,6 @@ namespace Alpha_API.Controllers
             _firebaseClient = new FirebaseClient("https://sgm-management-c98cd-default-rtdb.firebaseio.com/");
         }
 
-        // GET: api/ImportEquipment
-        //[HttpGet]
-        //public async Task<ActionResult<IEnumerable<object>>> GetImportEquipments()
-        //{
-        //    // Fetch all import equipment data from Firebase
-        //    var importEquipments = await _firebaseClient
-        //        .Child("ImportEquipment")
-        //        .OnceAsync<ImportEquipment>();
-
-        //    // Map Firebase data to a list of objects with additional details if needed
-        //    var importEquipmentList = importEquipments.Select(import => new
-        //    {
-        //        ImportEquipmentId = import.Key,
-        //        ImportDate = import.Object.ImportDate,
-        //        ImportQuantity = import.Object.ImportQuantity,
-        //        ImportPrice = import.Object.ImportPrice,
-        //        ImportTotalPrice = import.Object.ImportTotalPrice,
-        //        EquipmentId = import.Object.EquipmentId
-        //    });
-
-        //    return Ok(importEquipmentList);
-        //}
-
         [HttpGet]
         public async Task<ActionResult<IEnumerable<object>>> GetImportEquipments()
         {
@@ -71,7 +48,8 @@ namespace Alpha_API.Controllers
                     ImportTotalPrice = import.Object.ImportTotalPrice,
                     EquipmentId = import.Object.EquipmentId,
                     EquipmentCode = equipments.GetValueOrDefault(import.Object.EquipmentId)?.EquipmentCode ?? "Unknown",
-                    EquipmentName = equipments.GetValueOrDefault(import.Object.EquipmentId)?.EquipmentName ?? "Unknown"
+                    EquipmentName = equipments.GetValueOrDefault(import.Object.EquipmentId)?.EquipmentName ?? "Unknown",
+                    Importer = import.Object.Importer
                 })
                 .OrderByDescending(x => x.ImportDate.Year)
                 .ThenByDescending(x => x.ImportDate.Month)

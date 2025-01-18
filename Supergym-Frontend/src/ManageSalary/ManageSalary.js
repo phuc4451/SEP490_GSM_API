@@ -53,10 +53,8 @@ const ManageSalary = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
-    salaryType: "trainer",
     baseSalary: "",
     perShiftSalary: "",
-    perSlotSalary: "",
     finePerLate: "",
     finePerAbsence: "",
   });
@@ -281,29 +279,16 @@ const ManageSalary = () => {
     let isValid = true;
     const newErrors = {};
 
-    // Validate base salary
     if (!formData.baseSalary || Number(formData.baseSalary) <= 0) {
       newErrors.baseSalary = "Lương cơ bản phải lớn hơn 0";
       isValid = false;
     }
 
-    // Validate per shift salary for staff
-    if (formData.salaryType === "staff") {
-      if (!formData.perShiftSalary || Number(formData.perShiftSalary) <= 0) {
-        newErrors.perShiftSalary = "Lương theo ca phải lớn hơn 0";
-        isValid = false;
-      }
+    if (!formData.perShiftSalary || Number(formData.perShiftSalary) <= 0) {
+      newErrors.perShiftSalary = "Lương theo ca phải lớn hơn 0";
+      isValid = false;
     }
 
-    // Validate per slot salary for trainer
-    if (formData.salaryType === "trainer") {
-      if (!formData.perSlotSalary || Number(formData.perSlotSalary) <= 0) {
-        newErrors.perSlotSalary = "Lương theo slot phải lớn hơn 0";
-        isValid = false;
-      }
-    }
-
-    // Validate fines
     if (!formData.finePerLate || Number(formData.finePerLate) <= 0) {
       newErrors.finePerLate = "Mức phạt đi muộn phải lớn hơn 0";
       isValid = false;
@@ -333,8 +318,8 @@ const ManageSalary = () => {
       const salaryConfig = {
         configurationId: "string",
         baseSalary: Number(formData.baseSalary),
-        perShiftSalary: formData.salaryType === "staff" ? Number(formData.perShiftSalary) : 0,
-        perSlotSalary: formData.salaryType === "trainer" ? Number(formData.perSlotSalary) : 0,
+        perShiftSalary: Number(formData.perShiftSalary),
+        perSlotSalary: 0, // Set to 0 since we're only handling staff
         finePerLate: Number(formData.finePerLate),
         finePerAbsence: Number(formData.finePerAbsence),
       };
@@ -345,25 +330,21 @@ const ManageSalary = () => {
         },
       });
 
-      if (response.data) {
-        if (response.data.success) {  // Giả sử API trả về field success
+      // if (response.data) {
+        if (response.status === 200) {
           closeModal();
           showSuccessModal(response.data || "Thêm cấu hình lương thành công");
         } else {
           showErrorModal(response.data || "Có lỗi xảy ra khi thêm cấu hình lương");
         }
-      }
+      // }
     } catch (error) {
       console.error("Error saving Staff:", error);
-      // Xử lý các loại lỗi khác nhau
       if (error.response) {
-        // Server trả về response với status code nằm ngoài range 2xx
         showErrorModal(error.response.data || "Có lỗi xảy ra từ server");
       } else if (error.request) {
-        // Request được gửi nhưng không nhận được response
         showErrorModal("Không thể kết nối đến server");
       } else {
-        // Có lỗi khi setting up request
         showErrorModal(error.message || "Có lỗi xảy ra");
       }
     } finally {
@@ -403,18 +384,18 @@ const ManageSalary = () => {
                 {/* <th>ID Cấu hình</th> */}
                 <th>Lương cơ bản</th>
                 <th>Lương theo ca</th>
-                <th>Lương theo slot</th>
+                {/* <th>Lương theo slot</th> */}
                 <th>Phạt đi muộn</th>
                 <th>Phạt vắng mặt</th>
               </tr>
             </thead>
             <tbody>
-              {salaryConfigs.map((config) => (
+              {currentPageData.map((config) => (
                 <tr key={config.configurationId}>
                   {/* <td>{config.configurationId}</td> */}
                   <td>{formatCurrency(config.baseSalary)}</td>
                   <td>{formatCurrency(config.perShiftSalary)}</td>
-                  <td>{formatCurrency(config.perSlotSalary)}</td>
+                  {/* <td>{formatCurrency(config.perSlotSalary)}</td> */}
                   <td>{formatCurrency(config.finePerLate)}</td>
                   <td>{formatCurrency(config.finePerAbsence)}</td>
                 </tr>
@@ -481,31 +462,21 @@ const ManageSalary = () => {
                 </a>
               </div>
               <div className="modal-body">
-                {/* Salary type selector */}
                 <div className="row">
-                  <div className="form-group col">
-                    <label>
-                      Loại nhân viên <span className="icon-input">(*)</span>
-                    </label>
-                    <div>
-                      <label>
-                        <input type="radio" name="salaryType" value="trainer" checked={formData.salaryType === "trainer"} onChange={handleInputChange} />
-                        Trainer
-                      </label>
-                      <label className="ms-3">
-                        <input type="radio" name="salaryType" value="staff" checked={formData.salaryType === "staff"} onChange={handleInputChange} />
-                        Staff
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Base salary input */}
                   <div className="form-group col">
                     <label>
                       Lương cơ bản <span className="icon-input">(*)</span>
                     </label>
                     <input type="number" className={`form-control ${errors.baseSalary ? "is-invalid" : ""}`} name="baseSalary" value={formData.baseSalary} onChange={handleInputChange} required />
                     {errors.baseSalary && <div className="invalid-feedback">{errors.baseSalary}</div>}
+                  </div>
+
+                  <div className="form-group col">
+                    <label>
+                      Lương theo ca <span className="icon-input">(*)</span>
+                    </label>
+                    <input type="number" className={`form-control ${errors.perShiftSalary ? "is-invalid" : ""}`} name="perShiftSalary" value={formData.perShiftSalary} onChange={handleInputChange} required />
+                    {errors.perShiftSalary && <div className="invalid-feedback">{errors.perShiftSalary}</div>}
                   </div>
                 </div>
 
@@ -526,29 +497,6 @@ const ManageSalary = () => {
                     {errors.finePerAbsence && <div className="invalid-feedback">{errors.finePerAbsence}</div>}
                   </div>
                 </div>
-
-                {/* Conditional rendering based on salary type */}
-                {formData.salaryType === "trainer" ? (
-                  <div className="row">
-                    <div className="form-group col">
-                      <label>
-                        Lương theo slot <span className="icon-input">(*)</span>
-                      </label>
-                      <input type="number" className={`form-control ${errors.perSlotSalary ? "is-invalid" : ""}`} name="perSlotSalary" value={formData.perSlotSalary} onChange={handleInputChange} required />
-                      {errors.perSlotSalary && <div className="invalid-feedback">{errors.perSlotSalary}</div>}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="row">
-                    <div className="form-group col">
-                      <label>
-                        Lương theo ca <span className="icon-input">(*)</span>
-                      </label>
-                      <input type="number" className={`form-control ${errors.perShiftSalary ? "is-invalid" : ""}`} name="perShiftSalary" value={formData.perShiftSalary} onChange={handleInputChange} required />
-                      {errors.perShiftSalary && <div className="invalid-feedback">{errors.perShiftSalary}</div>}
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="modal-footer">

@@ -32,6 +32,9 @@ const Header = () => {
           email: response.data.email,
           userAvatar: `data:image/png;base64,${response.data.userAvatar}`,
         }]);
+
+        // Save user name to localStorage
+        localStorage.setItem("userName", response.data.name);
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
@@ -43,6 +46,7 @@ const Header = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+    localStorage.removeItem("userName"); // Also remove userName when logging out
     navigate("/login");
   };
 
@@ -153,9 +157,9 @@ const Header = () => {
             </a>
 
             <div className="dropdown-content">
-              <a href="/profile">
+              {/* <a href="/profile">
                 <AccountCircleIcon /> Thông tin cá nhân
-              </a>
+              </a> */}
               <div className="dropdown-divider"></div>
               <a href="#" onClick={handleLogout}>
                 <PowerSettingsNewIcon /> Đăng xuất

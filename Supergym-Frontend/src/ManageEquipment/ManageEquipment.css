@@ -618,3 +618,44 @@ table.table .avatar {
 .modal-content-importEquipment{
   width: fit-content!important;
 }
+
+/* Căn giữa modal dialog */
+.modal-dialog-import {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 80% !important; /* Giới hạn chiều rộng tối đa */
+  margin: 1.75rem auto;
+}
+
+/* Đảm bảo bảng responsive và có thể scroll */
+.modal-body-importEquipment {
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+.table-importEquipment {
+  width: 100%;
+  margin: 0 auto;
+  white-space: nowrap;
+}
+
+/* Điều chỉnh padding cho các cell trong bảng */
+.table-importEquipment th,
+.table-importEquipment td {
+  padding: 8px 12px;
+  vertical-align: middle;
+}
+
+/* Căn giữa modal content */
+.modal-content-importEquipment {
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Đảm bảo modal không vượt quá màn hình */
+@media (max-width: 992px) {
+  .modal-dialog-import {
+    max-width: 95% !important;
+  }
+}
